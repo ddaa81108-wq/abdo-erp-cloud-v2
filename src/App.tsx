@@ -152,6 +152,43 @@ export default function App() {
   const [showSeedBannerConfirm, setShowSeedBannerConfirm] = useState(false);
   const [showCustomToast, setShowCustomToast] = useState("");
 
+  // Global Keyboard Navigation (ArrowUp / ArrowDown)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Fast path for arrows
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "SELECT" ||
+        target.tagName === "TEXTAREA"
+      ) {
+        const focusableElements = Array.from(
+          document.querySelectorAll(
+            'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
+          )
+        ) as HTMLElement[];
+        
+        const index = focusableElements.indexOf(target);
+        if (index > -1) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const next = focusableElements[index + 1] || focusableElements[0];
+            next.focus();
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            const prev = focusableElements[index - 1] || focusableElements[focusableElements.length - 1];
+            prev.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   // 1. Firebase Synchronization Core
   useEffect(() => {
     let unmounted = false;
