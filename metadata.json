@@ -1,0 +1,6 @@
+{
+  "name": "ABDO ERP V2",
+  "description": "النظام المحاسبي المتكامل لإدارة الديون وحركة الخزينة والمشتريات والأرشيف والأمانات مع ميزات التصدير كصور ومحرك استيراد Excel الذكي.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
