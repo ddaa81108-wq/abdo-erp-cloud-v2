@@ -39,6 +39,43 @@ interface CustomerDebtsModuleProps {
   searchQuery?: string;
 }
 
+const DisintegrationParticles = () => {
+  const particles = Array.from({ length: 120 }).map((_, i) => {
+    const tx = (Math.random() - 0.5) * 300; // spread wider
+    const ty = (Math.random() - 1) * 300; // fly up higher
+    const duration = 0.3 + Math.random() * 0.4; // 0.3s to 0.7s
+    const delay = Math.random() * 0.1; // start fast
+    const rgb = ["148, 163, 184", "203, 213, 225", "15, 23, 42", "226, 232, 240"][
+      Math.floor(Math.random() * 4)
+    ]; // varied slate/grey tones
+    const size = Math.random() * 5 + 1; // 1px to 6px
+
+    const style = {
+      "--tx": `${tx}px`,
+      "--ty": `${ty}px`,
+      backgroundColor: `rgb(${rgb})`,
+      width: `${size}px`,
+      height: `${size}px`,
+      left: `${(Math.random() * 100).toFixed(2)}%`,
+      top: `${(Math.random() * 100).toFixed(2)}%`,
+      animation: `disintegrate-particle ${duration}s cubic-bezier(0.25, 1, 0.5, 1) ${delay}s forwards`,
+    } as React.CSSProperties;
+
+    return (
+      <div
+        key={i}
+        className="absolute rounded-full opacity-100 pointer-events-none shadow-sm"
+        style={style}
+      />
+    );
+  });
+  return (
+    <div className="absolute inset-0 z-50 pointer-events-none overflow-visible">
+      {particles}
+    </div>
+  );
+};
+
 export default function CustomerDebtsModule({
   state,
   onUpdateState,
@@ -60,6 +97,13 @@ export default function CustomerDebtsModule({
   const [restorableCustomer, setRestorableCustomer] = useState<Customer | null>(
     null,
   );
+
+  const [vaporizingCustomers, setVaporizingCustomers] = useState<string[]>([]);
+
+  const stateRef = React.useRef(state);
+  React.useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // 2. حالة فتح بطاقة الزبون (النافذة الكبيرة للزبون المختار)
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
@@ -480,65 +524,90 @@ export default function CustomerDebtsModule({
     const custId = targetCustId || selectedCustomerId;
     if (!custId) return;
 
-    const currentAcc = allActiveAndSettledCustomers.find(
-      (a) => a.cust.id === custId,
-    );
-    if (!currentAcc) return;
-
-    const outstanding = currentAcc.debtBalance;
-    const timestamp = new Date().toISOString();
-    const docNum = generateDocNumber();
-
-    let updatedDebtTransactions = [...state.debtTransactions];
-
-    // تصفير وإغلاق الدورة النشطة
-    const updatedCycles = state.cycles.map((cy) => {
-      if (cy.customerId === custId && cy.status === "active") {
-        return {
-          ...cy,
-          status: "closed" as const,
-          currentBalance: 0,
-          endDate: timestamp,
-        };
-      }
-      return cy;
-    });
-
-    if (outstanding > 0) {
-      updatedDebtTransactions.push({
-        id: `tx_wipe_${Date.now()}`,
-        customerId: custId,
-        cycleId: currentAcc.activeCycle?.id || "",
-        type: "payment",
-        amount: outstanding,
-        currency: "د.ل",
-        conversionRate: 1.0,
-        date: timestamp,
-        referenceNo: docNum,
-        note: `مسح الحساب وإلغاء الدين بالكامل`,
-        postedToTreasury: false,
-        createdAt: timestamp,
-      });
-    }
-
-    // وضع علامة الحذف المؤقت للزبون لحفظ الأرشيف واسترجاعه في أي وقت
-    const updatedCustomers = state.customers.map((c) => {
-      if (c.id === custId) {
-        return { ...c, isDeleted: true };
-      }
-      return c;
-    });
-
-    onUpdateState({
-      ...state,
-      customers: updatedCustomers,
-      cycles: updatedCycles,
-      debtTransactions: updatedDebtTransactions,
-    });
-
+    // إغلاق النافذة إذا كان الحذف من الداخل
     if (!targetCustId) {
       setSelectedCustomerId(null);
     }
+
+    // بدء تأثير التبخر
+    setVaporizingCustomers((prev) => [...prev, custId]);
+
+    setTimeout(() => {
+      const currentState = stateRef.current;
+      const custToDel = currentState.customers.find((c) => c.id === custId);
+      if (!custToDel || custToDel.isDeleted) {
+        setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
+        return;
+      }
+
+      const activeCycle = currentState.cycles.find(
+        (cy) => cy.customerId === custId && cy.status === "active"
+      );
+
+      // Compute debt balance manually from transactions to avoid relying on stale closures out of scope
+      const transactions = currentState.debtTransactions.filter(
+        (t) => t.cycleId === activeCycle?.id
+      );
+      const totalPurchases = transactions
+        .filter((t) => t.type === "purchase")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const totalPayments = transactions
+        .filter((t) => t.type === "payment")
+        .reduce((sum, t) => sum + t.amount, 0);
+      const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
+
+      const timestamp = new Date().toISOString();
+      const docNum = generateDocNumber();
+
+      let updatedDebtTransactions = [...currentState.debtTransactions];
+
+      // تصفير وإغلاق الدورة النشطة
+      const updatedCycles = currentState.cycles.map((cy) => {
+        if (cy.customerId === custId && cy.status === "active") {
+          return {
+            ...cy,
+            status: "closed" as const,
+            currentBalance: 0,
+            endDate: timestamp,
+          };
+        }
+        return cy;
+      });
+
+      if (outstanding > 0) {
+        updatedDebtTransactions.push({
+          id: `tx_wipe_${Date.now()}`,
+          customerId: custId,
+          cycleId: activeCycle?.id || "",
+          type: "payment",
+          amount: outstanding,
+          currency: "د.ل",
+          conversionRate: 1.0,
+          date: timestamp,
+          referenceNo: docNum,
+          note: `مسح الحساب وإلغاء الدين بالكامل`,
+          postedToTreasury: false,
+          createdAt: timestamp,
+        });
+      }
+
+      // وضع علامة الحذف المؤقت للزبون لحفظ الأرشيف واسترجاعه في أي وقت
+      const updatedCustomers = currentState.customers.map((c) => {
+        if (c.id === custId) {
+          return { ...c, isDeleted: true };
+        }
+        return c;
+      });
+
+      onUpdateState({
+        ...currentState,
+        customers: updatedCustomers,
+        cycles: updatedCycles,
+        debtTransactions: updatedDebtTransactions,
+      });
+
+      setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
+    }, 500);
   };
 
   // ----------------------------------------------------
@@ -827,8 +896,9 @@ export default function CustomerDebtsModule({
                   setSelectedCustomerId(acc.cust.id);
                 }
               }}
-              className={`bg-white border-x border-b border-t-4 border-slate-200 ${clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative`}
+              className={`bg-white border-x border-b border-t-4 border-slate-200 ${clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
             >
+              {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
               {selectionMode && isSelected && (
                 <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-md z-10 scale-90">
                   <CheckCircle2 className="w-4 h-4" />

@@ -152,35 +152,120 @@ export default function App() {
   const [showSeedBannerConfirm, setShowSeedBannerConfirm] = useState(false);
   const [showCustomToast, setShowCustomToast] = useState("");
 
-  // Global Keyboard Navigation (ArrowUp / ArrowDown)
+  // Global Keyboard Navigation (ArrowUp / ArrowDown / ArrowLeft / ArrowRight / Enter)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Fast path for arrows
-      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
-      
+      const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"];
+      if (!keys.includes(e.key)) return;
+
       const target = e.target as HTMLElement;
       if (
-        target.tagName === "INPUT" ||
-        target.tagName === "SELECT" ||
-        target.tagName === "TEXTAREA"
-      ) {
-        const focusableElements = Array.from(
-          document.querySelectorAll(
-            'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
-          )
-        ) as HTMLElement[];
-        
-        const index = focusableElements.indexOf(target);
-        if (index > -1) {
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            const next = focusableElements[index + 1] || focusableElements[0];
-            next.focus();
-          } else if (e.key === "ArrowUp") {
-            e.preventDefault();
-            const prev = focusableElements[index - 1] || focusableElements[focusableElements.length - 1];
-            prev.focus();
-          }
+        !["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName) ||
+        (target as HTMLInputElement).disabled ||
+        (target as HTMLInputElement).readOnly ||
+        (target as HTMLInputElement).type === "hidden"
+      ) return;
+
+      const focusableElements = Array.from(
+        document.querySelectorAll(
+          'input:not([disabled]):not([readonly]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled])'
+        )
+      ) as HTMLElement[];
+
+      const index = focusableElements.indexOf(target);
+      if (index === -1) return;
+
+      let nextElement: HTMLElement | null = null;
+      const rect = target.getBoundingClientRect();
+
+      // For Left/Right, handle internal text selection and boundaries
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+            const input = target as HTMLInputElement;
+            let shouldNavigate = false;
+            try {
+              const start = input.selectionStart;
+              const end = input.selectionEnd;
+              const len = input.value?.length || 0;
+              
+              if (start !== null && end !== null) {
+                  if (start === 0 && end === len && len > 0) {
+                      shouldNavigate = true;
+                  } else if (start === end) {
+                      if (start === 0 && e.key === "ArrowRight") shouldNavigate = true; // RTL: ArrowRight goes previous
+                      if (start === len && e.key === "ArrowLeft") shouldNavigate = true; // RTL: ArrowLeft goes next
+                      if (len === 0) shouldNavigate = true;
+                  }
+              } else {
+                  shouldNavigate = true;
+              }
+            } catch (err) {
+               shouldNavigate = true; // For number inputs, etc.
+            }
+            if (!shouldNavigate) return; // Let default browser action handle cursor move
+        }
+      }
+
+      e.preventDefault();
+
+      if (e.key === "Enter") {
+        nextElement = focusableElements[index + 1] || focusableElements[0];
+      } else {
+         // Spatial Search
+         let nearestDistance = Infinity;
+         
+         focusableElements.forEach(el => {
+           if (el === target) return;
+           const elRect = el.getBoundingClientRect();
+           
+           let isMatch = false;
+           let distance = Infinity;
+           
+           const xCenterDiff = Math.abs((rect.left + rect.width / 2) - (elRect.left + elRect.width / 2));
+           const yCenterDiff = Math.abs((rect.top + rect.height / 2) - (elRect.top + elRect.height / 2));
+           
+           if (e.key === "ArrowUp") {
+             if (elRect.bottom <= rect.top + 5 && xCenterDiff < 80) {
+               isMatch = true;
+               distance = Math.abs(rect.top - elRect.bottom) + xCenterDiff;
+             }
+           } else if (e.key === "ArrowDown") {
+             if (elRect.top >= rect.bottom - 5 && xCenterDiff < 80) {
+               isMatch = true;
+               distance = Math.abs(elRect.top - rect.bottom) + xCenterDiff;
+             }
+           } else if (e.key === "ArrowLeft") { // Visually Left = Next Field in RTL
+             if (elRect.left < rect.left && yCenterDiff < 30) {
+               isMatch = true;
+               distance = Math.abs(rect.left - elRect.right) + yCenterDiff;
+             }
+           } else if (e.key === "ArrowRight") { // Visually Right = Prev Field in RTL
+             if (elRect.right > rect.right && yCenterDiff < 30) {
+               isMatch = true;
+               distance = Math.abs(elRect.left - rect.right) + yCenterDiff;
+             }
+           }
+
+           if (isMatch && distance < nearestDistance) {
+             nearestDistance = distance;
+             nextElement = el;
+           }
+         });
+         
+         // Fallback to purely DOM array sequential movement if spatial search failed
+         if (!nextElement) {
+           if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
+             nextElement = focusableElements[index + 1] || focusableElements[0];
+           } else if (e.key === "ArrowUp" || e.key === "ArrowRight") {
+             nextElement = focusableElements[index - 1] || focusableElements[focusableElements.length - 1];
+           }
+         }
+      }
+
+      if (nextElement) {
+        nextElement.focus();
+        if (nextElement instanceof HTMLInputElement || nextElement instanceof HTMLTextAreaElement) {
+          try { nextElement.select(); } catch(err){}
         }
       }
     };
@@ -767,7 +852,7 @@ export default function App() {
       <header
         className={`bg-slate-900 text-white shadow-xl sticky top-0 z-40 border-b border-indigo-950 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}
       >
-        <div className="max-w-[1580px] mx-auto px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="w-full px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Brand/Signature */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
@@ -850,7 +935,7 @@ export default function App() {
       {/* 4. DB EMPTY SEED ALERT BANNER */}
       {state.customers.length === 0 && (
         <div
-          className={`max-w-[1580px] mx-auto px-4 mt-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}
+          className={`w-full px-4 mt-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}
         >
           <div
             className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-right flex flex-col md:flex-row items-center justify-between gap-3 text-amber-900 shadow-sm"
@@ -896,7 +981,7 @@ export default function App() {
       </AnimatePresence>
 
       <div
-        className={`w-full max-w-[1580px] mx-auto p-4 flex flex-col gap-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}
+        className={`w-full p-4 flex flex-col gap-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}
         dir="rtl"
       >
         {/* A. RIGHT VERTICAL SIDEBAR (On the right of main content, slides or collapses) */}

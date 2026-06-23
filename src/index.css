@@ -392,5 +392,42 @@ input[type="number"] {
 .theme-matrix .text-slate-500, .theme-matrix .text-slate-400 { color: #008f11 !important; }
 .theme-matrix h1, .theme-matrix h2, .theme-matrix h3, .theme-matrix h4, .theme-matrix h5, .theme-matrix h6 { color: #00ff41 !important; text-shadow: 0 0 10px #00ff41; }
 .theme-matrix table th { background-color: #050505 !important; color: #00ff41 !important; border-bottom: 1px solid #008f11 !important; }
+
+/* 🚀 Vaporize/Disintegrate Animation for Deleting Items */
+@keyframes card-disintegrate {
+  0% {
+    opacity: 1;
+    filter: blur(0px);
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    opacity: 0.5;
+    filter: blur(2px);
+    transform: translateY(-5px) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(-30px) scale(0.8) rotate(3deg);
+  }
+}
+
+.vaporizing {
+  animation: card-disintegrate 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+  pointer-events: none;
+}
+
+@keyframes disintegrate-particle {
+  0% {
+    transform: translate(0, 0) scale(1.5);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+
 .theme-matrix table td { border-bottom-color: #003b00 !important; }
 .theme-matrix select option { background-color: #000000 !important; color: #00ff41 !important; }
