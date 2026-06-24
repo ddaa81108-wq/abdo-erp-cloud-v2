@@ -442,21 +442,14 @@ export default function CustomerDebtsModule({
     }
 
     const amountToPay = parseFloat(paymentAmount);
-    if (isNaN(amountToPay) || amountToPay <= 0) {
-      alert("⚠️ الرجاء كتابة مبلغ مالي صحيح أكبر من الصفر.");
+    if (isNaN(amountToPay) || amountToPay === 0) {
+      alert("⚠️ الرجاء كتابة مبلغ مالي صحيح (لا يمكن أن يكون صفراً).");
       return;
     }
 
     if (paymentType === "full" && amountToPay !== currentAcc.debtBalance) {
       alert(
-        `⚠️ للسداد الكامل، يجب أن تكون القيمة مساوية للدين المتبقي وهو: ${currentAcc.debtBalance} د.ل`,
-      );
-      return;
-    }
-
-    if (paymentType === "partial" && amountToPay >= currentAcc.debtBalance) {
-      alert(
-        `⚠️ للسداد الجزئي، يجب أن تكون القيمة أقل من الدين الحالي وهو: ${currentAcc.debtBalance} د.ل`,
+        `⚠️ للسداد الكامل، يجب أن تكون القيمة مساوية للرصيد المتبقي وهو: ${currentAcc.debtBalance} د.ل`,
       );
       return;
     }
@@ -487,12 +480,14 @@ export default function CustomerDebtsModule({
     const updatedCycles = state.cycles.map((cy) => {
       if (cy.id === currentAcc.activeCycle?.id) {
         const remaining = cy.currentBalance - amountToPay;
-        return {
+        const cyUpdate: any = {
           ...cy,
           currentBalance: remaining,
           status: remaining === 0 ? ("closed" as const) : ("active" as const),
-          endDate: remaining === 0 ? timestamp : undefined,
         };
+        if (remaining === 0) cyUpdate.endDate = timestamp;
+        else delete cyUpdate.endDate;
+        return cyUpdate;
       }
       return cy;
     });
@@ -624,7 +619,13 @@ export default function CustomerDebtsModule({
 
     let text = "*كشف حساب سريع*\n\n";
     selectedCustomers.forEach(({ cust, debtBalance }) => {
-      text += `الاسم: ${cust.name}\nالقيمة المطلوب سدادها: ${debtBalance.toLocaleString()} د.ل\n\n`;
+      if (debtBalance > 0) {
+        text += `الاسم: ${cust.name}\nالقيمة المطلوب سدادها: ${debtBalance.toLocaleString()} د.ل\n\n`;
+      } else if (debtBalance < 0) {
+        text += `الاسم: ${cust.name}\nرصيد دائن لصالحه (له أمانة): ${debtBalance.toLocaleString()} د.ل\n\n`;
+      } else {
+        text += `الاسم: ${cust.name}\nالرصيد خالص وتم سداده.\n\n`;
+      }
     });
 
     const encodedText = encodeURIComponent(text);
@@ -643,9 +644,11 @@ export default function CustomerDebtsModule({
       selectedForRep.includes(acc.cust.id),
     );
 
-    const headers = ["اسم الزبون", "القيمة المتبقية المطلوب سحبها"];
+    const headers = ["اسم الزبون", "الرصيد المتبقي (الديون/الأمانات)"];
     const rows = selectedCustomers.map(({ cust, debtBalance }) => {
-      return [cust.name, `${debtBalance.toLocaleString()} د.ل`];
+      let balanceStr = `${debtBalance.toLocaleString()} د.ل`;
+      if (debtBalance < 0) balanceStr += " (أمانة)";
+      return [cust.name, balanceStr];
     });
 
     onOpenExporter(
@@ -738,8 +741,8 @@ export default function CustomerDebtsModule({
       {
         label1: "الاسم الحالي",
         value1: acc.cust.name,
-        label2: "الدين المتبقي",
-        value2: `${acc.debtBalance.toLocaleString()} د.ل`,
+        label2: "الرصيد المتبقي",
+        value2: `${acc.debtBalance.toLocaleString()} د.ل${acc.debtBalance < 0 ? " (أمانة)" : ""}`,
         label3: "إجمالي الحركات",
         value3: `${acc.historicalTxs.length} حركة`,
       },
@@ -925,7 +928,14 @@ export default function CustomerDebtsModule({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      const text = `*كشف حساب سريع*\nالاسم: ${acc.cust.name}\nالقيمة المطلوب سدادها: ${acc.debtBalance.toLocaleString()} د.ل`;
+                      let text = `*كشف حساب سريع*\nالاسم: ${acc.cust.name}\n`;
+                      if (acc.debtBalance > 0) {
+                        text += `القيمة المطلوب سدادها: ${acc.debtBalance.toLocaleString()} د.ل`;
+                      } else if (acc.debtBalance < 0) {
+                        text += `رصيد دائن لصالحه (أمانة): ${acc.debtBalance.toLocaleString()} د.ل`;
+                      } else {
+                        text += `الرصيد خالص وتم سداده.`;
+                      }
                       window.open(
                         `https://wa.me/?text=${encodeURIComponent(text)}`,
                         "_blank",
@@ -945,6 +955,10 @@ export default function CustomerDebtsModule({
 
               {acc.debtBalance > 0 ? (
                 <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
+                  {acc.debtBalance.toLocaleString()} د.ل
+                </span>
+              ) : acc.debtBalance < 0 ? (
+                <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
                   {acc.debtBalance.toLocaleString()} د.ل
                 </span>
               ) : (
@@ -1093,14 +1107,34 @@ export default function CustomerDebtsModule({
 
             {/* أرقام تجميع ديون هذا الزبون مع تصدير الصورة */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl">
-                <span className="text-rose-800 text-[10px] font-bold block mb-0.5">
-                  الدين القائم حالياً عليه
-                </span>
-                <span className="text-base font-mono font-black text-rose-600">
-                  {selectedAccDetails.debtBalance.toLocaleString()} د.ل
-                </span>
-              </div>
+              {selectedAccDetails.debtBalance > 0 ? (
+                <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl">
+                  <span className="text-rose-800 text-[10px] font-bold block mb-0.5">
+                    الرصيد القائم حالياً عليه
+                  </span>
+                  <span className="text-base font-mono font-black text-rose-600">
+                    {selectedAccDetails.debtBalance.toLocaleString()} د.ل
+                  </span>
+                </div>
+              ) : selectedAccDetails.debtBalance < 0 ? (
+                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl ring-1 ring-emerald-500" title="أمانة">
+                  <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">
+                    رصيد دائن لصالحه (له أمانة)
+                  </span>
+                  <span className="text-base font-mono font-black text-emerald-700">
+                    {selectedAccDetails.debtBalance.toLocaleString()} د.ل
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                  <span className="text-slate-800 text-[10px] font-bold block mb-0.5">
+                    الرصيد القائم حالياً
+                  </span>
+                  <span className="text-base font-mono font-black text-slate-500">
+                    مسدد و خالص ✓
+                  </span>
+                </div>
+              )}
 
               <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
                 <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">

@@ -14,7 +14,9 @@ import {
   FileText,
   Camera,
   Calculator,
+  Copy,
 } from "lucide-react";
+import html2canvas from "html2canvas";
 import { ERPState, Company, CompanyTransaction } from "../types";
 
 interface CompaniesModuleProps {
@@ -66,6 +68,42 @@ export default function CompaniesModule({
     { id: 2, amount: "", note: "" },
     { id: 3, amount: "", note: "" },
   ]);
+
+  // Floating Calculator State
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calcRows, setCalcRows] = useState<{ id: string; value: string; price: string; operator: "multiply" | "divide" }[]>([
+    { id: '1', value: '', price: '', operator: 'multiply' }
+  ]);
+  const [calcCopied, setCalcCopied] = useState(false);
+
+  // Floating Calculator Logic
+  const handleAddCalcRow = () => {
+    setCalcRows([...calcRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
+  };
+
+  const handleUpdateCalcRow = (id: string, field: string, val: string) => {
+    setCalcRows(calcRows.map(r => r.id === id ? { ...r, [field]: val } : r));
+  };
+
+  const handleRemoveCalcRow = (id: string) => {
+    setCalcRows(calcRows.filter(r => r.id !== id));
+  };
+
+  const calculateRowResult = (row: typeof calcRows[0]) => {
+    const v = parseFloat(row.value) || 0;
+    const p = parseFloat(row.price) || 0;
+    if (v === 0 || p === 0) return 0;
+    const result = row.operator === 'multiply' ? v * p : v / p;
+    return Math.round(result);
+  };
+
+  const totalCalcResult = calcRows.reduce((acc, row) => acc + calculateRowResult(row), 0);
+
+  const handleCopyCalcResult = () => {
+    navigator.clipboard.writeText(totalCalcResult.toString());
+    setCalcCopied(true);
+    setTimeout(() => setCalcCopied(false), 2000);
+  };
 
   // States for custom confirmation dialogs to bypass standard blocked iframe confirm()
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
@@ -456,9 +494,14 @@ export default function CompaniesModule({
   );
 
   const handleExportSingleCompanyImage = (comp: Company) => {
-    const compTxs = (state.companyTransactions || [])
+    const allCompTxs = (state.companyTransactions || [])
       .filter((t) => t.companyId === comp.id)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    // Filter out initial/restore transactions because they are already accounted for in comp.previousBalance
+    const compTxs = allCompTxs.filter(
+      (t) => !t.id.includes("tx_comp_init_") && !t.id.includes("tx_comp_restore_")
+    );
 
     let runningBalance = comp.previousBalance || 0;
 
@@ -474,16 +517,16 @@ export default function CompaniesModule({
       }
 
       return [
-        new Date(t.date).toLocaleDateString("ar-LY") +
+        new Date(t.date).toLocaleDateString("en-GB") +
           " " +
-          new Date(t.date).toLocaleTimeString("ar-LY", {
+          new Date(t.date).toLocaleTimeString("en-US", {
             hour: "2-digit",
             minute: "2-digit",
           }),
         t.note || (credit > 0 ? "فاتورة آجل" : "سداد دفعة للمورد"),
-        credit > 0 ? `+${credit.toLocaleString()} ` : "-",
-        debit > 0 ? `-${debit.toLocaleString()} ` : "-",
-        `${runningBalance.toLocaleString()} د.ل`,
+        credit > 0 ? `+${Math.round(credit).toLocaleString("en-US")} ` : "-",
+        debit > 0 ? `-${Math.round(debit).toLocaleString("en-US")} ` : "-",
+        `${Math.round(runningBalance).toLocaleString("en-US")} د.ل`,
       ];
     });
 
@@ -505,22 +548,22 @@ export default function CompaniesModule({
     const footerMetrics = [
       {
         label: "رصيد سابق",
-        value: `${(comp.previousBalance || 0).toLocaleString()} د.ل`,
+        value: `${Math.round(comp.previousBalance || 0).toLocaleString("en-US")} د.ل`,
         colorClass: "text-slate-700",
       },
       {
         label: "شغل جديد",
-        value: `+${totalPurchases.toLocaleString()} د.ل`,
+        value: `+${Math.round(totalPurchases).toLocaleString("en-US")} د.ل`,
         colorClass: "text-amber-700",
       },
       {
         label: "الدفع اليوم",
-        value: `-${totalPayments.toLocaleString()} د.ل`,
+        value: `-${Math.round(totalPayments).toLocaleString("en-US")} د.ل`,
         colorClass: "text-emerald-700",
       },
       {
         label: "الرصيد الحالي",
-        value: `${runningBalance.toLocaleString()} د.ل`,
+        value: `${Math.round(runningBalance).toLocaleString("en-US")} د.ل`,
         colorClass: "text-rose-700",
       },
     ];
@@ -542,6 +585,90 @@ export default function CompaniesModule({
     );
   };
 
+  const handleCopyCardImage = async (company: Company, remaining: number) => {
+    try {
+      const container = document.createElement("div");
+      container.style.position = "absolute";
+      container.style.left = "0px";
+      container.style.top = "0px";
+      container.style.zIndex = "-9999";
+      container.style.opacity = "1";
+      container.style.width = "480px";
+      container.style.padding = "40px";
+      container.style.backgroundColor = "#0f172a";
+      container.style.direction = "rtl";
+      container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.style.alignItems = "center";
+      container.style.justifyContent = "center";
+      container.style.border = "none";
+      
+      const isNegative = remaining < 0;
+      const displayVal = Math.abs(Math.round(remaining)).toLocaleString("en-US");
+      
+      const neonColor = isNegative ? '#10b981' : '#ef4444';
+      const neonGlow = isNegative ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
+      const softGlow = isNegative ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+      const neumorphicBg = 'linear-gradient(145deg, #1e293b, #0f172a)';
+
+      container.innerHTML = `
+        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
+          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
+            <h2 style="font-size: 28px; font-weight: 900; color: #ffffff; margin: 0; white-space: pre-wrap; word-break: break-word; text-shadow: 0 2px 10px rgba(255,255,255,0.2);">${company.name}</h2>
+          </div>
+          
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span style="font-size: 16px; font-weight: 800; color: #94a3b8;">
+              إجمالي الديون المستحقة ${isNegative ? "لك (أمانة)" : "عليك"}:
+            </span>
+          </div>
+          
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px);">
+            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${displayVal}</span>
+            <span style="font-size: 24px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
+          </div>
+
+          <div style="margin-top: 40px; text-align: center; color: #64748b; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(148,163,184,0.5));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            تم الإصدار من المنظومة
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(container);
+      
+      // Wait for rendering
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#0f172a',
+        useCORS: true,
+      });
+      
+      document.body.removeChild(container);
+      
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            setShowSuccessToast("تم نسخ صورة الكشف بنجاح، يمكنك لصقها الآن");
+            setTimeout(() => setShowSuccessToast(null), 3000);
+          } catch (clipErr) {
+            console.error("Clipboard write error:", clipErr);
+            alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
+          }
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error("Failed to copy image", err);
+      alert("حدث خطأ أثناء نسخ الصورة. الميزة قد لا تعمل في هذا المتصفح.");
+    }
+  };
+
   const handleOpenShareCard = () => {
     const headers = [
       "المورد / الشركة والتواصل",
@@ -552,19 +679,19 @@ export default function CompaniesModule({
     ];
     const rows = filteredCompanies.map((c) => [
       `${c.name} (${c.contact || "بدون هاتف"})`,
-      `${(c.previousBalance || 0).toLocaleString()} د.ل`,
-      `${(c.newDebt || 0).toLocaleString()} د.ل`,
-      `${(c.paymentToday || 0).toLocaleString()} د.ل`,
-      `${(c.balance || 0).toLocaleString()} د.ل`,
+      `${Math.round(c.previousBalance || 0).toLocaleString("en-US")} د.ل`,
+      `${Math.round(c.newDebt || 0).toLocaleString("en-US")} د.ل`,
+      `${Math.round(c.paymentToday || 0).toLocaleString("en-US")} د.ل`,
+      `${Math.round(c.balance || 0).toLocaleString("en-US")} د.ل`,
     ]);
 
     onOpenExporter(
       "الشركات ومستحقات الموردين اليدوية اليومية",
       {
         label1: "إجمالي ديون الشركات المستحقة",
-        value1: totalOwedToCompanies.toLocaleString() + " د.ل",
+        value1: Math.round(totalOwedToCompanies).toLocaleString("en-US") + " د.ل",
         label2: "عدد الشركات النشطة والمسجلة",
-        value2: activeCompanies.length + " شركات توريد",
+        value2: activeCompanies.length.toLocaleString("en-US") + " شركات توريد",
         label3: "مستوى الثقة ومستندات الإرشاد",
         value3: "كامل ومحتفظ بالأرشيف التاريخي",
       },
@@ -750,18 +877,32 @@ export default function CompaniesModule({
                   >
                     {c.name}
                   </h4>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      handleExecuteQuickCompanySettle("archive_only", c);
-                    }}
-                    className="bg-white/10 hover:bg-rose-500/80 text-white p-2 rounded-xl transition-all cursor-pointer shrink-0 backdrop-blur-md shadow-xs border border-white/10"
-                    title="أرشفة ❌"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleCopyCardImage(c, remaining);
+                      }}
+                      className="bg-white/10 hover:bg-white/30 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                      title="نسخ كشف مختصر كصورة 📋"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleExecuteQuickCompanySettle("archive_only", c);
+                      }}
+                      className="bg-white/10 hover:bg-rose-500/80 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                      title="أرشفة ❌"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-auto">
@@ -1462,6 +1603,143 @@ export default function CompaniesModule({
             </div>
           );
         })()}
+
+      {/* Floating Draft Calculator */}
+      <div className="fixed bottom-24 left-5 z-[80] flex flex-col items-start gap-3">
+        {/* Modal Window */}
+        {showCalculator && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-[320px] md:w-[380px] flex flex-col transform origin-bottom-left transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h3 className="font-black text-sm text-slate-800 flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-indigo-600" />
+                مسودة حاسبة تجار
+              </h3>
+              <button
+                onClick={() => setShowCalculator(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="max-h-[250px] overflow-y-auto pr-1 space-y-2 mb-3 custom-scrollbar">
+                {calcRows.map((row, index) => (
+                  <div key={row.id} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+                    {/* Result (Readonly) */}
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        readOnly
+                        dir="ltr"
+                        value={calculateRowResult(row).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        className="w-full text-center bg-transparent border-none text-[11px] font-bold font-mono text-indigo-700 focus:outline-none"
+                      />
+                    </div>
+                    
+                    {/* Equals Sign */}
+                    <span className="text-slate-400 text-xs font-black">=</span>
+                    
+                    {/* Price */}
+                    <div className="w-[70px]">
+                      <input
+                        type="number"
+                        step="any"
+                        dir="ltr"
+                        lang="en"
+                        data-arrow-nav="true"
+                        placeholder="السعر"
+                        value={row.price}
+                        onChange={(e) => handleUpdateCalcRow(row.id, 'price', e.target.value)}
+                        className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                    {/* Operator */}
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'multiply')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'multiply' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                      >
+                        ×
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'divide')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'divide' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                      >
+                        ÷
+                      </button>
+                    </div>
+
+                    {/* Value */}
+                    <div className="w-[70px]">
+                      <input
+                        type="number"
+                        step="any"
+                        dir="ltr"
+                        lang="en"
+                        data-arrow-nav="true"
+                        placeholder="القيمة"
+                        value={row.value}
+                        onChange={(e) => handleUpdateCalcRow(row.id, 'value', e.target.value)}
+                        className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                    {/* Remove Row Button */}
+                    <button
+                      onClick={() => handleRemoveCalcRow(row.id)}
+                      className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Row Button */}
+              <button
+                onClick={handleAddCalcRow}
+                className="w-full py-2 border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 mb-4"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                إضافة صف جديد
+              </button>
+
+              {/* Total Footer */}
+              <div className="bg-slate-900 rounded-xl p-3 flex items-center justify-between">
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-slate-400 text-[10px] font-bold">الناتج الإجمالي</span>
+                  <span className="text-white font-mono font-black text-sm" dir="ltr">
+                    {Math.round(totalCalcResult).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyCalcResult}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  {calcCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {calcCopied ? "تم النسخ" : "نسخ الناتج"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Button */}
+        <button
+          onClick={() => setShowCalculator(!showCalculator)}
+          className={`${showCalculator ? 'bg-indigo-600 text-white shadow-indigo-500/25' : 'bg-slate-900 text-white shadow-[0_8px_30px_rgb(0,0,0,0.15)]'} hover:scale-105 p-3.5 rounded-full shadow-lg transition-all flex items-center justify-center relative group self-start`}
+          title="مسودة حاسبة تجار"
+        >
+          <Calculator className="w-5 h-5" />
+          {!showCalculator && (
+            <span className="absolute left-full ml-3 bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg">
+              مسودة حاسبة تجار
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Beautiful Non-Blocking Toast Success Alert */}
       {showSuccessToast && (

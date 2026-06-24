@@ -154,7 +154,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
           canViewPurchases: true,
           canViewDeposits: true,
           canViewArchive: true,
-          canViewBackup: true
+          canViewBackup: true,
+          canViewAdvances: true
         },
         createdAt: '2026-06-15T00:00:00'
       },
@@ -171,7 +172,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
           canViewPurchases: true,
           canViewDeposits: true,
           canViewArchive: true,
-          canViewBackup: false
+          canViewBackup: false,
+          canViewAdvances: true
         },
         createdAt: '2026-06-15T00:00:00'
       },
@@ -188,7 +190,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
           canViewPurchases: false,
           canViewDeposits: true,
           canViewArchive: false,
-          canViewBackup: false
+          canViewBackup: false,
+          canViewAdvances: false
         },
         createdAt: '2026-06-15T00:00:00'
       },
@@ -205,7 +208,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
           canViewPurchases: true,
           canViewDeposits: false,
           canViewArchive: true,
-          canViewBackup: false
+          canViewBackup: false,
+          canViewAdvances: false
         },
         createdAt: '2026-06-15T00:00:00'
       },
@@ -222,7 +226,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
           canViewPurchases: false,
           canViewDeposits: false,
           canViewArchive: true,
-          canViewBackup: false
+          canViewBackup: false,
+          canViewAdvances: false
         },
         createdAt: '2026-06-15T00:00:00'
       }

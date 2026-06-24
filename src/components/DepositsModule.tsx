@@ -12,13 +12,15 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   const [filterQuery, setFilterQuery] = useState('');
   const [showArchive, setShowArchive] = useState(false);
 
-  // Form states for ADD NEW CUSTOMER
-  const [newCustName, setNewCustName] = useState('');
-  const [newInitialLyd, setNewInitialLyd] = useState('');
-  const [newNote, setNewNote] = useState('');
-
   // Expand states for each card config
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  // New Customer Modal
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newInitialAmount, setNewInitialAmount] = useState('');
+  const [newCurrency, setNewCurrency] = useState<'lyd' | 'egp'>('lyd');
+  const [newNote, setNewNote] = useState('');
 
   // Confirmation state for deleting/archiving a deposit card
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -59,10 +61,10 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   const handleCreateCustomerDeposit = (e: React.FormEvent) => {
     e.preventDefault();
     const name = newCustName.trim();
-    const lydVal = parseFloat(newInitialLyd);
+    const amountVal = Math.floor(parseFloat(newInitialAmount));
 
-    if (!name || isNaN(lydVal) || lydVal <= 0) {
-      alert('الرجاء إدخال اسم العميل وقيمة أمانة صحيحة أكبر من صفر بالدينار الليبي.');
+    if (!name || isNaN(amountVal)) {
+      alert('الرجاء إدخال اسم العميل وقيمة الأمانة بشكل صحيح.');
       return;
     }
     
@@ -79,26 +81,28 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     const nowStr = new Date().toISOString();
     const newId = `dep_${Date.now()}`;
 
+    const isLyd = newCurrency === 'lyd';
+
     const newDeposit: TrustDeposit = {
       id: newId,
       customerName: name,
-      amount: lydVal,
-      amountLyd: lydVal,
-      amountEgp: 0,
+      amount: isLyd ? amountVal : 0,
+      amountLyd: isLyd ? amountVal : 0,
+      amountEgp: isLyd ? 0 : amountVal,
       currency: 'د.ل',
       date: nowStr,
       referenceNo: refNo,
       status: 'held',
-      note: newNote || 'إيداع أمانة نقدية بالصندوق',
+      note: newNote || 'إيداع أمانة بالصندوق',
       createdAt: nowStr,
       history: [
         {
           id: `sub_${Date.now()}_1`,
-          type: 'deposit_lyd',
-          amountLyd: lydVal,
-          amountEgp: 0,
+          type: isLyd ? 'deposit_lyd' : 'deposit_egp',
+          amountLyd: isLyd ? amountVal : 0,
+          amountEgp: isLyd ? 0 : amountVal,
           date: nowStr,
-          note: newNote || 'إيداع أمانة نقدية بالصندوق'
+          note: newNote || 'إيداع أمانة بالصندوق'
         }
       ]
     };
@@ -113,9 +117,10 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
     // Reset inputs
     setNewCustName('');
-    setNewInitialLyd('');
+    setNewInitialAmount('');
+    setNewCurrency('lyd');
     setNewNote('');
-    alert(`تم تسجيل أمانة جديدة للعميل ${name} بنجاح بقيمة ${lydVal.toLocaleString()} د.ل وترحيلها للخزينة.`);
+    setIsAddModalOpen(false);
   };
 
   // 2. TRANSACTION: DEPOSIT LYD (زيادة أمانة بالليبي)
@@ -179,8 +184,8 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     const dep = state.trustDeposits[depIndex];
     const currentLyd = getAmountLyd(dep);
 
-    if (isNaN(amount) || amount <= 0 || amount > currentLyd) {
-      alert(`القيمة غير صحيحة أو تتخطى الرصيد المتاح الحالي بالدينار الليبي وهو ${currentLyd.toLocaleString()} د.ل.`);
+    if (isNaN(amount) || amount <= 0) {
+      alert(`القيمة غير صحيحة.`);
       return;
     }
 
@@ -244,10 +249,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     if (dep.status !== 'held') return;
 
     const currentLyd = getAmountLyd(dep);
-    if (lydAmount > currentLyd) {
-      alert(`لا يمتلك العميل رصيد كافٍ بالدينار الليبي لإتمام التحويل. الرصيد الحالي: ${currentLyd.toLocaleString()} د.ل`);
-      return;
-    }
 
     const calculatedEgp = lydAmount * rate;
     const nowStr = new Date().toISOString();
@@ -303,8 +304,8 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     const currentEgp = getAmountEgp(dep);
     const currentLyd = getAmountLyd(dep);
 
-    if (isNaN(amountEgpToWithdraw) || amountEgpToWithdraw <= 0 || amountEgpToWithdraw > currentEgp) {
-      alert(`القيمة غير صحيحة أو تتخطى الرصيد المتاح حالياً بالجنيه المصري وهو ${currentEgp.toLocaleString()} جنيه.`);
+    if (isNaN(amountEgpToWithdraw) || amountEgpToWithdraw <= 0) {
+      alert(`القيمة غير صحيحة.`);
       return;
     }
 
@@ -419,17 +420,9 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     let noteDetails = '';
 
     if (amountLydVal > 0) {
-      if (amountLydVal > currentLyd) {
-        alert(`رصيد العميل بالدينار الليبي غير كافٍ. المتاح: ${currentLyd.toLocaleString()} د.ل`);
-        return;
-      }
       updatedLyd = currentLyd - amountLydVal;
       noteDetails = `خصماً من أمانة الليبي: حوالة بمبلغ ${amountLydVal.toLocaleString()} د.ل داخل مصر`;
     } else {
-      if (amountEgpVal > currentEgp) {
-        alert(`رصيد العميل بالجنيه المصري غير كافٍ. المتاح: ${currentEgp.toLocaleString()} ج.م`);
-        return;
-      }
       updatedEgp = currentEgp - amountEgpVal;
       noteDetails = `خصماً من أمانة المصري: حوالة بمبلغ ${amountEgpVal.toLocaleString()} جنيه داخل مصر`;
     }
@@ -474,8 +467,8 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     const dep = state.trustDeposits[depIndex];
     const currentLyd = getAmountLyd(dep);
 
-    if (isNaN(amount) || amount <= 0 || amount > currentLyd) {
-      alert(`القيمة غير صحيحة أو تتجاوز الرصيد بالليبي المتاح وهو ${currentLyd.toLocaleString()} د.ل.`);
+    if (isNaN(amount) || amount <= 0) {
+      alert(`القيمة غير صحيحة.`);
       return;
     }
 
@@ -523,12 +516,15 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     // Resettle customer balance
     const updatedCycles = [...state.cycles];
     const newBalance = activeCycle.currentBalance - amount;
-    updatedCycles[activeCycleIndex] = {
+    const cyUpdate: any = {
       ...activeCycle,
       currentBalance: newBalance,
       status: newBalance === 0 ? 'closed' : 'active',
-      endDate: newBalance === 0 ? nowStr : undefined
     };
+    if (newBalance === 0) cyUpdate.endDate = nowStr;
+    else delete cyUpdate.endDate;
+    
+    updatedCycles[activeCycleIndex] = cyUpdate;
 
     // Reflect on customer custody
     const currentEgp = getAmountEgp(dep);
@@ -669,7 +665,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   const activeHeldDeposits = state.trustDeposits.filter(d => 
     !d.isDeleted &&
     d.status === 'held' && 
-    (getAmountLyd(d) > 0 || getAmountEgp(d) > 0) &&
+    (getAmountLyd(d) !== 0 || getAmountEgp(d) !== 0) &&
     (d.customerName.toLowerCase().includes(filterQuery.toLowerCase()) || d.referenceNo.toLowerCase().includes(filterQuery.toLowerCase()))
   ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -733,65 +729,21 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
           </div>
 
-          {/* Quick ADD CUSTOMER CARD as explicitly requested side-by-side with totals */}
-          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 w-full lg:max-w-md shrink-0 shadow-lg text-right">
-            <h4 className="text-xs font-black text-white border-b border-slate-800 pb-1.5 mb-2.5 flex items-center gap-1.5">
-              <UserCheck className="w-4 h-4 text-indigo-400" />
-              <span>➕ فتح حساب أمانة لعميل جديد</span>
-            </h4>
-
-            <form onSubmit={handleCreateCustomerDeposit} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-400 text-[10px] font-bold mb-1">اسم المودع المعتمد *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newCustName}
-                    onChange={(e) => setNewCustName(e.target.value)}
-                    placeholder="مثال: أكرم بوعجيله"
-                    className="w-full text-right p-2 bg-slate-900 border border-slate-800 rounded text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 text-[10px] font-bold mb-1">قيمة الأمانة (بالليبي) *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    required
-                    value={newInitialLyd}
-                    onChange={(e) => setNewInitialLyd(e.target.value)}
-                    placeholder="مثال: 5000"
-                    className="w-full text-right p-2 bg-slate-900 border border-slate-800 rounded text-xs font-mono text-yellow-400 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 text-[10px] font-bold mb-1">طبيعة الحجز للدفاتر (البيان)</label>
-                <input
-                  type="text"
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="مثال: أمانة حجز دفعة لشبكة جبل نفوسة"
-                  className="w-full text-right p-2 bg-slate-900 border border-slate-800 rounded text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs py-2 rounded transition cursor-pointer flex items-center justify-center gap-1 shadow"
-              >
-                <Plus className="w-4 h-4" />
-                <span>ترحيل وتسجيل العميل بالخزينة 🔒</span>
-              </button>
-            </form>
+          {/* ADD CUSTOMER BUTTON */}
+          <div className="flex flex-col justify-center items-center w-full lg:max-w-xs shrink-0">
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm py-4 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg w-full h-full min-h-[100px]"
+            >
+              <Plus className="w-6 h-6" />
+              <span>إضافة عميل أمانة جديد</span>
+            </button>
           </div>
 
         </div>
       </div>
 
-      {/* TOOLBAR SEARCH & REPORTS */}
+      {/* TOOLBAR SEARCH */}
       <div className="bg-white border rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm border-slate-100">
         <div className="relative w-full sm:max-w-md">
           <input
@@ -802,16 +754,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
             className="w-full text-right pr-9 pl-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
           <Search className="absolute right-3 top-3 w-4 h-4 text-slate-400" />
-        </div>
-
-        <div className="flex gap-2 w-full sm:w-auto shrink-0 justify-end">
-          <button
-            onClick={handleExportAllActiveImage}
-            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>طباعة وتصدير جميع أمانات اليوم 📸</span>
-          </button>
         </div>
       </div>
 
@@ -827,7 +769,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
             لا توجد أمانات سارية أو حسابات مودعة نشطة حالياً مطابقة لشروط البحث.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {activeHeldDeposits.map(d => {
               const customerLyd = getAmountLyd(d);
               const customerEgp = getAmountEgp(d);
@@ -836,91 +778,117 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
               return (
                 <div 
                   key={d.id} 
-                  className={`bg-white border-y border-l transition-all duration-300 rounded-xl overflow-hidden font-sans border-slate-200 hover:border-indigo-400 border-r-4 ${(customerLyd > 0 || customerEgp > 0) ? 'border-r-amber-500' : 'border-r-emerald-500'} ${
-                    isExpanded ? 'ring-2 ring-indigo-500/10 shadow-lg' : 'shadow-sm'
-                  }`}
+                  onClick={() => {
+                    setExpandedCardId(isExpanded ? null : d.id);
+                    if (!isExpanded) resetActionForm();
+                  }}
+                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[70px] relative text-center ${(customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
                 >
-                  {/* CARD CARD BODY */}
-                  <div className="p-4">
-                    
-                    {/* Header info */}
-                    <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteDeposit(d.id);
-                            }}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
-                            title="حذف ونقل للأرشيف ❌"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                          <div className="w-2 h-2 rounded-full bg-indigo-600" />
-                          <h4 className="font-extrabold text-slate-900 text-sm">{d.customerName}</h4>
-                        </div>
-                        <span className="text-[10px] text-slate-500 block mt-1 font-mono">
-                          مستند: {d.referenceNo} • {new Date(d.date).toLocaleDateString('ar-LY')}
-                        </span>
-                      </div>
-
-                      <div className="text-left">
-                        {/* Display Libyan Dinar custody */}
-                        <div className="font-mono text-sm font-black text-slate-900 block">
-                          {customerLyd.toLocaleString()} <span className="text-[10px] text-slate-400">د.ل</span>
-                        </div>
-                        {/* ONLY DISPLAY Egyptian pound if defined and greater than zero */}
-                        {customerEgp > 0 && (
-                          <div className="font-mono text-xs font-black text-emerald-600 block mt-0.5">
-                            {customerEgp.toLocaleString()} <span className="text-[9px] text-emerald-500 font-bold">جنيه مصري</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Brief Note */}
-                    <div className="bg-slate-50 rounded-lg p-2.5 mb-3">
-                      <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                        &quot;{d.note}&quot;
-                      </p>
-                    </div>
-
-                    {/* Outer quick overview of assets */}
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 mt-2">
-                      <div className="flex gap-2">
-                        <span className="bg-indigo-50 border border-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-black">
-                          🇱🇾 {customerLyd.toLocaleString()} د.ل
-                        </span>
-                        {customerEgp > 0 ? (
-                          <span className="bg-emerald-50 border border-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-black">
-                            🇪🇬 {customerEgp.toLocaleString()} ج.م
-                          </span>
-                        ) : (
-                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-semibold text-[10px]">
-                            رصيد مصري مصفر
-                          </span>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          setExpandedCardId(isExpanded ? null : d.id);
-                          resetActionForm();
-                        }}
-                        className="text-xs font-black text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                      >
-                        <span>إجراء عمليات المعاملات</span>
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-                    </div>
-
+                  {/* CARD TILE BODY */}
+                  <h4 className="font-extrabold text-slate-800 text-xs mb-1 w-full truncate px-1">{d.customerName}</h4>
+                  <div className="flex flex-col items-center">
+                    <span className={`font-mono text-[11px] font-black ${customerLyd < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                      {customerLyd.toLocaleString('en-US')} د.ل
+                    </span>
+                    {customerEgp !== 0 && (
+                      <span className={`font-mono text-[10px] font-black mt-0.5 ${customerEgp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {customerEgp.toLocaleString('en-US')} ج.م
+                      </span>
+                    )}
                   </div>
 
-                  {/* EXPANDABLE WORKSPACE DRAWER */}
+                  {/* EXPANDABLE WORKSPACE DRAWER AS MODAL */}
                   {isExpanded && (
-                    <div className="bg-slate-50 border-t border-slate-100 p-4 space-y-4">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto cursor-default">
+                      <div 
+                        className="relative w-full max-w-4xl bg-white border border-slate-200 shadow-2xl rounded-2xl flex flex-col max-h-[95vh] my-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        
+                        {/* THE EXACT OLD CARD DESIGN HEADER */}
+                        <div className={`border-t-[6px] rounded-t-2xl px-5 pt-5 pb-4 ${(customerLyd > 0 || customerEgp > 0) ? 'border-amber-500' : 'border-emerald-500'}`}>
+                          <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDeposit(d.id);
+                                  }}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
+                                  title="حذف ونقل للأرشيف ❌"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExportSingleDepositDraft(d);
+                                  }}
+                                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-1.5 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
+                                  title="طباعة سجل الأمانة الكامل 🖨️"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </button>
+                                <div className="w-2 h-2 rounded-full bg-indigo-600 mr-1" />
+                                <h4 className="font-extrabold text-slate-900 text-base">{d.customerName}</h4>
+                              </div>
+                              <span className="text-xs text-slate-500 block mt-1.5 font-mono">
+                                مستند: {d.referenceNo} • {new Date(d.date).toLocaleDateString('en-US')}
+                              </span>
+                            </div>
+
+                            <div className="text-left">
+                              <div className="font-mono text-base font-black text-slate-900 block">
+                                {customerLyd.toLocaleString('en-US')} <span className="text-[11px] text-slate-400">د.ل</span>
+                              </div>
+                              {customerEgp !== 0 && (
+                                <div className="font-mono text-sm font-black text-emerald-600 block mt-0.5">
+                                  {customerEgp.toLocaleString('en-US')} <span className="text-[10px] text-emerald-500 font-bold">جنيه مصري</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-lg p-3 mb-3">
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                              &quot;{d.note}&quot;
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex gap-2">
+                              <span className="bg-indigo-50 border border-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-black text-xs">
+                                🇱🇾 {customerLyd.toLocaleString('en-US')} د.ل
+                              </span>
+                              {customerEgp !== 0 ? (
+                                <span className="bg-emerald-50 border border-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-black text-xs">
+                                  🇪🇬 {customerEgp.toLocaleString('en-US')} ج.م
+                                </span>
+                              ) : (
+                                <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-semibold text-[11px]">
+                                  رصيد مصري مصفر
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setExpandedCardId(null);
+                                resetActionForm();
+                              }}
+                              className="text-xs font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <span>إغلاق النافذة</span>
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* OLD WORKSPACE DRAWER CONTENT */}
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 custom-scrollbar rounded-b-2xl">
                       
                       {/* Sub-Actions Tabs bar */}
                       <div className="grid grid-cols-3 sm:grid-cols-7 gap-1 text-center bg-slate-200/50 p-1 rounded-lg">
@@ -949,8 +917,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                           type="button"
                           onClick={() => { resetActionForm(); setActionType('withdraw_egp'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'withdraw_egp' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
-                          disabled={customerEgp <= 0}
-                          title={customerEgp <= 0 ? 'لا يوجد رصيد مصري حالياً للتحكم' : ''}
                         >
                           🇪🇬 سحب مصري
                         </button>
@@ -1030,7 +996,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                     required
                                     value={actionAmountLyd}
                                     onChange={(e) => setActionAmountLyd(e.target.value)}
-                                    placeholder={`الحد الأقصى: ${customerLyd}`}
+                                    placeholder={`الرصيد المتاح: ${customerLyd}`}
                                     className="w-full text-right p-2 border rounded font-mono text-xs"
                                   />
                                 </div>
@@ -1084,7 +1050,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                       required
                                       value={actionAmountLyd}
                                       onChange={(e) => setActionAmountLyd(e.target.value)}
-                                      placeholder={`الحد الأقصى: ${customerLyd} د.ل`}
+                                      placeholder={`الرصيد المتاح: ${customerLyd} د.ل`}
                                       className="w-full text-right p-2 border rounded font-mono text-xs text-indigo-600 font-bold"
                                     />
                                   </div>
@@ -1092,7 +1058,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                     <label className="block text-[10px] font-bold text-emerald-600 mb-1">سعر صرف اليوم (الدينار كم جنيه؟) *</label>
                                     <input
                                       type="number"
-                                      step="any"
+                                      step="1"
                                       required
                                       value={actionExchangeRate}
                                       onChange={(e) => setActionExchangeRate(e.target.value)}
@@ -1204,7 +1170,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                     required
                                     value={actionAmountLyd}
                                     onChange={(e) => setActionAmountLyd(e.target.value)}
-                                    placeholder={`الحد الأقصى: ${customerLyd}`}
+                                    placeholder={`الرصيد المتاح: ${customerLyd}`}
                                     className="w-full text-right p-2 border rounded font-mono text-xs"
                                   />
                                 </div>
@@ -1251,15 +1217,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                             <Receipt className="w-3.5 h-3.5 text-indigo-500" />
                             <span>الأرشيف ودفتر قيود العميل: {d.customerName}</span>
                           </span>
-                          
-                          <button
-                            type="button"
-                            onClick={() => handleExportSingleDepositDraft(d)}
-                            className="bg-purple-50 hover:bg-purple-150 border-purple-200 border text-purple-700 text-[10px] font-black px-2.5 py-1 rounded flex items-center gap-0.5"
-                          >
-                            <Image className="w-3 h-3" />
-                            <span>تصدير كارت الواتساب 📸</span>
-                          </button>
                         </div>
 
                         <div className="overflow-x-auto">
@@ -1299,6 +1256,8 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                       </div>
 
                     </div>
+                    </div>
+                    </div>
                   )}
 
                 </div>
@@ -1308,68 +1267,84 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
         )}
       </div>
 
-      {/* CLOSED / CLEARED CUSTOMERS ARCHIVES SECTION */}
-      <div className="bg-slate-100 border border-slate-200/70 rounded-xl p-4">
-        <div className="flex items-center justify-between">
-          <div className="text-right">
-            <h4 className="font-extrabold text-slate-900 text-xs">📦 أرشيف ودفتر الأمانات المسواة تاريخياً</h4>
-            <p className="text-[10px] text-slate-500 mt-0.5">الحسابات التي تم تصفيتها وترجيعها بالكامل والتي لا تشغل مساحة على شاشتك الجارية.</p>
-          </div>
-          
-          <button
-            onClick={() => setShowArchive(!showArchive)}
-            className="bg-white border border-slate-350 hover:bg-slate-50 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"
-          >
-            <span>{showArchive ? 'إخفاء الأرشيف' : 'عرض السجلات المكتملة'}</span>
-            {showArchive ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        </div>
+      {/* ADD CUSTOMER MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 max-w-md w-full shadow-2xl relative text-right">
+            <h3 className="font-extrabold text-slate-900 text-lg mb-4 flex items-center gap-2 border-b border-slate-100 pb-3">
+              <UserCheck className="w-5 h-5 text-indigo-600" />
+              <span>إضافة حساب أمانة جديد ➕</span>
+            </h3>
 
-        {showArchive && (
-          <div className="mt-4 space-y-3 animate-fade">
-            {archivedDeposits.length === 0 ? (
-              <div className="bg-white text-center rounded-lg p-6 text-slate-400 text-xs">
-                لا توجد حسابات أمانة مصفّرة تاريخياً مسجلة حتى الآن.
+            <form onSubmit={handleCreateCustomerDeposit} className="space-y-4">
+              <div>
+                <label className="block text-slate-500 text-[11px] font-bold mb-1.5">اسم المودع المعتمد *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCustName}
+                  onChange={(e) => setNewCustName(e.target.value)}
+                  placeholder="مثال: أكرم بوعجيله"
+                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {archivedDeposits.map(d => (
-                  <div key={d.id} className="bg-white border border-dashed rounded-lg p-3 text-right text-xs relative opacity-75 hover:opacity-100 transition-opacity">
-                    <div className="flex justify-between items-center border-b pb-1.5 mb-1.5">
-                      <div>
-                        <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px] font-bold inline-block ml-1">✓ مصفر مكتمل</span>
-                        <strong className="text-slate-800">{d.customerName}</strong>
-                      </div>
-                      <span className="font-mono text-[10px] text-slate-400">{d.referenceNo}</span>
-                    </div>
-                    <p className="text-slate-500 text-[11px] mb-2 font-serif">&quot;{d.note}&quot;</p>
-                    
-                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px]">
-                      <span className="text-slate-400">تاريخ المعاملة: {new Date(d.date).toLocaleDateString('ar-LY')}</span>
-                      
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleExportSingleDepositDraft(d)}
-                          className="text-purple-700 bg-purple-50 px-2 py-0.5 rounded font-bold hover:underline"
-                        >
-                          تصدير كشف تاريخي
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDeposit(d.id)}
-                          className="text-rose-500 hover:text-rose-700 p-0.5"
-                          title="مسح من الأرشيف"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+
+              <div>
+                <label className="block text-slate-500 text-[11px] font-bold mb-1.5">العملة المودعة *</label>
+                <select
+                  value={newCurrency}
+                  onChange={(e) => setNewCurrency(e.target.value as 'lyd' | 'egp')}
+                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 font-bold text-slate-700"
+                >
+                  <option value="lyd">دينار ليبي (د.ل)</option>
+                  <option value="egp">جنيه مصري (ج.م)</option>
+                </select>
               </div>
-            )}
+
+              <div>
+                <label className="block text-slate-500 text-[11px] font-bold mb-1.5">القيمة المودعة *</label>
+                <input
+                  type="number"
+                  step="1"
+                  required
+                  value={newInitialAmount}
+                  onChange={(e) => setNewInitialAmount(e.target.value)}
+                  placeholder="مثال: 5000"
+                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 text-indigo-700 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-500 text-[11px] font-bold mb-1.5">طبيعة الحجز (البيان)</label>
+                <input
+                  type="text"
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  placeholder="اختياري: مثال دفعة كذا"
+                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
+                >
+                  إلغاء
+                </button>
+                <button
+                  type="submit"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2.5 px-5 rounded-xl transition cursor-pointer shadow-md flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>تأكيد الإضافة والتسجيل ✔️</span>
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Confirmation Modal for deleting/archiving an item (No native window.confirm to bypass iframe restrictions) */}
       {deleteConfirmId && (() => {

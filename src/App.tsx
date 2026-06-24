@@ -49,6 +49,7 @@ import CompaniesModule from "./components/CompaniesModule";
 import TreasuryModule from "./components/TreasuryModule";
 import PurchasesModule from "./components/PurchasesModule";
 import DepositsModule from "./components/DepositsModule";
+import AdvancesModule from "./components/AdvancesModule";
 import MerchantsModule from "./components/MerchantsModule";
 import TransactionLogModule from "./components/TransactionLogModule";
 import TrashCanModule from "./components/TrashCanModule";
@@ -380,19 +381,22 @@ export default function App() {
   }, []);
 
   const updateStateAndSync = async (newState: ERPState) => {
+    // Strip out any undefined properties that cause Firebase setDoc to fail
+    const cleanedState = JSON.parse(JSON.stringify(newState));
+
     // Only save to Firebase, onSnapshot will update local state. Fast optimistic update ->
-    setState(newState);
+    setState(cleanedState);
     
     // Save to LocalStorage as a fallback
     try {
-      localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(newState));
+      localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(cleanedState));
     } catch (e) {
       console.error("Local storage save failed", e);
     }
     
     if (db) {
       try {
-        await setDoc(doc(db, "erp_system", "main_state"), newState);
+        await setDoc(doc(db, "erp_system", "main_state"), cleanedState);
       } catch (err) {
         console.error("Failed to sync to Firebase", err);
       }
@@ -1033,48 +1037,53 @@ export default function App() {
                     enabled: currentUser.permissions.canViewDeposits,
                   },
                   {
+                    id: "advances",
+                    label: "4. العهد والسلفيات واليوميات 💸",
+                    enabled: currentUser.permissions.canViewAdvances !== false, // fallback true
+                  },
+                  {
                     id: "mail_manual",
-                    label: "4. المصراوية 🇪🇬",
+                    label: "5. المصراوية 🇪🇬",
                     enabled: true,
                   },
                   {
                     id: "purchases",
-                    label: "5. قسم المشتريات 🛒",
+                    label: "6. قسم المشتريات 🛒",
                     enabled: currentUser.permissions.canViewPurchases,
                   },
                   {
                     id: "treasury",
-                    label: "6. قسم الخزنة 💰",
+                    label: "7. قسم الخزنة 💰",
                     enabled: currentUser.permissions.canViewTreasury,
                   },
                   {
                     id: "financial_reports",
-                    label: "7. قسم التقارير المالية 📊",
+                    label: "8. قسم التقارير المالية 📊",
                     enabled: true,
                   },
                   {
                     id: "transaction_log",
-                    label: "8. سجل المعاملات الشامل 📝",
+                    label: "9. سجل المعاملات الشامل 📝",
                     enabled: true,
                   },
                   {
                     id: "trash_can",
-                    label: "9. سلة المهملات 🗑️",
+                    label: "10. سلة المهملات 🗑️",
                     enabled: true,
                   },
                   {
                     id: "settings",
-                    label: "10. صلاحيات الموظفين ⚙️",
+                    label: "11. صلاحيات الموظفين ⚙️",
                     enabled: true,
                   },
                   {
                     id: "backup",
-                    label: "11. الاعدادات الشامله 📦",
+                    label: "12. الاعدادات الشامله 📦",
                     enabled: currentUser.permissions.canViewBackup,
                   },
                   {
                     id: "export_pdf",
-                    label: "12. تصدير بي دي اف 📤",
+                    label: "13. تصدير بي دي اف 📤",
                     enabled: true,
                   },
                 ]
@@ -1249,6 +1258,14 @@ export default function App() {
                       state={state}
                       onUpdateState={updateStateAndSync}
                       onOpenExporter={handleOpenExporter}
+                    />
+                  )}
+
+                  {activeTab === "advances" && (
+                    <AdvancesModule
+                      state={state}
+                      onUpdateState={updateStateAndSync}
+                      searchQuery={globalSearchQuery}
                     />
                   )}
 
