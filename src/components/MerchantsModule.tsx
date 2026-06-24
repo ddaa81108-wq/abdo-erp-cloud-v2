@@ -15,6 +15,7 @@ import {
   Camera,
 } from "lucide-react";
 import { ERPState, Merchant, MerchantTransaction } from "../types";
+import DebtBird from "./DebtBird";
 
 interface MerchantsModuleProps {
   state: ERPState;
@@ -1264,6 +1265,8 @@ export default function MerchantsModule({
           <span className="text-xs font-bold">{showSuccessToast}</span>
         </div>
       )}
+
+      <DebtBird totalDebt={totalOwedToMerchants} />
     </div>
   );
 }
