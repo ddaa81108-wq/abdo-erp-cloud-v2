@@ -16,6 +16,7 @@ import {
   FileText,
   CheckCircle2,
   MessageCircle,
+  Copy,
 } from "lucide-react";
 import {
   ERPState,
@@ -24,6 +25,7 @@ import {
   DebtTransaction,
   TreasuryTransaction,
 } from "../types";
+import html2canvas from "html2canvas";
 
 interface CustomerDebtsModuleProps {
   state: ERPState;
@@ -91,6 +93,102 @@ export default function CustomerDebtsModule({
   // حالة لتصدير المندوب (الواتساب)
   const [selectionMode, setSelectionMode] = useState<boolean>(false);
   const [selectedForRep, setSelectedForRep] = useState<string[]>([]);
+  const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
+
+  const handleCopyDebtImage = async (customerName: string, debtBalance: number) => {
+    try {
+      const container = document.createElement("div");
+      container.style.position = "absolute";
+      container.style.left = "0px";
+      container.style.top = "0px";
+      container.style.zIndex = "-9999";
+      container.style.opacity = "1";
+      container.style.width = "480px";
+      container.style.padding = "40px";
+      container.style.backgroundColor = "#0f172a";
+      container.style.direction = "rtl";
+      container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.style.alignItems = "center";
+      container.style.justifyContent = "center";
+      container.style.border = "none";
+      
+      const lyd = Math.round(debtBalance);
+      
+      const neonColor = '#ef4444'; // Red for debt
+      const neonGlow = 'rgba(239, 68, 68, 0.4)';
+      const softGlow = 'rgba(239, 68, 68, 0.15)';
+      const neumorphicBg = 'linear-gradient(145deg, #1e293b, #0f172a)';
+
+      let amountHtml = '';
+      if (lyd !== 0) {
+        amountHtml = `
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px); width: 100%;">
+            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${lyd.toLocaleString("en-US")}</span>
+            <span style="font-size: 24px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
+          </div>
+        `;
+      } else {
+        amountHtml = `
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #10b981; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(16,185,129,0.15), 0 0 30px rgba(16,185,129,0.4); backdrop-filter: blur(10px); width: 100%;">
+            <span style="font-size: 32px; font-weight: 900; color: #10b981; text-shadow: 0 0 20px #10b981;">لا يوجد ديون مستحقة (خالص)</span>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
+          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
+            <h2 style="font-size: 36px; font-weight: 900; color: #ffffff; margin: 0; white-space: pre-wrap; word-break: break-word; text-shadow: 0 2px 10px rgba(255,255,255,0.2);">${customerName}</h2>
+          </div>
+          
+          <div style="text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 20px; font-weight: 800; color: #94a3b8;">
+              إجمالي الديون المستحقة عليك:
+            </span>
+          </div>
+          
+          ${amountHtml}
+
+          <div style="margin-top: 40px; text-align: center; color: #64748b; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(148,163,184,0.5));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            تم الإصدار من المنظومة
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(container);
+      
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#0f172a',
+        useCORS: true,
+      });
+      
+      document.body.removeChild(container);
+      
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            setShowSuccessToast("تم نسخ صورة كارت الدين بنجاح 📋");
+            setTimeout(() => setShowSuccessToast(null), 3000);
+          } catch (clipErr) {
+            console.error("Clipboard write error:", clipErr);
+            alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
+          }
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error("Failed to copy image", err);
+      alert("حدث خطأ أثناء نسخ الصورة.");
+    }
+  };
 
   // حالة للتأكد إذا كان الزبون مسجل سابقاً ومحذوف
   const [showRestorePrompt, setShowRestorePrompt] = useState(false);
@@ -139,7 +237,7 @@ export default function CustomerDebtsModule({
     e.preventDefault();
     if (!newCustName.trim()) return;
 
-    const initialDebt = parseFloat(newCustDebt) || 0;
+    const initialDebt = Math.round(parseFloat(newCustDebt) || 0);
 
     // البحث في قائمة كل الزبائن (حتى المحذوفين/المؤرشفين سابقاً)
     const existingInCompanies = state.companies.find(
@@ -374,7 +472,7 @@ export default function CustomerDebtsModule({
     let targetCycleId = currentAcc.activeCycle?.id;
     let updatedCycles = [...state.cycles];
     const timestamp = new Date().toISOString();
-    const amountToAdd = parseFloat(innerDebtAmount) || 0;
+    const amountToAdd = Math.round(parseFloat(innerDebtAmount) || 0);
 
     if (amountToAdd <= 0) {
       alert("الرجاء كتابة مبلغ أكبر من الصفر.");
@@ -441,7 +539,7 @@ export default function CustomerDebtsModule({
       return;
     }
 
-    const amountToPay = parseFloat(paymentAmount);
+    const amountToPay = Math.round(parseFloat(paymentAmount));
     if (isNaN(amountToPay) || amountToPay === 0) {
       alert("⚠️ الرجاء كتابة مبلغ مالي صحيح (لا يمكن أن يكون صفراً).");
       return;
@@ -620,9 +718,9 @@ export default function CustomerDebtsModule({
     let text = "*كشف حساب سريع*\n\n";
     selectedCustomers.forEach(({ cust, debtBalance }) => {
       if (debtBalance > 0) {
-        text += `الاسم: ${cust.name}\nالقيمة المطلوب سدادها: ${debtBalance.toLocaleString()} د.ل\n\n`;
+        text += `الاسم: ${cust.name}\nالقيمة المطلوب سدادها: ${Math.round(debtBalance).toLocaleString("en-US")} د.ل\n\n`;
       } else if (debtBalance < 0) {
-        text += `الاسم: ${cust.name}\nرصيد دائن لصالحه (له أمانة): ${debtBalance.toLocaleString()} د.ل\n\n`;
+        text += `الاسم: ${cust.name}\nرصيد دائن لصالحه (له أمانة): ${Math.round(debtBalance).toLocaleString("en-US")} د.ل\n\n`;
       } else {
         text += `الاسم: ${cust.name}\nالرصيد خالص وتم سداده.\n\n`;
       }
@@ -646,7 +744,7 @@ export default function CustomerDebtsModule({
 
     const headers = ["اسم الزبون", "الرصيد المتبقي (الديون/الأمانات)"];
     const rows = selectedCustomers.map(({ cust, debtBalance }) => {
-      let balanceStr = `${debtBalance.toLocaleString()} د.ل`;
+      let balanceStr = `${Math.round(debtBalance).toLocaleString("en-US")} د.ل`;
       if (debtBalance < 0) balanceStr += " (أمانة)";
       return [cust.name, balanceStr];
     });
@@ -697,9 +795,9 @@ export default function CustomerDebtsModule({
             minute: "2-digit",
           }),
         t.note || (credit > 0 ? "تسجيل دين" : "تسجيل دفعة سداد"),
-        credit > 0 ? `+${credit.toLocaleString()} ` : "-",
-        debit > 0 ? `-${debit.toLocaleString()} ` : "-",
-        `${runningBalance.toLocaleString()} د.ل`,
+        credit > 0 ? `+${Math.round(credit).toLocaleString("en-US")} ` : "-",
+        debit > 0 ? `-${Math.round(debit).toLocaleString("en-US")} ` : "-",
+        `${Math.round(runningBalance).toLocaleString("en-US")} د.ل`,
       ];
     });
 
@@ -721,17 +819,17 @@ export default function CustomerDebtsModule({
     const footerMetrics = [
       {
         label: "شغل جديد",
-        value: `+${totalDebts.toLocaleString()} د.ل`,
+        value: `+${Math.round(totalDebts).toLocaleString("en-US")} د.ل`,
         colorClass: "text-amber-700",
       },
       {
         label: "الدفع اليوم",
-        value: `-${totalPayments.toLocaleString()} د.ل`,
+        value: `-${Math.round(totalPayments).toLocaleString("en-US")} د.ل`,
         colorClass: "text-emerald-700",
       },
       {
         label: "الرصيد الحالي",
-        value: `${runningBalance.toLocaleString()} د.ل`,
+        value: `${Math.round(runningBalance).toLocaleString("en-US")} د.ل`,
         colorClass: "text-rose-700",
       },
     ];
@@ -742,7 +840,7 @@ export default function CustomerDebtsModule({
         label1: "الاسم الحالي",
         value1: acc.cust.name,
         label2: "الرصيد المتبقي",
-        value2: `${acc.debtBalance.toLocaleString()} د.ل${acc.debtBalance < 0 ? " (أمانة)" : ""}`,
+        value2: `${Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل${acc.debtBalance < 0 ? " (أمانة)" : ""}`,
         label3: "إجمالي الحركات",
         value3: `${acc.historicalTxs.length} حركة`,
       },
@@ -759,6 +857,14 @@ export default function CustomerDebtsModule({
 
   return (
     <div className="space-y-4 text-right" dir="rtl">
+      {/* Toast Notification */}
+      {showSuccessToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
+          <CheckCircle className="w-5 h-5" />
+          <span className="font-bold">{showSuccessToast}</span>
+        </div>
+      )}
+
       {/* القسم العلوي: إجمالي الديون وإجراءات الزبائن */}
       {!selectionMode ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -778,7 +884,7 @@ export default function CustomerDebtsModule({
               </div>
               <div className="mt-auto">
                 <div className="text-3xl font-black text-rose-500 drop-shadow-sm">
-                  {totalOutstandingDebt.toLocaleString()}{" "}
+                  {Math.round(totalOutstandingDebt).toLocaleString("en-US")}{" "}
                   <span className="text-sm font-bold opacity-70">د.ل</span>
                 </div>
                 <div className="text-[10px] text-slate-400 font-bold mt-1.5 inline-block bg-slate-100 px-2 py-1 rounded-md">
@@ -930,9 +1036,9 @@ export default function CustomerDebtsModule({
                       e.preventDefault();
                       let text = `*كشف حساب سريع*\nالاسم: ${acc.cust.name}\n`;
                       if (acc.debtBalance > 0) {
-                        text += `القيمة المطلوب سدادها: ${acc.debtBalance.toLocaleString()} د.ل`;
+                        text += `القيمة المطلوب سدادها: ${Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل`;
                       } else if (acc.debtBalance < 0) {
-                        text += `رصيد دائن لصالحه (أمانة): ${acc.debtBalance.toLocaleString()} د.ل`;
+                        text += `رصيد دائن لصالحه (أمانة): ${Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل`;
                       } else {
                         text += `الرصيد خالص وتم سداده.`;
                       }
@@ -946,6 +1052,19 @@ export default function CustomerDebtsModule({
                   >
                     <MessageCircle className="w-3 h-3" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleCopyDebtImage(acc.cust.name, acc.debtBalance);
+                    }}
+                    className="absolute top-1 left-7 opacity-0 group-hover:opacity-100 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
+                    title="نسخ كارت الصورة"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
                 </>
               )}
 
@@ -955,11 +1074,11 @@ export default function CustomerDebtsModule({
 
               {acc.debtBalance > 0 ? (
                 <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
-                  {acc.debtBalance.toLocaleString()} د.ل
+                  {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                 </span>
               ) : acc.debtBalance < 0 ? (
                 <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
-                  {acc.debtBalance.toLocaleString()} د.ل
+                  {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                 </span>
               ) : (
                 <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>
@@ -1016,12 +1135,11 @@ export default function CustomerDebtsModule({
                   <div className="relative">
                     <input
                       type="number"
-                      step="any"
                       required
                       value={newCustDebt}
                       onChange={(e) => setNewCustDebt(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-mono font-bold bg-slate-50/50"
+                      placeholder="0"
+                      className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-mono font-bold bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                     />
                     <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">
                       د.ل
@@ -1113,7 +1231,7 @@ export default function CustomerDebtsModule({
                     الرصيد القائم حالياً عليه
                   </span>
                   <span className="text-base font-mono font-black text-rose-600">
-                    {selectedAccDetails.debtBalance.toLocaleString()} د.ل
+                    {Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 </div>
               ) : selectedAccDetails.debtBalance < 0 ? (
@@ -1122,7 +1240,7 @@ export default function CustomerDebtsModule({
                     رصيد دائن لصالحه (له أمانة)
                   </span>
                   <span className="text-base font-mono font-black text-emerald-700">
-                    {selectedAccDetails.debtBalance.toLocaleString()} د.ل
+                    {Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 </div>
               ) : (
@@ -1141,31 +1259,44 @@ export default function CustomerDebtsModule({
                   مجموع الدفوعات المسددة من قبل
                 </span>
                 <span className="text-base font-mono font-black text-emerald-700">
-                  {selectedAccDetails.historicalTxs
+                  {Math.round(selectedAccDetails.historicalTxs
                     .filter((t) => t.type === "payment")
                     .reduce((sum, t) => sum + t.amount, 0)
-                    .toLocaleString()}{" "}
+                  ).toLocaleString("en-US")}{" "}
                   د.ل
                 </span>
               </div>
 
-              <div className="bg-slate-50 border border-slate-200 p-3/5 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-slate-500 font-bold text-[10px] block mb-0.5">
-                    إرسال كشف للزبون
-                  </span>
-                  <span className="text-[10px] text-slate-400 block">
-                    اضغط لتصدير نسخة مخصصة للواتساب
-                  </span>
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-500 font-bold text-[10px] block mb-0.5">
+                      إرسال كشف للزبون
+                    </span>
+                    <span className="text-[10px] text-slate-400 block">
+                      اضغط لتصدير نسخة مخصصة للواتساب
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      onClick={() =>
+                        handleExportSingleCustomerImage(selectedAccDetails)
+                      }
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer"
+                    >
+                      تصدير الكشف المبوب 📸
+                    </button>
+                    <button
+                      onClick={() =>
+                        handleCopyDebtImage(selectedAccDetails.cust.name, selectedAccDetails.debtBalance)
+                      }
+                      className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      نسخ كارت الدين السريع 📋
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() =>
-                    handleExportSingleCustomerImage(selectedAccDetails)
-                  }
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer"
-                >
-                  تصدير الكشف كصورة 📸
-                </button>
               </div>
             </div>
 
@@ -1234,7 +1365,7 @@ export default function CustomerDebtsModule({
                                   : "text-emerald-700"
                               }`}
                             >
-                              {tx.amount.toLocaleString()} د.ل
+                              {Math.round(tx.amount).toLocaleString("en-US")} د.ل
                             </td>
                           </tr>
                         ))}
@@ -1312,12 +1443,11 @@ export default function CustomerDebtsModule({
                 <div className="relative">
                   <input
                     type="number"
-                    step="any"
                     required
                     value={innerDebtAmount}
                     onChange={(e) => setInnerDebtAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                    placeholder="0"
+                    className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                   <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">
                     د.ل
@@ -1376,13 +1506,12 @@ export default function CustomerDebtsModule({
                 <div className="relative">
                   <input
                     type="number"
-                    step="any"
                     required
                     disabled={paymentType === "full"}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50"
+                    placeholder="0"
+                    className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
                   />
                   <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">
                     د.ل

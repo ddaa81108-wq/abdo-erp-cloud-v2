@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X } from 'lucide-react';
+import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
+import html2canvas from 'html2canvas';
 
 interface DepositsModuleProps {
   state: ERPState;
@@ -11,6 +12,7 @@ interface DepositsModuleProps {
 export default function DepositsModule({ state, onUpdateState, onOpenExporter }: DepositsModuleProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const [showArchive, setShowArchive] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
 
   // Expand states for each card config
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
@@ -665,14 +667,12 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   const activeHeldDeposits = state.trustDeposits.filter(d => 
     !d.isDeleted &&
     d.status === 'held' && 
-    (getAmountLyd(d) !== 0 || getAmountEgp(d) !== 0) &&
-    (d.customerName.toLowerCase().includes(filterQuery.toLowerCase()) || d.referenceNo.toLowerCase().includes(filterQuery.toLowerCase()))
+    (getAmountLyd(d) !== 0 || getAmountEgp(d) !== 0)
   ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const archivedDeposits = state.trustDeposits.filter(d => 
     !d.isDeleted &&
-    (d.status === 'refunded' || d.status === 'released_to_debt' || (getAmountLyd(d) === 0 && getAmountEgp(d) === 0)) &&
-    (d.customerName.toLowerCase().includes(filterQuery.toLowerCase()) || d.referenceNo.toLowerCase().includes(filterQuery.toLowerCase()))
+    (d.status === 'refunded' || d.status === 'released_to_debt' || (getAmountLyd(d) === 0 && getAmountEgp(d) === 0))
   ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Aggregate totals
@@ -684,9 +684,126 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     .filter(d => !d.isDeleted && d.status === 'held')
     .reduce((sum, d) => sum + getAmountEgp(d), 0);
 
+  const handleCopyDepositImage = async (d: TrustDeposit) => {
+    try {
+      const container = document.createElement("div");
+      container.style.position = "absolute";
+      container.style.left = "0px";
+      container.style.top = "0px";
+      container.style.zIndex = "-9999";
+      container.style.opacity = "1";
+      container.style.width = "480px";
+      container.style.padding = "40px";
+      container.style.backgroundColor = "#0f172a";
+      container.style.direction = "rtl";
+      container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
+      container.style.display = "flex";
+      container.style.flexDirection = "column";
+      container.style.alignItems = "center";
+      container.style.justifyContent = "center";
+      container.style.border = "none";
+      
+      const lyd = Math.round(getAmountLyd(d));
+      const egp = Math.round(getAmountEgp(d));
+      
+      const neonColor = '#10b981';
+      const neonGlow = 'rgba(16, 185, 129, 0.4)';
+      const softGlow = 'rgba(16, 185, 129, 0.15)';
+      const neumorphicBg = 'linear-gradient(145deg, #1e293b, #0f172a)';
+
+      let amountHtml = '';
+      if (lyd !== 0 && egp !== 0) {
+        amountHtml = `
+          <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px);">
+              <span style="font-size: 38px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${lyd.toLocaleString("en-US")}</span>
+              <span style="font-size: 20px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(59,130,246,0.15), 0 0 30px rgba(59,130,246,0.4); backdrop-filter: blur(10px);">
+              <span style="font-size: 38px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${egp.toLocaleString("en-US")}</span>
+              <span style="font-size: 20px; font-weight: 900; color: #3b82f6; text-shadow: 0 0 10px #3b82f6;">ج.م</span>
+            </div>
+          </div>
+        `;
+      } else if (egp !== 0) {
+        amountHtml = `
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(59,130,246,0.15), 0 0 30px rgba(59,130,246,0.4); backdrop-filter: blur(10px); width: 100%;">
+            <span style="font-size: 42px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${egp.toLocaleString("en-US")}</span>
+            <span style="font-size: 24px; font-weight: 900; color: #3b82f6; text-shadow: 0 0 10px #3b82f6;">ج.م</span>
+          </div>
+        `;
+      } else {
+        amountHtml = `
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px); width: 100%;">
+            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${lyd.toLocaleString("en-US")}</span>
+            <span style="font-size: 24px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
+          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
+            <h2 style="font-size: 32px; font-weight: 900; color: #ffffff; margin: 0; white-space: pre-wrap; word-break: break-word; text-shadow: 0 2px 10px rgba(255,255,255,0.2);">${d.customerName}</h2>
+          </div>
+          
+          <div style="text-align: center; margin-bottom: 20px;">
+            <span style="font-size: 18px; font-weight: 800; color: #94a3b8;">
+              إجمالي الأمانات لكم:
+            </span>
+          </div>
+          
+          ${amountHtml}
+
+          <div style="margin-top: 40px; text-align: center; color: #64748b; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(148,163,184,0.5));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            تم الإصدار من المنظومة
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(container);
+      
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        backgroundColor: '#0f172a',
+        useCORS: true,
+      });
+      
+      document.body.removeChild(container);
+      
+      canvas.toBlob(async (blob) => {
+        if (blob) {
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob })
+            ]);
+            setShowSuccessToast("تم نسخ صورة الأمانة بنجاح 📋");
+            setTimeout(() => setShowSuccessToast(null), 3000);
+          } catch (clipErr) {
+            console.error("Clipboard write error:", clipErr);
+            alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
+          }
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error("Failed to copy image", err);
+      alert("حدث خطأ أثناء نسخ الصورة.");
+    }
+  };
+
 
   return (
     <div className="space-y-6 text-right" dir="rtl">
+      {/* Toast Notification */}
+      {showSuccessToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
+          <CheckCircle className="w-5 h-5" />
+          <span className="font-bold">{showSuccessToast}</span>
+        </div>
+      )}
 
       {/* TOP HEADER SUMMARY BAR */}
       <div className="bg-slate-900 text-white rounded-xl p-4 border border-slate-800 shadow-xl">
@@ -743,20 +860,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
         </div>
       </div>
 
-      {/* TOOLBAR SEARCH */}
-      <div className="bg-white border rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm border-slate-100">
-        <div className="relative w-full sm:max-w-md">
-          <input
-            type="text"
-            placeholder="🔎 ابحث عن أمانة باسم المودع أو رقم المستند..."
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            className="w-full text-right pr-9 pl-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-          <Search className="absolute right-3 top-3 w-4 h-4 text-slate-400" />
-        </div>
-      </div>
-
       {/* ACTIVE CARDS LISTING GRID */}
       <div>
         <h3 className="font-extrabold text-slate-900 text-sm mb-3 flex items-center gap-2">
@@ -769,7 +872,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
             لا توجد أمانات سارية أو حسابات مودعة نشطة حالياً مطابقة لشروط البحث.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {activeHeldDeposits.map(d => {
               const customerLyd = getAmountLyd(d);
               const customerEgp = getAmountEgp(d);
@@ -782,17 +885,17 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                     setExpandedCardId(isExpanded ? null : d.id);
                     if (!isExpanded) resetActionForm();
                   }}
-                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[70px] relative text-center ${(customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
+                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
                 >
                   {/* CARD TILE BODY */}
-                  <h4 className="font-extrabold text-slate-800 text-xs mb-1 w-full truncate px-1">{d.customerName}</h4>
+                  <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1">{d.customerName}</h4>
                   <div className="flex flex-col items-center">
-                    <span className={`font-mono text-[11px] font-black ${customerLyd < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
-                      {customerLyd.toLocaleString('en-US')} د.ل
+                    <span className={`font-mono text-lg font-black ${customerLyd < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                      {Math.round(customerLyd).toLocaleString('en-US')} د.ل
                     </span>
                     {customerEgp !== 0 && (
-                      <span className={`font-mono text-[10px] font-black mt-0.5 ${customerEgp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {customerEgp.toLocaleString('en-US')} ج.م
+                      <span className={`font-mono text-base font-black mt-1 ${customerEgp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {Math.round(customerEgp).toLocaleString('en-US')} ج.م
                       </span>
                     )}
                   </div>
@@ -835,18 +938,32 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                 <div className="w-2 h-2 rounded-full bg-indigo-600 mr-1" />
                                 <h4 className="font-extrabold text-slate-900 text-base">{d.customerName}</h4>
                               </div>
-                              <span className="text-xs text-slate-500 block mt-1.5 font-mono">
+                              <div className="flex gap-2 items-center mt-3">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopyDepositImage(d);
+                                  }}
+                                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-bold shadow-md shadow-indigo-600/20"
+                                  title="نسخ كارت الصورة 📸"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                  نسخ كارت الصورة
+                                </button>
+                              </div>
+                              <span className="text-xs text-slate-500 block mt-2 font-mono">
                                 مستند: {d.referenceNo} • {new Date(d.date).toLocaleDateString('en-US')}
                               </span>
                             </div>
 
                             <div className="text-left">
                               <div className="font-mono text-base font-black text-slate-900 block">
-                                {customerLyd.toLocaleString('en-US')} <span className="text-[11px] text-slate-400">د.ل</span>
+                                {Math.round(customerLyd).toLocaleString('en-US')} <span className="text-[11px] text-slate-400">د.ل</span>
                               </div>
                               {customerEgp !== 0 && (
                                 <div className="font-mono text-sm font-black text-emerald-600 block mt-0.5">
-                                  {customerEgp.toLocaleString('en-US')} <span className="text-[10px] text-emerald-500 font-bold">جنيه مصري</span>
+                                  {Math.round(customerEgp).toLocaleString('en-US')} <span className="text-[10px] text-emerald-500 font-bold">جنيه مصري</span>
                                 </div>
                               )}
                             </div>

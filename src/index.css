@@ -431,3 +431,13 @@ input[type="number"] {
 
 .theme-matrix table td { border-bottom-color: #003b00 !important; }
 .theme-matrix select option { background-color: #000000 !important; color: #00ff41 !important; }
+
+/* Hide number input spinners globally */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}

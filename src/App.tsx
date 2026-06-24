@@ -889,6 +889,17 @@ export default function App() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
+
+            {globalSearchQuery && (
+              <div className="absolute top-full right-0 w-[90vw] md:w-[600px] mt-2 z-50">
+                <GlobalSearch
+                  state={state}
+                  searchQuery={globalSearchQuery}
+                  onNavigateToItem={handleNavigateFromItem}
+                  onClose={() => setGlobalSearchQuery("")}
+                />
+              </div>
+            )}
           </div>
 
           {/* Quick Universal widgets trigger buttons & DATA SEEDER BUTTON */}
@@ -1171,20 +1182,7 @@ export default function App() {
             {/* Animated Slide transition of panels */}
             <div className="transition-all">
               <AnimatePresence mode="wait">
-                {showGlobSearch && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="mb-4"
-                  >
-                    <GlobalSearch
-                      state={state}
-                      onNavigateToItem={handleNavigateFromItem}
-                      onClose={() => setShowGlobSearch(false)}
-                    />
-                  </motion.div>
-                )}
+                {/* Global Search Overlay was removed here */}
               </AnimatePresence>
 
               <AnimatePresence mode="wait">

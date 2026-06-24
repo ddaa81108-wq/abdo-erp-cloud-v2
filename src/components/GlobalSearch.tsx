@@ -1,36 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, Inbox, Landmark, ShoppingBag, FolderArchive, ArrowUpRight, History } from 'lucide-react';
+import { Search, UserCheck, Inbox, Landmark, ShoppingBag, FolderArchive, ArrowUpRight, History, Store } from 'lucide-react';
 import { ERPState } from '../types';
 
 interface GlobalSearchProps {
   state: ERPState;
+  searchQuery: string;
   onNavigateToItem: (section: string, filterText: string) => void;
   onClose?: () => void;
 }
 
-export default function GlobalSearch({ state, onNavigateToItem, onClose }: GlobalSearchProps) {
-  const [query, setQuery] = useState('');
+export default function GlobalSearch({ state, searchQuery, onNavigateToItem, onClose }: GlobalSearchProps) {
   const [results, setResults] = useState<{
     customers: any[];
     companies: any[];
+    merchants: any[];
+    trusts: any[];
     archive: any[];
     treasury: any[];
     purchases: any[];
   }>({
     customers: [],
     companies: [],
+    merchants: [],
+    trusts: [],
     archive: [],
     treasury: [],
     purchases: [],
   });
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults({ customers: [], companies: [], archive: [], treasury: [], purchases: [] });
+    if (!searchQuery.trim()) {
+      setResults({ customers: [], companies: [], merchants: [], trusts: [], archive: [], treasury: [], purchases: [] });
       return;
     }
 
-    const q = query.toLowerCase();
+    const q = searchQuery.toLowerCase();
 
     // 1. Search Active Customers
     const activeCusts = state.customers.filter(c => {
@@ -45,6 +49,16 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
     // 2. Search Companies / Suppliers
     const foundCompanies = state.companies.filter(c => 
       c.name.toLowerCase().includes(q) || (c.contact && c.contact.includes(q))
+    );
+
+    // 2b. Search Merchants
+    const foundMerchants = (state.merchants || []).filter(m => 
+      m.name.toLowerCase().includes(q) || (m.contact && m.contact.includes(q))
+    );
+
+    // 2c. Search Trusts / Deposits
+    const foundTrusts = (state.trustDeposits || []).filter(t => 
+      t.status === 'held' && (t.customerName.toLowerCase().includes(q) || t.referenceNo.toLowerCase().includes(q))
     );
 
     // 3. Search Archive / Closed accounts or old fully resolved cycles
@@ -64,34 +78,25 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
     setResults({
       customers: activeCusts,
       companies: foundCompanies,
+      merchants: foundMerchants,
+      trusts: foundTrusts,
       archive: foundArchives,
       treasury: [],
       purchases: foundPurchases
     });
-  }, [query, state]);
+  }, [searchQuery, state]);
 
   const totalResults = 
     results.customers.length + 
     results.companies.length + 
+    results.merchants.length + 
+    results.trusts.length + 
     results.archive.length + 
     results.purchases.length;
 
   return (
-    <div className="bg-white border text-right border-slate-200 shadow-xl rounded-xl overflow-hidden p-4 max-w-4xl mx-auto my-4 transition-all">
-      <div className="relative mb-4">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="🔎 ابحث في ديون العملاء، الشركات، الأرشيف، المشتريات، الخزينة..."
-          className="w-full text-right pr-10 pl-4 py-3 border border-slate-300 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all font-sans"
-          dir="rtl"
-          autoFocus
-        />
-        <Search className="absolute right-3.5 top-3.5 w-4.5 h-4.5 text-slate-400" />
-      </div>
-
-      {query.trim() === '' ? (
+    <div className="bg-white border text-right border-slate-200 shadow-2xl rounded-xl overflow-hidden p-4 w-full transition-all">
+      {searchQuery.trim() === '' ? (
         <div className="text-center py-8 text-slate-400">
           <p className="text-xs mb-1">اكتب أي اسم (مثلاً: أحمد، محول، السلام) للبدء في تصفية الفهرس العام للبيانات</p>
           <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">رمز حماية وسرية البيانات مفعل ✓</span>
@@ -107,7 +112,7 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
 
           {totalResults === 0 ? (
             <div className="text-center py-6 text-slate-400 text-xs">
-              لا توجد أي سجلات مطابقة للمصطلح &quot;{query}&quot; في قواعد البيانات النشطة أو المؤرشفة.
+              لا توجد أي سجلات مطابقة للمصطلح &quot;{searchQuery}&quot; في قواعد البيانات النشطة أو المؤرشفة.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -128,7 +133,7 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
                       >
                         <span className="font-semibold text-slate-900">{c.name}</span>
                         <div className="flex items-center gap-2 font-mono">
-                          <span className="text-rose-600 font-bold">{c.activeBalance.toLocaleString()} د.ل</span>
+                          <span className="text-rose-600 font-bold">{Math.round(c.activeBalance || 0).toLocaleString("en-US")} د.ل</span>
                           <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
                         </div>
                       </div>
@@ -153,11 +158,64 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
                       >
                         <span className="font-semibold text-slate-900">{c.name}</span>
                         <div className="flex items-center gap-2 font-mono">
-                          <span className="text-amber-700 font-bold">{c.balance.toLocaleString()} د.ل</span>
+                          <span className="text-amber-700 font-bold">{Math.round(c.balance || 0).toLocaleString("en-US")} د.ل</span>
                           <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Merchants Row */}
+              {results.merchants && results.merchants.length > 0 && (
+                <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg">
+                  <h4 className="flex items-center gap-1.5 text-purple-800 font-bold text-xs mb-2">
+                    <Store className="w-4 h-4 text-purple-600" />
+                    <span>التجار والموردين الفرعيين</span>
+                  </h4>
+                  <div className="space-y-1">
+                    {results.merchants.slice(0, 4).map(m => (
+                      <div 
+                        key={m.id}
+                        onClick={() => onNavigateToItem('merchants', m.name)}
+                        className="flex items-center justify-between text-[11px] bg-white hover:bg-purple-50 border p-1.5 rounded cursor-pointer transition-all"
+                      >
+                        <span className="font-semibold text-slate-900">{m.name}</span>
+                        <div className="flex items-center gap-2 font-mono">
+                          <span className="text-purple-700 font-bold">{Math.round(m.balance || 0).toLocaleString('en-US')} د.ل</span>
+                          <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Trusts Row */}
+              {results.trusts && results.trusts.length > 0 && (
+                <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg">
+                  <h4 className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs mb-2">
+                    <Landmark className="w-4 h-4 text-emerald-600" />
+                    <span>الأمانات والودائع الجارية</span>
+                  </h4>
+                  <div className="space-y-1">
+                    {results.trusts.slice(0, 4).map(t => {
+                       const lyd = Math.round(t.amountLyd !== undefined ? t.amountLyd : t.amount);
+                       const egp = Math.round(t.amountEgp !== undefined ? t.amountEgp : 0);
+                       return (
+                      <div 
+                        key={t.id}
+                        onClick={() => onNavigateToItem('deposits', t.customerName)}
+                        className="flex flex-col text-[11px] bg-white hover:bg-emerald-50 border p-1.5 rounded cursor-pointer transition-all font-mono"
+                      >
+                        <span className="font-semibold text-slate-900 mb-1">{t.customerName}</span>
+                        <div className="flex items-center justify-between">
+                          {lyd !== 0 && <span className="text-emerald-700 font-bold">{lyd.toLocaleString('en-US')} د.ل</span>}
+                          {egp !== 0 && <span className="text-blue-600 font-bold">{egp.toLocaleString('en-US')} ج.م</span>}
+                        </div>
+                      </div>
+                    )})}
                   </div>
                 </div>
               )}
@@ -178,7 +236,7 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
                       >
                         <div className="flex flex-col text-right">
                           <span className="font-sans font-semibold text-slate-900">{cy.customerName}</span>
-                          <span className="text-[9px] text-zinc-400">تاريخ الإغلاق: {new Date(cy.endDate || '').toLocaleDateString('ar-LY')}</span>
+                          <span className="text-[9px] text-zinc-400">تاريخ الإغلاق: {new Date(cy.endDate || '').toLocaleDateString('en-US')}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded text-[10px]">مغلق ومسدد</span>
@@ -207,7 +265,7 @@ export default function GlobalSearch({ state, onNavigateToItem, onClose }: Globa
                         <div className="flex justify-between font-sans">
                           <span className="font-semibold text-slate-800 truncate max-w-[150px]">{p.itemName}</span>
                           <span className="text-blue-700 font-bold">
-                            {p.totalPrice.toLocaleString()} {p.currency}
+                            {Math.round(p.totalPrice).toLocaleString('en-US')} {p.currency}
                           </span>
                         </div>
                         <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
