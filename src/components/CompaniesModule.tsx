@@ -613,14 +613,14 @@ export default function CompaniesModule({
       const neumorphicBg = 'linear-gradient(145deg, #1e293b, #0f172a)';
 
       container.innerHTML = `
-        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
+        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 20px 40px 60px 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
           <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
             <h2 style="font-size: 28px; font-weight: 900; color: #ffffff; margin: 0; white-space: pre-wrap; word-break: break-word; text-shadow: 0 2px 10px rgba(255,255,255,0.2);">${company.name}</h2>
           </div>
           
           <div style="text-align: center; margin-bottom: 16px;">
-            <span style="font-size: 16px; font-weight: 800; color: #94a3b8;">
-              إجمالي الديون المستحقة ${isNegative ? "لك (أمانة)" : "عليك"}:
+            <span style="font-size: 16px; font-weight: 800; color: #94a3b8; letter-spacing: 0px !important; word-spacing: 5px !important; white-space: pre-wrap !important;">
+              إجمالي&nbsp;الديون&nbsp;المستحقة&nbsp;${isNegative ? "لك&nbsp;(أمانة)" : "عليك"}:
             </span>
           </div>
           
@@ -631,7 +631,7 @@ export default function CompaniesModule({
 
           <div style="margin-top: 40px; text-align: center; color: #64748b; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(148,163,184,0.5));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            تم الإصدار من المنظومة
+            <span style="letter-spacing: 0px !important; word-spacing: 5px !important; white-space: pre-wrap !important;">تم&nbsp;الإصدار&nbsp;من&nbsp;المنظومة</span>
           </div>
         </div>
       `;
@@ -641,31 +641,35 @@ export default function CompaniesModule({
       // Wait for rendering
       await new Promise((resolve) => setTimeout(resolve, 300));
       
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        backgroundColor: '#0f172a',
-        useCORS: true,
-      });
-      
-      document.body.removeChild(container);
-      
-      canvas.toBlob(async (blob) => {
-        if (blob) {
-          try {
-            await navigator.clipboard.write([
-              new ClipboardItem({ 'image/png': blob })
-            ]);
-            setShowSuccessToast("تم نسخ صورة الكشف بنجاح، يمكنك لصقها الآن");
-            setTimeout(() => setShowSuccessToast(null), 3000);
-          } catch (clipErr) {
-            console.error("Clipboard write error:", clipErr);
-            alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
-          }
-        }
-      }, 'image/png');
+      const makeImagePromise = async () => {
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          backgroundColor: '#0f172a',
+          useCORS: true
+        });
+
+        document.body.removeChild(container);
+        
+        return new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to create blob"));
+          }, 'image/png');
+        });
+      };
+
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': makeImagePromise() })
+      ]);
+      setShowSuccessToast("تم نسخ صورة الكشف بنجاح، يمكنك لصقها الآن");
+      setTimeout(() => setShowSuccessToast(null), 3000);
     } catch (err) {
       console.error("Failed to copy image", err);
       alert("حدث خطأ أثناء نسخ الصورة. الميزة قد لا تعمل في هذا المتصفح.");
+      const container = document.getElementById("export-container");
+      if (container && document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
     }
   };
 
@@ -886,7 +890,7 @@ export default function CompaniesModule({
                           e.preventDefault();
                           const success = await copySettledImage(c.name, "كارت مخالصة للشركة");
                           if (success) {
-                            alert("تم نسخ كارت المخالصة بنجاح 📋");
+                            alert("تم مشاركة كارت المخالصة بنجاح 📋");
                           }
                         }}
                         className="bg-emerald-500/80 hover:bg-emerald-600 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-md border border-emerald-300"
