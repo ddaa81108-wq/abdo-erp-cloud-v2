@@ -17,6 +17,7 @@ import {
   Copy,
 } from "lucide-react";
 import html2canvas from "html2canvas";
+import { copySettledImage } from "../utils/imageExporterUtils";
 import { ERPState, Company, CompanyTransaction } from "../types";
 
 interface CompaniesModuleProps {
@@ -463,7 +464,6 @@ export default function CompaniesModule({
           paymentToday:
             (c.paymentToday || 0) +
             (strategy === "settle_directly" ? outstanding : 0),
-          isDeleted: true,
         };
       }
       return c;
@@ -863,7 +863,7 @@ export default function CompaniesModule({
                 if ((e.target as Element).closest("button")) return;
                 setSelectedCompId(c.id);
               }}
-              className={`${clr.bg} ${clr.border} border rounded-2xl p-5 shadow-xl relative overflow-hidden group cursor-pointer hover:scale-101 transition-all`}
+              className={`${Number(remaining) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-2" : clr.bg + " " + clr.border} border rounded-2xl p-5 shadow-xl relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all`}
             >
               <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Landmark className="w-24 h-24 text-white" />
@@ -878,18 +878,36 @@ export default function CompaniesModule({
                     {c.name}
                   </h4>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleCopyCardImage(c, remaining);
-                      }}
-                      className="bg-white/10 hover:bg-white/30 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
-                      title="نسخ كشف مختصر كصورة 📋"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
+                    {Number(remaining) === 0 ? (
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const success = await copySettledImage(c.name, "كارت مخالصة للشركة");
+                          if (success) {
+                            alert("تم نسخ كارت المخالصة بنجاح 📋");
+                          }
+                        }}
+                        className="bg-emerald-500/80 hover:bg-emerald-600 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-md border border-emerald-300"
+                        title="نسخ كارت المخالصة 📋"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleCopyCardImage(c, remaining);
+                        }}
+                        className="bg-white/10 hover:bg-white/30 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                        title="نسخ كشف مختصر كصورة 📋"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -923,7 +941,7 @@ export default function CompaniesModule({
                         -{minus.toLocaleString()} (دفعة)
                       </span>
                     )}
-                    {plus === 0 && minus === 0 && remaining === 0 && (
+                    {plus === 0 && minus === 0 && Number(remaining) === 0 && (
                       <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 backdrop-blur-md shadow-xs">
                         خالص ✓
                       </span>

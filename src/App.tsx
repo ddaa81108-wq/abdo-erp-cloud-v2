@@ -42,6 +42,7 @@ import ExcelImporter from "./components/ExcelImporter";
 import ImageExporter from "./components/ImageExporter";
 import LoginScreen from "./components/LoginScreen";
 import SettingsModule from "./components/SettingsModule";
+import { copyCustomCardImage } from "./utils/imageExporterUtils";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -133,6 +134,11 @@ export default function App() {
   // Image share card modal states
   const [showImageExportModal, setShowImageExportModal] = useState(false);
   const [exportSectionTitle, setExportSectionTitle] = useState("");
+  
+  // Custom Card Modal state
+  const [showCustomCardModal, setShowCustomCardModal] = useState(false);
+  const [customCardValue, setCustomCardValue] = useState("");
+
   const [exportMetrics, setExportMetrics] = useState({
     label1: "",
     value1: "",
@@ -902,6 +908,15 @@ export default function App() {
             )}
           </div>
 
+          <button
+            onClick={() => setShowCustomCardModal(true)}
+            className="bg-amber-500 hover:bg-amber-600 text-white border border-amber-400 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0"
+            title="مُولد الكروت الحرة المخصصة 3D"
+          >
+            <span className="text-sm">👑</span>
+            <span>إنشاء كارت مخصص</span>
+          </button>
+
           {/* Quick Universal widgets trigger buttons & DATA SEEDER BUTTON */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* 👑 زر تغيير المظهر الفاخر (Prestige Dynamic Theme Controller) */}
@@ -1338,6 +1353,69 @@ export default function App() {
               }}
               onClose={() => setShowExcelImportModal(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Custom Card Modal */}
+      {showCustomCardModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200">
+            <div className="bg-gradient-to-l from-amber-500 to-amber-600 p-5 flex items-center justify-between">
+              <h3 className="font-extrabold text-white text-lg flex items-center gap-2">
+                <span>👑</span>
+                <span>قالب سعر الأهرام 3D</span>
+              </h3>
+              <button
+                onClick={() => setShowCustomCardModal(false)}
+                className="bg-white/20 hover:bg-white/30 text-white p-1.5 rounded-full transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 mb-1.5">السعر الجديد</label>
+                <input
+                  type="number"
+                  step="any"
+                  value={customCardValue}
+                  onChange={(e) => setCustomCardValue(e.target.value)}
+                  placeholder="مثال: 12500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-2xl font-black text-center font-mono focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                  dir="ltr"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+              <button
+                onClick={() => setShowCustomCardModal(false)}
+                className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-all"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={async () => {
+                  if (!customCardValue) {
+                    alert("يرجى إدخال السعر أولاً.");
+                    return;
+                  }
+                  
+                  const success = await copyCustomCardImage(customCardValue);
+                  if (success) {
+                    setShowCustomCardModal(false);
+                    // Reset fields
+                    setCustomCardValue("");
+                  }
+                }}
+                className="px-6 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <span>إنشاء ونسخ الكارت</span>
+                <span>✨</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

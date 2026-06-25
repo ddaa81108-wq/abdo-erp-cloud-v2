@@ -184,17 +184,18 @@ export default function ImageExporter({
 
   // 3. Clipboard integration: Write image blob directly
   const handleCopyToClipboard = async () => {
-    const url = await generateCardImage();
-    if (!url) return;
-
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+      const makeImagePromise = async (): Promise<Blob> => {
+        const url = await generateCardImage();
+        if (!url) throw new Error("Failed to generate image");
+        const response = await fetch(url);
+        return await response.blob();
+      };
 
       // Attempt writing image to clipboard
       await navigator.clipboard.write([
         new ClipboardItem({
-          [blob.type]: blob,
+          'image/png': makeImagePromise() as any,
         }),
       ]);
 
@@ -202,7 +203,7 @@ export default function ImageExporter({
       setTimeout(() => setCopied(false), 3000);
     } catch (err) {
       console.warn(
-        "ClipboardItem not supported in iframe sandbox. Direct fallback shown.",
+        "ClipboardItem failed", err
       );
       setErrorMessage(
         'قيود الأمان للمتصفح تمنع النسخ التلقائي المباشر للصور للحافظة. يرجى الضغط زر "حفظ الصورة" أو النقر مطولاً على مستعرض المعاينة وحفظها.',

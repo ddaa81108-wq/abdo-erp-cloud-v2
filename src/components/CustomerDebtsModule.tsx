@@ -26,6 +26,7 @@ import {
   TreasuryTransaction,
 } from "../types";
 import html2canvas from "html2canvas";
+import { copySettledImage } from "../utils/imageExporterUtils";
 
 interface CustomerDebtsModuleProps {
   state: ERPState;
@@ -602,9 +603,7 @@ export default function CustomerDebtsModule({
 
     if (paymentType === "full") {
       setSelectedCustomerId(null); // إغلاق البطاقة لانتهاء الدين
-      alert("🎉 تم تسديد الدين بالكامل وإغلاق دورة الزبون المالية بنجاح.");
-      // Delete the customer as requested (مسح فوري)
-      handleQuickDelete(selectedCustomerId);
+      alert("🎉 تم تسديد الدين بالكامل وإغلاق دورة الزبون المالية بنجاح. يمكنك الآن نسخ كارت المخالصة.");
     } else {
       alert("🎉 تم خصم الدفعة الجزئية من دين الزبون.");
     }
@@ -1005,7 +1004,7 @@ export default function CustomerDebtsModule({
                   setSelectedCustomerId(acc.cust.id);
                 }
               }}
-              className={`bg-white border-x border-b border-t-4 border-slate-200 ${clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
+              className={`bg-white border-x border-b border-t-4 border-slate-200 ${Number(acc.debtBalance) === 0 ? "border-t-emerald-400 bg-emerald-50/30" : clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
             >
               {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
               {selectionMode && isSelected && (
@@ -1055,13 +1054,21 @@ export default function CustomerDebtsModule({
 
                   <button
                     type="button"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      handleCopyDebtImage(acc.cust.name, acc.debtBalance);
+                      if (Number(acc.debtBalance) === 0) {
+                        const success = await copySettledImage(acc.cust.name);
+                        if (success) {
+                          setShowSuccessToast("تم نسخ كارت المخالصة بنجاح 📋");
+                          setTimeout(() => setShowSuccessToast(null), 3000);
+                        }
+                      } else {
+                        handleCopyDebtImage(acc.cust.name, acc.debtBalance);
+                      }
                     }}
-                    className="absolute top-1 left-7 opacity-0 group-hover:opacity-100 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
-                    title="نسخ كارت الصورة"
+                    className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`}
+                    title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
                   >
                     <Copy className="w-3 h-3" />
                   </button>
@@ -1286,15 +1293,31 @@ export default function CustomerDebtsModule({
                     >
                       تصدير الكشف المبوب 📸
                     </button>
-                    <button
-                      onClick={() =>
-                        handleCopyDebtImage(selectedAccDetails.cust.name, selectedAccDetails.debtBalance)
-                      }
-                      className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      نسخ كارت الدين السريع 📋
-                    </button>
+                    {selectedAccDetails.debtBalance === 0 ? (
+                      <button
+                        onClick={async () => {
+                          const success = await copySettledImage(selectedAccDetails.cust.name);
+                          if (success) {
+                            setShowSuccessToast("تم نسخ كارت المخالصة بنجاح 📋");
+                            setTimeout(() => setShowSuccessToast(null), 3000);
+                          }
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center shadow-md border border-emerald-500"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        نسخ كارت المخالصة 📋
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          handleCopyDebtImage(selectedAccDetails.cust.name, selectedAccDetails.debtBalance)
+                        }
+                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        نسخ كارت الدين السريع 📋
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1520,8 +1543,7 @@ export default function CustomerDebtsModule({
                 {paymentType === "full" && (
                   <p className="text-[10px] text-slate-405 mt-1">
                     * في الدفع الكامل، يتم جلب رصيد الدين المتبقي للزبون
-                    تلقائياً وهو {selectedAccDetails.debtBalance} د.ل. وسيتم
-                    تحويله للأرشيف تلقائياً.
+                    تلقائياً وهو {selectedAccDetails.debtBalance} د.ل.
                   </p>
                 )}
               </div>

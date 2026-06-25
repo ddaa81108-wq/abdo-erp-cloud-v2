@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
 import html2canvas from 'html2canvas';
+import { copySettledImage } from "../utils/imageExporterUtils";
 
 interface DepositsModuleProps {
   state: ERPState;
@@ -215,7 +216,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
       ...dep,
       amount: updatedTotal,
       amountLyd: updatedLyd,
-      status: isNowCleared ? 'refunded' : 'held', // auto clear if all balances are zero!
+      status: 'held', // auto clear disabled to keep card visible
       history: [...currentHistory, newSubTx],
       note: actionNote || dep.note
     };
@@ -280,7 +281,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
       amount: updatedLyd,
       amountLyd: updatedLyd,
       amountEgp: updatedEgp,
-      status: isNowCleared ? 'refunded' : 'held',
+      status: 'held',
       history: [...currentHistory, newSubTx]
     };
 
@@ -331,7 +332,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     updatedDeposits[depIndex] = {
       ...dep,
       amountEgp: updatedEgp,
-      status: isNowCleared ? 'refunded' : 'held',
+      status: 'held',
       history: [...currentHistory, newSubTx]
     };
 
@@ -447,7 +448,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
       amount: updatedLyd,
       amountLyd: updatedLyd,
       amountEgp: updatedEgp,
-      status: isNowCleared ? 'refunded' : 'held',
+      status: 'held',
       history: [...getHistory(dep), newSubTx]
     };
 
@@ -547,7 +548,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
       ...dep,
       amount: updatedLyd,
       amountLyd: updatedLyd,
-      status: isNowCleared ? 'refunded' : 'held',
+      status: 'held',
       history: [...getHistory(dep), newSubTx]
     };
 
@@ -666,8 +667,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   // Filter calculations
   const activeHeldDeposits = state.trustDeposits.filter(d => 
     !d.isDeleted &&
-    d.status === 'held' && 
-    (getAmountLyd(d) !== 0 || getAmountEgp(d) !== 0)
+    d.status === 'held'
   ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const archivedDeposits = state.trustDeposits.filter(d => 
@@ -885,7 +885,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                     setExpandedCardId(isExpanded ? null : d.id);
                     if (!isExpanded) resetActionForm();
                   }}
-                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
+                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'border-r-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300' : (customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
                 >
                   {/* CARD TILE BODY */}
                   <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1">{d.customerName}</h4>
@@ -941,15 +941,22 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                               <div className="flex gap-2 items-center mt-3">
                                 <button
                                   type="button"
-                                  onClick={(e) => {
+                                  onClick={async (e) => {
                                     e.stopPropagation();
-                                    handleCopyDepositImage(d);
+                                    if (Number(customerLyd) === 0 && Number(customerEgp) === 0) {
+                                      const success = await copySettledImage(d.customerName);
+                                      if (success) {
+                                        alert("تم نسخ كارت المخالصة بنجاح 📋");
+                                      }
+                                    } else {
+                                      handleCopyDepositImage(d);
+                                    }
                                   }}
-                                  className="bg-indigo-600 hover:bg-indigo-700 text-white p-2 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-bold shadow-md shadow-indigo-600/20"
-                                  title="نسخ كارت الصورة 📸"
+                                  className={`p-2 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-bold shadow-md text-white ${Number(customerLyd) === 0 && Number(customerEgp) === 0 ? 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-500' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'}`}
+                                  title={Number(customerLyd) === 0 && Number(customerEgp) === 0 ? "نسخ كارت المخالصة 📋" : "نسخ كارت الصورة 📸"}
                                 >
                                   <Copy className="w-4 h-4" />
-                                  نسخ كارت الصورة
+                                  {Number(customerLyd) === 0 && Number(customerEgp) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
                                 </button>
                               </div>
                               <span className="text-xs text-slate-500 block mt-2 font-mono">

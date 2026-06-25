@@ -13,9 +13,11 @@ import {
   Check,
   FileText,
   Camera,
+  Copy,
 } from "lucide-react";
 import { ERPState, Merchant, MerchantTransaction } from "../types";
 import DebtBird from "./DebtBird";
+import { copySettledImage } from "../utils/imageExporterUtils";
 
 interface MerchantsModuleProps {
   state: ERPState;
@@ -418,7 +420,6 @@ export default function MerchantsModule({
           paymentToday:
             (m.paymentToday || 0) +
             (strategy === "settle_directly" ? outstanding : 0),
-          isDeleted: true,
         };
       }
       return m;
@@ -673,7 +674,7 @@ export default function MerchantsModule({
                   }
                   setSelectedMerchId(m.id);
                 }}
-                className={`bg-white border-y border-l border-slate-200 border-r-4 ${remaining > 0 ? "border-r-purple-500 hover:border-purple-450" : "border-r-emerald-500 hover:border-emerald-450"} p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between shadow-xs hover:shadow-xs group max-h-[58px]`}
+                className={`bg-white border-y border-l border-slate-200 border-r-4 ${Number(remaining) > 0 ? "border-r-purple-500 hover:border-purple-450" : "border-r-emerald-500 bg-emerald-50/40"} p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between shadow-xs hover:shadow-xs group max-h-[58px]`}
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <button
@@ -699,14 +700,31 @@ export default function MerchantsModule({
                 </div>
 
                 <div className="text-left shrink-0">
-                  {remaining > 0 ? (
+                  {Number(remaining) > 0 ? (
                     <span className="font-mono font-extrabold text-purple-600 text-xs bg-purple-50/50 px-2 py-1 rounded border border-purple-100/50 block">
                       {remaining.toLocaleString()} د.ل
                     </span>
                   ) : (
-                    <span className="font-sans font-extrabold text-emerald-700 text-[10px] bg-emerald-50 px-2 py-1 rounded border border-emerald-100 block">
-                      مسدد ✓
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const success = await copySettledImage(m.name, "كارت مخالصة للتاجر");
+                          if (success) {
+                            alert("تم نسخ كارت المخالصة بنجاح 📋");
+                          }
+                        }}
+                        className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 p-1 rounded border border-emerald-100 shadow-xs cursor-pointer transition-colors"
+                        title="نسخ كارت المخالصة 📋"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                      <span className="font-sans font-extrabold text-emerald-700 text-[10px] bg-emerald-50 px-2 py-1 rounded border border-emerald-100 block">
+                        مسدد ✓
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -912,6 +930,22 @@ export default function MerchantsModule({
                   <Trash2 className="w-4 h-4" />
                   <span>أرشفة وإخفاء التاجر من الشاشة 🗑️</span>
                 </button>
+
+                {Number(selectedMerchDetails.merch.balance) === 0 && (
+                  <button
+                    onClick={async () => {
+                      const success = await copySettledImage(selectedMerchDetails.merch.name, "كارت مخالصة للتاجر");
+                      if (success) {
+                        alert("تم نسخ كارت المخالصة بنجاح 📋");
+                      }
+                    }}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-400 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer shadow-md"
+                    title="نسخ كارت المخالصة 📋"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>نسخ كارت المخالصة 📋</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() =>
