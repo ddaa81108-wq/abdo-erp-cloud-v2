@@ -26,372 +26,128 @@ input[type="number"] {
   -moz-appearance: textfield !important;
 }
 
-/* 👑 premium custom themes (التنسيق والبرستيج الملكي والماسي) */
-
-/* 1. Midnight Dark Theme (المظهر الداكن الكوني الفاخر) */
-.theme-dark {
-  background-color: #0b0f19 !important; /* Extremely dark elegant slate */
-  color: #f1f5f9 !important;
+/* 1. الوضع النهاري (الأبيض البنكي) - الافتراضي */
+:root {
+    --bg-main: #f4f6f9;
+    --bg-surface: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --accent-color: #0f172a; /* كحلي داكن */
+    --border-color: #e2e8f0;
 }
 
-.theme-dark header {
-  background-color: #0f172a !important;
-  border-bottom: 2px solid #1e293b !important;
+/* 2. الوضع الليلي (الأسود الملكي) */
+[data-theme="royal-dark"] {
+    --bg-main: #0a0a0a;
+    --bg-surface: #141414;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-color: #d4af37; /* ذهبي ملكي */
+    --border-color: #333333;
 }
 
-/* Override card backgrounds and borders */
-.theme-dark .bg-white, 
-.theme-dark .bg-slate-50,
-.theme-dark .bg-slate-100 {
-  background-color: #111827 !important; /* Deeper grey-slate dark */
-  color: #f3f4f6 !important;
+/* 3. الأزرق المؤسسي (لون البنوك) */
+[data-theme="corporate-navy"] {
+    --bg-main: #020617;
+    --bg-surface: #0f172a;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --accent-color: #38bdf8; /* أزرق سماوي */
+    --border-color: #1e293b;
 }
 
-.theme-dark .border-slate-200, 
-.theme-dark .border-slate-100,
-.theme-dark .border-gray-200,
-.theme-dark .border-indigo-100,
-.theme-dark .border-purple-100 {
-  border-color: #1f2937 !important;
+/* 4. الرمادي الجرافيت (مريح جداً للعين) */
+[data-theme="graphite-gray"] {
+    --bg-main: #1e1e1e;
+    --bg-surface: #2d2d2d;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --accent-color: #fbbf24; /* أصفر هادي */
+    --border-color: #404040;
 }
 
-.theme-dark .divide-slate-200,
-.theme-dark .divide-slate-100 {
-  border-color: #1f2937 !important;
+/* 5. وضع التداول (شاشات البورصة) */
+[data-theme="terminal-market"] {
+    --bg-main: #050505;
+    --bg-surface: #111111;
+    --text-primary: #ffffff;
+    --text-secondary: #888888;
+    --accent-color: #10b981; /* أخضر فوركس */
+    --border-color: #222222;
 }
 
-.theme-dark select,
-.theme-dark input,
-.theme-dark textarea {
-  background-color: #1f2937 !important;
-  color: #ffffff !important;
-  border-color: #374151 !important;
+/* تطبيق المتغيرات على أساسيات المنظومة */
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.theme-dark .text-slate-900,
-.theme-dark .text-slate-800,
-.theme-dark .text-slate-700,
-.theme-dark .text-slate-600 {
-  color: #e5e7eb !important;
+/* Overriding Tailwind classes globally using variables */
+header {
+  background-color: var(--bg-surface) !important;
+  border-bottom: 2px solid var(--accent-color) !important;
 }
 
-.theme-dark .text-slate-500,
-.theme-dark .text-slate-400,
-.theme-dark .text-slate-450 {
-  color: #9ca3af !important;
+.bg-white, .bg-slate-50, .bg-slate-100, .bg-slate-900, .bg-slate-800 {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
 }
 
-.theme-dark h1, .theme-dark h2, .theme-dark h3, .theme-dark h4, .theme-dark h5, .theme-dark h6 {
-  color: #f9fafb !important;
+.border-slate-200, .border-slate-100, .border-gray-200, .border-indigo-100, .border-purple-100, .border-slate-800, .border-slate-700, .border-indigo-950 {
+  border-color: var(--border-color) !important;
 }
 
-.theme-dark table th {
-  background-color: #1f2937 !important;
-  color: #f9fafb !important;
+.divide-slate-200, .divide-slate-100, .divide-slate-800 {
+  border-color: var(--border-color) !important;
 }
 
-.theme-dark table td {
-  border-bottom-color: #1f2937 !important;
+select, input, textarea {
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
 }
 
-
-/* 2. Royal Golden Theme (المظهر الملكي المذهب) */
-.theme-golden {
-  background-color: #0d0c0a !important; /* Rich obsidian gold */
-  color: #f7e9cc !important;
+.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-white {
+  color: var(--text-primary) !important;
 }
 
-.theme-golden header {
-  background-color: #181511 !important;
-  border-bottom: 2px solid #d4af37 !important; /* Real gold accent */
+.text-slate-500, .text-slate-400, .text-slate-450, .text-slate-300 {
+  color: var(--text-secondary) !important;
 }
 
-/* Force dark golden cards */
-.theme-golden .bg-white,
-.theme-golden .bg-slate-50,
-.theme-golden .bg-slate-100 {
-  background-color: #191612 !important; /* Rich deep copper-gold */
-  color: #fcefd6 !important;
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary) !important;
 }
 
-/* Metallic Gold Borders */
-.theme-golden .border-slate-200,
-.theme-golden .border-slate-100,
-.theme-golden .border-gray-200,
-.theme-golden .border-indigo-100,
-.theme-golden .border-purple-100 {
-  border-color: #3d3425 !important;
+/* Some highlight text overrides if needed */
+.text-indigo-600, .text-indigo-500, .text-indigo-400 {
+    color: var(--accent-color) !important;
+}
+.bg-indigo-600, .bg-indigo-500 {
+    background-color: var(--accent-color) !important;
+    color: var(--bg-main) !important;
 }
 
-.theme-golden .divide-slate-200,
-.theme-golden .divide-slate-100 {
-  border-color: #3d3425 !important;
+table th {
+  background-color: var(--bg-surface) !important;
+  color: var(--accent-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
-.theme-golden select,
-.theme-golden input,
-.theme-golden textarea {
-  background-color: #241f19 !important;
-  color: #fcefd6 !important;
-  border-color: #d4af37 !important; /* Gold control borders */
+table td {
+  border-bottom-color: var(--border-color) !important;
 }
 
-.theme-golden .text-slate-900,
-.theme-golden .text-slate-800,
-.theme-golden .text-slate-700,
-.theme-golden .text-slate-650,
-.theme-golden .text-slate-600 {
-  color: #f3e5c8 !important;
-}
-
-.theme-golden .text-slate-500,
-.theme-golden .text-slate-400,
-.theme-golden .text-slate-450 {
-  color: #c4af87 !important;
-}
-
-.theme-golden h1, .theme-golden h2, .theme-golden h3, .theme-golden h4, .theme-golden h5, .theme-golden h6 {
-  color: #fdf6e2 !important;
-  text-shadow: 0 0 1px rgba(212, 175, 55, 0.2);
-}
-
-.theme-golden table th {
-  background-color: #24201a !important;
-  color: #d4af37 !important; /* Golden headers */
-}
-
-.theme-golden table td {
-  border-bottom-color: #312b21 !important;
-}
-
-.theme-golden select option {
-  background-color: #191612 !important;
-  color: #fcefd6 !important;
+select option {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Dynamic side borders custom sizing on cards with .border-r-4 */
 .border-r-4 {
   border-right-width: 4px !important;
 }
-
-/* 3. Emerald Dark Theme (مظهر زمردي داكن) */
-.theme-emerald { background-color: #022c22 !important; color: #ecfdf5 !important; }
-.theme-emerald header { background-color: #064e3b !important; border-bottom: 2px solid #10b981 !important; }
-.theme-emerald .bg-white, .theme-emerald .bg-slate-50, .theme-emerald .bg-slate-100 { background-color: #064e3b !important; color: #ecfdf5 !important; }
-.theme-emerald .border-slate-200, .theme-emerald .border-slate-100, .theme-emerald .divide-slate-200 { border-color: #047857 !important; }
-.theme-emerald select, .theme-emerald input, .theme-emerald textarea { background-color: #0f766e !important; color: #fff !important; border-color: #34d399 !important; }
-.theme-emerald .text-slate-900, .theme-emerald .text-slate-800, .theme-emerald .text-slate-700, .theme-emerald .text-slate-600 { color: #d1fae5 !important; }
-.theme-emerald .text-slate-500, .theme-emerald .text-slate-400 { color: #a7f3d0 !important; }
-.theme-emerald h1, .theme-emerald h2, .theme-emerald h3, .theme-emerald h4, .theme-emerald h5, .theme-emerald h6 { color: #f0fdf4 !important; }
-.theme-emerald table th { background-color: #065f46 !important; color: #34d399 !important; }
-.theme-emerald table td { border-bottom-color: #047857 !important; }
-.theme-emerald select option { background-color: #064e3b !important; color: #ecfdf5 !important; }
-
-/* 4. Ocean Blue Theme (مظهر محيطي أزرق) */
-.theme-ocean { background-color: #082f49 !important; color: #f0f9ff !important; }
-.theme-ocean header { background-color: #0c4a6e !important; border-bottom: 2px solid #38bdf8 !important; }
-.theme-ocean .bg-white, .theme-ocean .bg-slate-50, .theme-ocean .bg-slate-100 { background-color: #075985 !important; color: #e0f2fe !important; }
-.theme-ocean .border-slate-200, .theme-ocean .border-slate-100, .theme-ocean .divide-slate-200 { border-color: #0369a1 !important; }
-.theme-ocean select, .theme-ocean input, .theme-ocean textarea { background-color: #0a273b !important; color: #fff !important; border-color: #0284c7 !important; }
-.theme-ocean .text-slate-900, .theme-ocean .text-slate-800, .theme-ocean .text-slate-700, .theme-ocean .text-slate-600 { color: #bae6fd !important; }
-.theme-ocean .text-slate-500, .theme-ocean .text-slate-400 { color: #7dd3fc !important; }
-.theme-ocean h1, .theme-ocean h2, .theme-ocean h3, .theme-ocean h4, .theme-ocean h5, .theme-ocean h6 { color: #f0f9ff !important; }
-.theme-ocean table th { background-color: #0369a1 !important; color: #bae6fd !important; }
-.theme-ocean table td { border-bottom-color: #075985 !important; }
-.theme-ocean select option { background-color: #075985 !important; color: #e0f2fe !important; }
-
-/* 5. Crimson Red Theme (مظهر قرمزي دموي) */
-.theme-crimson { background-color: #450a0a !important; color: #fef2f2 !important; }
-.theme-crimson header { background-color: #7f1d1d !important; border-bottom: 2px solid #f87171 !important; }
-.theme-crimson .bg-white, .theme-crimson .bg-slate-50, .theme-crimson .bg-slate-100 { background-color: #611818 !important; color: #fee2e2 !important; }
-.theme-crimson .border-slate-200, .theme-crimson .border-slate-100, .theme-crimson .divide-slate-200 { border-color: #991b1b !important; }
-.theme-crimson select, .theme-crimson input, .theme-crimson textarea { background-color: #7f1d1d !important; color: #fff !important; border-color: #fca5a5 !important; }
-.theme-crimson .text-slate-900, .theme-crimson .text-slate-800, .theme-crimson .text-slate-700, .theme-crimson .text-slate-600 { color: #fecaca !important; }
-.theme-crimson .text-slate-500, .theme-crimson .text-slate-400 { color: #fca5a5 !important; }
-.theme-crimson h1, .theme-crimson h2, .theme-crimson h3, .theme-crimson h4, .theme-crimson h5, .theme-crimson h6 { color: #fef2f2 !important; }
-.theme-crimson table th { background-color: #7f1d1d !important; color: #fca5a5 !important; }
-.theme-crimson table td { border-bottom-color: #7f1d1d !important; }
-.theme-crimson select option { background-color: #7f1d1d !important; color: #fee2e2 !important; }
-
-/* 6. Amethyst Purple Theme (مظهر أرجواني فاخر) */
-.theme-amethyst { background-color: #2e1065 !important; color: #faf5ff !important; }
-.theme-amethyst header { background-color: #3b0764 !important; border-bottom: 2px solid #c084fc !important; }
-.theme-amethyst .bg-white, .theme-amethyst .bg-slate-50, .theme-amethyst .bg-slate-100 { background-color: #3e1273 !important; color: #f3e8ff !important; }
-.theme-amethyst .border-slate-200, .theme-amethyst .border-slate-100, .theme-amethyst .divide-slate-200 { border-color: #5b21b6 !important; }
-.theme-amethyst select, .theme-amethyst input, .theme-amethyst textarea { background-color: #4c1d95 !important; color: #fff !important; border-color: #d8b4fe !important; }
-.theme-amethyst .text-slate-900, .theme-amethyst .text-slate-800, .theme-amethyst .text-slate-700, .theme-amethyst .text-slate-600 { color: #e9d5ff !important; }
-.theme-amethyst .text-slate-500, .theme-amethyst .text-slate-400 { color: #c084fc !important; }
-.theme-amethyst h1, .theme-amethyst h2, .theme-amethyst h3, .theme-amethyst h4, .theme-amethyst h5, .theme-amethyst h6 { color: #faf5ff !important; }
-.theme-amethyst table th { background-color: #5b21b6 !important; color: #d8b4fe !important; }
-.theme-amethyst table td { border-bottom-color: #4c1d95 !important; }
-.theme-amethyst select option { background-color: #4c1d95 !important; color: #f3e8ff !important; }
-
-/* 7. Cyberpunk Theme (مظهر سايبر تيك) */
-.theme-cyber { background-color: #09090b !important; color: #a1a1aa !important; }
-.theme-cyber header { background-color: #18181b !important; border-bottom: 2px solid #2cf1a6 !important; box-shadow: 0 4px 20px rgba(44, 241, 166, 0.1); }
-.theme-cyber .bg-white, .theme-cyber .bg-slate-50, .theme-cyber .bg-slate-100 { background-color: #121214 !important; color: #e4e4e7 !important; border: 1px solid #27272a !important; }
-.theme-cyber .border-slate-200, .theme-cyber .border-slate-100, .theme-cyber .divide-slate-200 { border-color: #27272a !important; }
-.theme-cyber select, .theme-cyber input, .theme-cyber textarea { background-color: #000 !important; color: #2cf1a6 !important; border-color: #2cf1a6 !important; }
-.theme-cyber .text-slate-900, .theme-cyber .text-slate-800, .theme-cyber .text-slate-700, .theme-cyber .text-slate-600 { color: #d4d4d8 !important; }
-.theme-cyber .text-slate-500, .theme-cyber .text-slate-400 { color: #a1a1aa !important; }
-.theme-cyber h1, .theme-cyber h2, .theme-cyber h3, .theme-cyber h4, .theme-cyber h5, .theme-cyber h6 { color: #fff !important; text-shadow: 0 0 5px rgba(44, 241, 166, 0.5); }
-.theme-cyber table th { background-color: #18181b !important; color: #2cf1a6 !important; border-bottom: 1px solid #2cf1a6 !important; }
-.theme-cyber table td { border-bottom-color: #27272a !important; }
-.theme-cyber select option { background-color: #000 !important; color: #2cf1a6 !important; }
-
-/* 8. Rose Theme (مظهر روز فاتح) */
-.theme-rose { background-color: #fff1f2 !important; color: #881337 !important; }
-.theme-rose header { background-color: #ffe4e6 !important; border-bottom: 2px solid #fb7185 !important; }
-.theme-rose .bg-white, .theme-rose .bg-slate-50, .theme-rose .bg-slate-100 { background-color: #fff !important; color: #881337 !important; border: 1px solid #fecdd3 !important; }
-.theme-rose .border-slate-200, .theme-rose .border-slate-100, .theme-rose .divide-slate-200 { border-color: #fda4af !important; }
-.theme-rose select, .theme-rose input, .theme-rose textarea { background-color: #fff !important; color: #881337 !important; border-color: #fb7185 !important; }
-.theme-rose .text-slate-900, .theme-rose .text-slate-800, .theme-rose .text-slate-700, .theme-rose .text-slate-600 { color: #9f1239 !important; }
-.theme-rose .text-slate-500, .theme-rose .text-slate-400 { color: #e11d48 !important; }
-.theme-rose h1, .theme-rose h2, .theme-rose h3, .theme-rose h4, .theme-rose h5, .theme-rose h6 { color: #881337 !important; }
-.theme-rose table th { background-color: #ffe4e6 !important; color: #e11d48 !important; }
-.theme-rose table td { border-bottom-color: #fecdd3 !important; }
-.theme-rose select option { background-color: #fff !important; color: #881337 !important; }
-
-/* 9. Monochrome Theme (مظهر رمادي كلاسيكي) */
-.theme-monochrome { background-color: #171717 !important; color: #d4d4d8 !important; }
-.theme-monochrome header { background-color: #262626 !important; border-bottom: 2px solid #a3a3a3 !important; }
-.theme-monochrome .bg-white, .theme-monochrome .bg-slate-50, .theme-monochrome .bg-slate-100 { background-color: #262626 !important; color: #f5f5f5 !important; }
-.theme-monochrome .border-slate-200, .theme-monochrome .border-slate-100, .theme-monochrome .divide-slate-200 { border-color: #404040 !important; }
-.theme-monochrome select, .theme-monochrome input, .theme-monochrome textarea { background-color: #171717 !important; color: #fff !important; border-color: #737373 !important; }
-.theme-monochrome .text-slate-900, .theme-monochrome .text-slate-800, .theme-monochrome .text-slate-700, .theme-monochrome .text-slate-600 { color: #e5e5e5 !important; }
-.theme-monochrome .text-slate-500, .theme-monochrome .text-slate-400 { color: #a3a3a3 !important; }
-.theme-monochrome h1, .theme-monochrome h2, .theme-monochrome h3, .theme-monochrome h4, .theme-monochrome h5, .theme-monochrome h6 { color: #fff !important; }
-.theme-monochrome table th { background-color: #404040 !important; color: #e5e5e5 !important; }
-.theme-monochrome table td { border-bottom-color: #404040 !important; }
-.theme-monochrome select option { background-color: #262626 !important; color: #f5f5f5 !important; }
-
-/* 10. Autumn Theme (مظهر خريفي) */
-.theme-autumn { background-color: #431407 !important; color: #ffedd5 !important; }
-.theme-autumn header { background-color: #7c2d12 !important; border-bottom: 2px solid #ea580c !important; }
-.theme-autumn .bg-white, .theme-autumn .bg-slate-50, .theme-autumn .bg-slate-100 { background-color: #9a3412 !important; color: #ffedd5 !important; border-color: #c2410c !important; }
-.theme-autumn .border-slate-200, .theme-autumn .border-slate-100, .theme-autumn .divide-slate-200 { border-color: #c2410c !important; }
-.theme-autumn select, .theme-autumn input, .theme-autumn textarea { background-color: #7c2d12 !important; color: #fff !important; border-color: #f97316 !important; }
-.theme-autumn .text-slate-900, .theme-autumn .text-slate-800, .theme-autumn .text-slate-700, .theme-autumn .text-slate-600 { color: #ffedd5 !important; }
-.theme-autumn .text-slate-500, .theme-autumn .text-slate-400 { color: #fdba74 !important; }
-.theme-autumn h1, .theme-autumn h2, .theme-autumn h3, .theme-autumn h4, .theme-autumn h5, .theme-autumn h6 { color: #fff !important; }
-.theme-autumn table th { background-color: #ea580c !important; color: #ffedd5 !important; }
-.theme-autumn table td { border-bottom-color: #c2410c !important; }
-.theme-autumn select option { background-color: #7c2d12 !important; color: #fff !important; }
-
-/* 11. Midnight Theme (مظهر منتصف الليل) */
-.theme-midnight { background-color: #020617 !important; color: #e2e8f0 !important; }
-.theme-midnight header { background-color: #0f172a !important; border-bottom: 2px solid #3b82f6 !important; }
-.theme-midnight .bg-white, .theme-midnight .bg-slate-50, .theme-midnight .bg-slate-100 { background-color: #1e293b !important; color: #f1f5f9 !important; border-color: #334155 !important; }
-.theme-midnight .border-slate-200, .theme-midnight .border-slate-100, .theme-midnight .divide-slate-200 { border-color: #334155 !important; }
-.theme-midnight select, .theme-midnight input, .theme-midnight textarea { background-color: #0f172a !important; color: #fff !important; border-color: #3b82f6 !important; }
-.theme-midnight .text-slate-900, .theme-midnight .text-slate-800, .theme-midnight .text-slate-700, .theme-midnight .text-slate-600 { color: #f1f5f9 !important; }
-.theme-midnight .text-slate-500, .theme-midnight .text-slate-400 { color: #94a3b8 !important; }
-.theme-midnight h1, .theme-midnight h2, .theme-midnight h3, .theme-midnight h4, .theme-midnight h5, .theme-midnight h6 { color: #fff !important; }
-.theme-midnight table th { background-color: #334155 !important; color: #f1f5f9 !important; }
-.theme-midnight table td { border-bottom-color: #475569 !important; }
-.theme-midnight select option { background-color: #0f172a !important; color: #fff !important; }
-
-/* 12. Sunset Theme (مظهر غروب الشمس) */
-.theme-sunset { background-color: #2e1065 !important; color: #fce7f3 !important; }
-.theme-sunset header { background-color: #581c87 !important; border-bottom: 2px solid #db2777 !important; }
-.theme-sunset .bg-white, .theme-sunset .bg-slate-50, .theme-sunset .bg-slate-100 { background-color: #7e22ce !important; color: #fdf2f8 !important; border-color: #a21caf !important; }
-.theme-sunset .border-slate-200, .theme-sunset .border-slate-100, .theme-sunset .divide-slate-200 { border-color: #a21caf !important; }
-.theme-sunset select, .theme-sunset input, .theme-sunset textarea { background-color: #581c87 !important; color: #fff !important; border-color: #db2777 !important; }
-.theme-sunset .text-slate-900, .theme-sunset .text-slate-800, .theme-sunset .text-slate-700, .theme-sunset .text-slate-600 { color: #fdf2f8 !important; }
-.theme-sunset .text-slate-500, .theme-sunset .text-slate-400 { color: #fbcfe8 !important; }
-.theme-sunset h1, .theme-sunset h2, .theme-sunset h3, .theme-sunset h4, .theme-sunset h5, .theme-sunset h6 { color: #fff !important; }
-.theme-sunset table th { background-color: #db2777 !important; color: #fdf2f8 !important; }
-.theme-sunset table td { border-bottom-color: #be185d !important; }
-.theme-sunset select option { background-color: #581c87 !important; color: #fff !important; }
-
-/* 13. Forest Theme (مظهر الغابة) */
-.theme-forest { background-color: #064e3b !important; color: #ecfccb !important; }
-.theme-forest header { background-color: #14532d !important; border-bottom: 2px solid #65a30d !important; }
-.theme-forest .bg-white, .theme-forest .bg-slate-50, .theme-forest .bg-slate-100 { background-color: #166534 !important; color: #f7fee7 !important; border-color: #15803d !important; }
-.theme-forest .border-slate-200, .theme-forest .border-slate-100, .theme-forest .divide-slate-200 { border-color: #15803d !important; }
-.theme-forest select, .theme-forest input, .theme-forest textarea { background-color: #14532d !important; color: #fff !important; border-color: #65a30d !important; }
-.theme-forest .text-slate-900, .theme-forest .text-slate-800, .theme-forest .text-slate-700, .theme-forest .text-slate-600 { color: #f7fee7 !important; }
-.theme-forest .text-slate-500, .theme-forest .text-slate-400 { color: #d9f99d !important; }
-.theme-forest h1, .theme-forest h2, .theme-forest h3, .theme-forest h4, .theme-forest h5, .theme-forest h6 { color: #fff !important; }
-.theme-forest table th { background-color: #15803d !important; color: #f7fee7 !important; }
-.theme-forest table td { border-bottom-color: #16a34a !important; }
-.theme-forest select option { background-color: #14532d !important; color: #fff !important; }
-
-/* 14. Lavender Theme (مظهر لافندر) */
-.theme-lavender { background-color: #f3e8ff !important; color: #3b0764 !important; }
-.theme-lavender header { background-color: #e9d5ff !important; border-bottom: 2px solid #a855f7 !important; }
-.theme-lavender .bg-white, .theme-lavender .bg-slate-50, .theme-lavender .bg-slate-100 { background-color: #fff !important; color: #4c1d95 !important; border-color: #d8b4fe !important; }
-.theme-lavender .border-slate-200, .theme-lavender .border-slate-100, .theme-lavender .divide-slate-200 { border-color: #d8b4fe !important; }
-.theme-lavender select, .theme-lavender input, .theme-lavender textarea { background-color: #fff !important; color: #4c1d95 !important; border-color: #a855f7 !important; }
-.theme-lavender .text-slate-900, .theme-lavender .text-slate-800, .theme-lavender .text-slate-700, .theme-lavender .text-slate-600 { color: #5b21b6 !important; }
-.theme-lavender .text-slate-500, .theme-lavender .text-slate-400 { color: #7e22ce !important; }
-.theme-lavender h1, .theme-lavender h2, .theme-lavender h3, .theme-lavender h4, .theme-lavender h5, .theme-lavender h6 { color: #3b0764 !important; }
-.theme-lavender table th { background-color: #d8b4fe !important; color: #4c1d95 !important; }
-.theme-lavender table td { border-bottom-color: #e9d5ff !important; }
-.theme-lavender select option { background-color: #fff !important; color: #4c1d95 !important; }
-
-/* 15. Coffee Theme (مظهر القهوة) */
-.theme-coffee { background-color: #3e2723 !important; color: #efebe9 !important; }
-.theme-coffee header { background-color: #4e342e !important; border-bottom: 2px solid #8d6e63 !important; }
-.theme-coffee .bg-white, .theme-coffee .bg-slate-50, .theme-coffee .bg-slate-100 { background-color: #5d4037 !important; color: #fff !important; border-color: #6d4c41 !important; }
-.theme-coffee .border-slate-200, .theme-coffee .border-slate-100, .theme-coffee .divide-slate-200 { border-color: #6d4c41 !important; }
-.theme-coffee select, .theme-coffee input, .theme-coffee textarea { background-color: #4e342e !important; color: #fff !important; border-color: #a1887f !important; }
-.theme-coffee .text-slate-900, .theme-coffee .text-slate-800, .theme-coffee .text-slate-700, .theme-coffee .text-slate-600 { color: #f5f5f5 !important; }
-.theme-coffee .text-slate-500, .theme-coffee .text-slate-400 { color: #bcaaa4 !important; }
-.theme-coffee h1, .theme-coffee h2, .theme-coffee h3, .theme-coffee h4, .theme-coffee h5, .theme-coffee h6 { color: #fff !important; }
-.theme-coffee table th { background-color: #6d4c41 !important; color: #fff !important; }
-.theme-coffee table td { border-bottom-color: #795548 !important; }
-.theme-coffee select option { background-color: #4e342e !important; color: #fff !important; }
-
-/* 16. Sapphire Theme (مظهر ياقوت) */
-.theme-sapphire { background-color: #0f172a !important; color: #e0f2fe !important; }
-.theme-sapphire header { background-color: #0c4a6e !important; border-bottom: 2px solid #0ea5e9 !important; }
-.theme-sapphire .bg-white, .theme-sapphire .bg-slate-50, .theme-sapphire .bg-slate-100 { background-color: #075985 !important; color: #f0f9ff !important; border-color: #0369a1 !important; }
-.theme-sapphire .border-slate-200, .theme-sapphire .border-slate-100, .theme-sapphire .divide-slate-200 { border-color: #0369a1 !important; }
-.theme-sapphire select, .theme-sapphire input, .theme-sapphire textarea { background-color: #082f49 !important; color: #fff !important; border-color: #38bdf8 !important; }
-.theme-sapphire .text-slate-900, .theme-sapphire .text-slate-800, .theme-sapphire .text-slate-700, .theme-sapphire .text-slate-600 { color: #f0f9ff !important; }
-.theme-sapphire .text-slate-500, .theme-sapphire .text-slate-400 { color: #7dd3fc !important; }
-.theme-sapphire h1, .theme-sapphire h2, .theme-sapphire h3, .theme-sapphire h4, .theme-sapphire h5, .theme-sapphire h6 { color: #fff !important; }
-.theme-sapphire table th { background-color: #0369a1 !important; color: #f0f9ff !important; }
-.theme-sapphire table td { border-bottom-color: #0284c7 !important; }
-.theme-sapphire select option { background-color: #082f49 !important; color: #fff !important; }
-
-/* 17. Cherry Theme (مظهر كرز أحمر) */
-.theme-cherry { background-color: #4c0519 !important; color: #ffe4e6 !important; }
-.theme-cherry header { background-color: #881337 !important; border-bottom: 2px solid #f43f5e !important; }
-.theme-cherry .bg-white, .theme-cherry .bg-slate-50, .theme-cherry .bg-slate-100 { background-color: #be123c !important; color: #fff1f2 !important; border-color: #e11d48 !important; }
-.theme-cherry .border-slate-200, .theme-cherry .border-slate-100, .theme-cherry .divide-slate-200 { border-color: #e11d48 !important; }
-.theme-cherry select, .theme-cherry input, .theme-cherry textarea { background-color: #881337 !important; color: #fff !important; border-color: #fb7185 !important; }
-.theme-cherry .text-slate-900, .theme-cherry .text-slate-800, .theme-cherry .text-slate-700, .theme-cherry .text-slate-600 { color: #fff1f2 !important; }
-.theme-cherry .text-slate-500, .theme-cherry .text-slate-400 { color: #fda4af !important; }
-.theme-cherry h1, .theme-cherry h2, .theme-cherry h3, .theme-cherry h4, .theme-cherry h5, .theme-cherry h6 { color: #fff !important; }
-.theme-cherry table th { background-color: #e11d48 !important; color: #fff1f2 !important; }
-.theme-cherry table td { border-bottom-color: #f43f5e !important; }
-.theme-cherry select option { background-color: #881337 !important; color: #fff !important; }
-
-/* 18. Dracula Theme (مظهر دراكولا) */
-.theme-dracula { background-color: #282a36 !important; color: #f8f8f2 !important; }
-.theme-dracula header { background-color: #44475a !important; border-bottom: 2px solid #bd93f9 !important; }
-.theme-dracula .bg-white, .theme-dracula .bg-slate-50, .theme-dracula .bg-slate-100 { background-color: #44475a !important; color: #f8f8f2 !important; border-color: #6272a4 !important; }
-.theme-dracula .border-slate-200, .theme-dracula .border-slate-100, .theme-dracula .divide-slate-200 { border-color: #6272a4 !important; }
-.theme-dracula select, .theme-dracula input, .theme-dracula textarea { background-color: #282a36 !important; color: #f8f8f2 !important; border-color: #ff79c6 !important; }
-.theme-dracula .text-slate-900, .theme-dracula .text-slate-800, .theme-dracula .text-slate-700, .theme-dracula .text-slate-600 { color: #f8f8f2 !important; }
-.theme-dracula .text-slate-500, .theme-dracula .text-slate-400 { color: #8be9fd !important; }
-.theme-dracula h1, .theme-dracula h2, .theme-dracula h3, .theme-dracula h4, .theme-dracula h5, .theme-dracula h6 { color: #ffb86c !important; }
-.theme-dracula table th { background-color: #6272a4 !important; color: #f8f8f2 !important; }
-.theme-dracula table td { border-bottom-color: #44475a !important; }
-.theme-dracula select option { background-color: #282a36 !important; color: #f8f8f2 !important; }
-
-/* 19. Matrix Theme (مظهر الماتريكس) */
-.theme-matrix { background-color: #000000 !important; color: #00ff41 !important; font-family: var(--font-mono); }
-.theme-matrix header { background-color: #050505 !important; border-bottom: 2px solid #008f11 !important; box-shadow: 0 4px 15px rgba(0, 255, 65, 0.2); }
-.theme-matrix .bg-white, .theme-matrix .bg-slate-50, .theme-matrix .bg-slate-100 { background-color: #0d0d0d !important; color: #00ff41 !important; border: 1px solid #008f11 !important; }
-.theme-matrix .border-slate-200, .theme-matrix .border-slate-100, .theme-matrix .divide-slate-200 { border-color: #003b00 !important; }
-.theme-matrix select, .theme-matrix input, .theme-matrix textarea { background-color: #000000 !important; color: #00ff41 !important; border-color: #008f11 !important; text-shadow: 0 0 5px #00ff41; }
-.theme-matrix .text-slate-900, .theme-matrix .text-slate-800, .theme-matrix .text-slate-700, .theme-matrix .text-slate-600 { color: #00ea3c !important; }
-.theme-matrix .text-slate-500, .theme-matrix .text-slate-400 { color: #008f11 !important; }
-.theme-matrix h1, .theme-matrix h2, .theme-matrix h3, .theme-matrix h4, .theme-matrix h5, .theme-matrix h6 { color: #00ff41 !important; text-shadow: 0 0 10px #00ff41; }
-.theme-matrix table th { background-color: #050505 !important; color: #00ff41 !important; border-bottom: 1px solid #008f11 !important; }
 
 /* 🚀 Vaporize/Disintegrate Animation for Deleting Items */
 @keyframes card-disintegrate {
@@ -429,8 +185,7 @@ input[type="number"] {
   }
 }
 
-.theme-matrix table td { border-bottom-color: #003b00 !important; }
-.theme-matrix select option { background-color: #000000 !important; color: #00ff41 !important; }
+
 
 /* Hide number input spinners globally */
 input[type=number]::-webkit-inner-spin-button, 

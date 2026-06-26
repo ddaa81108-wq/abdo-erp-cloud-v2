@@ -6,7 +6,7 @@ export default function DebtBird({ totalDebt }: { totalDebt: number }) {
   const [isFlyingOut, setIsFlyingOut] = useState(false);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     if (totalDebt > 0 && !birdDismissed && !showBird) {
       timer = setTimeout(() => {
         setShowBird(true);

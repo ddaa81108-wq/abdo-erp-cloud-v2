@@ -505,15 +505,15 @@ export default function PurchasesModule({
     totalVodafoneBase -
     totalConsumerValue;
 
-  const totalPurchasesDebt = Object.values(merchStates).reduce((sum, merch) => {
+  const totalPurchasesDebt: number = Object.values(merchStates).reduce((sum: number, merch: any) => {
     const p = Math.round(Number(merch.previousBalance) || 0);
-    const w = merch.rows.reduce((s, r) => s + (Number(r.result) || 0), 0);
-    const pd = merch.rows.reduce((s, r) => s + (Number(r.paid) || 0), 0);
+    const w = merch.rows.reduce((s: number, r: any) => s + (Number(r.result) || 0), 0);
+    const pd = merch.rows.reduce((s: number, r: any) => s + (Number(r.paid) || 0), 0);
     return sum + (p + w - pd);
-  }, 0);
+  }, 0 as number) as number;
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setTimeout>;
     console.log("Debt Bird check - Total Purchases Debt:", totalPurchasesDebt, "showBird:", showBird, "birdDismissed:", birdDismissed);
     if (totalPurchasesDebt > 0 && !birdDismissed && !showBird) {
       timer = setTimeout(() => {

@@ -93,29 +93,19 @@ export default function App() {
 
   // 👑 Premium Appearance Theme state
   type AppTheme =
-    | "light"
-    | "dark"
-    | "golden"
-    | "emerald"
-    | "ocean"
-    | "crimson"
-    | "amethyst"
-    | "cyber"
-    | "rose"
-    | "monochrome"
-    | "autumn"
-    | "midnight"
-    | "sunset"
-    | "forest"
-    | "lavender"
-    | "coffee"
-    | "sapphire"
-    | "cherry"
-    | "dracula"
-    | "matrix";
+    | "banker-light"
+    | "royal-dark"
+    | "corporate-navy"
+    | "graphite-gray"
+    | "terminal-market";
   const [appTheme, setAppTheme] = useState<AppTheme>(() => {
-    return (localStorage.getItem("ABDO_ERP_THEME") as AppTheme) || "light";
+    return (localStorage.getItem("ABDO_ERP_THEME") as AppTheme) || "banker-light";
   });
+
+  // Apply CSS Variables on theme change
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", appTheme);
+  }, [appTheme]);
 
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
@@ -681,172 +671,38 @@ export default function App() {
     );
   }
 
-  const getThemeClasses = () => {
-    switch (appTheme) {
-      case "dark":
-        return "bg-[#0b0f19] text-slate-100 theme-dark";
-      case "golden":
-        return "bg-[#0d0c0a] text-yellow-105 theme-golden";
-      case "emerald":
-        return "bg-[#022c22] text-emerald-50 theme-emerald";
-      case "ocean":
-        return "bg-[#082f49] text-sky-50 theme-ocean";
-      case "crimson":
-        return "bg-[#450a0a] text-red-50 theme-crimson";
-      case "amethyst":
-        return "bg-[#2e1065] text-purple-50 theme-amethyst";
-      case "cyber":
-        return "bg-[#09090b] text-zinc-400 theme-cyber";
-      case "rose":
-        return "bg-[#fff1f2] text-rose-900 theme-rose";
-      case "monochrome":
-        return "bg-[#171717] text-zinc-300 theme-monochrome";
-      case "autumn":
-        return "bg-[#431407] text-orange-50 theme-autumn";
-      case "midnight":
-        return "bg-[#020617] text-blue-50 theme-midnight";
-      case "sunset":
-        return "bg-[#2e1065] text-rose-50 theme-sunset";
-      case "forest":
-        return "bg-[#064e3b] text-emerald-50 theme-forest";
-      case "lavender":
-        return "bg-[#f3e8ff] text-purple-900 theme-lavender";
-      case "coffee":
-        return "bg-[#3e2723] text-amber-50 theme-coffee";
-      case "sapphire":
-        return "bg-[#0f172a] text-sky-50 theme-sapphire";
-      case "cherry":
-        return "bg-[#4c0519] text-rose-50 theme-cherry";
-      case "dracula":
-        return "bg-[#282a36] text-[#f8f8f2] theme-dracula";
-      case "matrix":
-        return "bg-[#000000] text-[#00ff41] theme-matrix";
-      default:
-        return "bg-slate-50 text-slate-800 theme-light";
-    }
-  };
-
   const getThemeButtonConfig = () => {
     switch (appTheme) {
-      case "dark":
-        return {
-          icon: "🌙",
-          label: "مظهر ليلي حديث",
-          bg: "bg-slate-800 hover:bg-slate-750 text-slate-100 border-slate-700",
-        };
-      case "golden":
+      case "royal-dark":
         return {
           icon: "👑",
-          label: "مظهر ملكي ذهبي",
-          bg: "bg-[#181511] text-yellow-500 border-yellow-700/50",
+          label: "التيتانيوم الأسود",
+          bg: "bg-[#141414] hover:bg-[#222222] text-[#d4af37] border-[#333333]",
         };
-      case "emerald":
+      case "corporate-navy":
         return {
-          icon: "💎",
-          label: "مظهر زمردي داكن",
-          bg: "bg-[#064e3b] text-emerald-300 border-emerald-600/50",
+          icon: "🏦",
+          label: "الأزرق المؤسسي",
+          bg: "bg-[#0f172a] hover:bg-[#1e293b] text-[#38bdf8] border-[#1e293b]",
         };
-      case "ocean":
+      case "graphite-gray":
         return {
-          icon: "🌊",
-          label: "مظهر محيطي أزرق",
-          bg: "bg-[#0c4a6e] text-sky-300 border-sky-600/50",
+          icon: "⚙️",
+          label: "رمادي جرافيت",
+          bg: "bg-[#2d2d2d] hover:bg-[#404040] text-[#fbbf24] border-[#404040]",
         };
-      case "crimson":
+      case "terminal-market":
         return {
-          icon: "🩸",
-          label: "مظهر قرمزي دموي",
-          bg: "bg-[#7f1d1d] text-red-300 border-red-600/50",
+          icon: "📈",
+          label: "شاشة التداول",
+          bg: "bg-[#111111] hover:bg-[#222222] text-[#10b981] border-[#222222]",
         };
-      case "amethyst":
-        return {
-          icon: "🔮",
-          label: "مظهر أرجواني فاخر",
-          bg: "bg-[#3b0764] hover:bg-[#2e1065] text-purple-300 border-purple-600/50",
-        };
-      case "cyber":
-        return {
-          icon: "🚀",
-          label: "مظهر سايبر تيك",
-          bg: "bg-[#18181b] hover:bg-[#09090b] text-[#2cf1a6] border-[#2cf1a6]/50",
-        };
-      case "rose":
-        return {
-          icon: "🌸",
-          label: "مظهر روز فاتح",
-          bg: "bg-[#ffe4e6] hover:bg-[#ffced5] text-[#9f1239] border-[#fb7185]/50",
-        };
-      case "monochrome":
-        return {
-          icon: "🎱",
-          label: "مظهر رمادي كلاسيكي",
-          bg: "bg-[#262626] hover:bg-[#171717] text-[#e5e5e5] border-[#a3a3a3]/50",
-        };
-      case "autumn":
-        return {
-          icon: "🍂",
-          label: "مظهر خريفي",
-          bg: "bg-[#7c2d12] hover:bg-[#9a3412] text-orange-200 border-orange-700/50",
-        };
-      case "midnight":
-        return {
-          icon: "🌌",
-          label: "مظهر منتصف الليل",
-          bg: "bg-[#0f172a] hover:bg-[#1e293b] text-blue-200 border-blue-800/50",
-        };
-      case "sunset":
-        return {
-          icon: "🌇",
-          label: "مظهر غروب الشمس",
-          bg: "bg-[#581c87] hover:bg-[#7e22ce] text-pink-200 border-pink-700/50",
-        };
-      case "forest":
-        return {
-          icon: "🌲",
-          label: "مظهر الغابة",
-          bg: "bg-[#14532d] hover:bg-[#166534] text-green-200 border-green-700/50",
-        };
-      case "lavender":
-        return {
-          icon: "🪻",
-          label: "مظهر لافندر",
-          bg: "bg-[#e9d5ff] hover:bg-[#d8b4fe] text-purple-900 border-purple-300/50",
-        };
-      case "coffee":
-        return {
-          icon: "☕",
-          label: "مظهر القهوة",
-          bg: "bg-[#4e342e] hover:bg-[#5d4037] text-amber-200 border-amber-800/50",
-        };
-      case "sapphire":
-        return {
-          icon: "💠",
-          label: "مظهر ياقوت",
-          bg: "bg-[#0c4a6e] hover:bg-[#075985] text-cyan-200 border-cyan-800/50",
-        };
-      case "cherry":
-        return {
-          icon: "🍒",
-          label: "مظهر كرز أحمر",
-          bg: "bg-[#881337] hover:bg-[#be123c] text-rose-200 border-rose-800/50",
-        };
-      case "dracula":
-        return {
-          icon: "🧛",
-          label: "مظهر دراكولا",
-          bg: "bg-[#44475a] hover:bg-[#6272a4] text-[#ff79c6] border-[#bd93f9]/50",
-        };
-      case "matrix":
-        return {
-          icon: "🕶️",
-          label: "مظهر الماتريكس",
-          bg: "bg-[#000000] hover:bg-[#0d0d0d] text-[#00ff41] border-[#00ff41]/50",
-        };
+      case "banker-light":
       default:
         return {
           icon: "☀️",
-          label: "مظهر كلاسيكي فاتح",
-          bg: "bg-amber-100 hover:bg-amber-200 text-amber-950 border-amber-300",
+          label: "الأبيض البنكي",
+          bg: "bg-[#ffffff] hover:bg-[#f4f6f9] text-[#0f172a] border-[#e2e8f0]",
         };
     }
   };
@@ -855,7 +711,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen font-sans selection:bg-indigo-600 selection:text-white transition-colors duration-300 ${getThemeClasses()}`}
+      className={`min-h-screen font-sans selection:bg-indigo-600 selection:text-white transition-colors duration-300`}
       dir="rtl"
     >
       {/* 1. TOP HEADER & NAVIGATION RAIL (FAR LEFT Exit Button & Demo Seed Button in line) */}
@@ -1625,7 +1481,7 @@ export default function App() {
               </h2>
               <p className="text-slate-400 text-xs mt-1 font-medium">
                 الرجاء اختيار المظهر المناسب الذي ترغب في استخدامه في المنظومة
-                (يتوفر {Object.keys(themeBtnData).length} مظهراً)
+                (يتوفر 5 مظاهر)
               </p>
             </div>
 
@@ -1633,109 +1489,34 @@ export default function App() {
               {(
                 [
                   {
-                    id: "golden",
-                    icon: "👑",
-                    label: "الملكي الافتراضي",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-yellow-700 to-yellow-900 text-yellow-100",
-                  },
-                  {
-                    id: "light",
+                    id: "banker-light",
                     icon: "☀️",
-                    label: "الوضع الفاتح",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-slate-100 to-amber-50 text-slate-900",
+                    label: "الأبيض البنكي",
+                    bgThemeClass: "bg-slate-100 text-slate-800",
                   },
                   {
-                    id: "dark",
-                    icon: "🌙",
-                    label: "الوضع الليلي",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-slate-800 to-slate-900 text-slate-200",
+                    id: "royal-dark",
+                    icon: "👑",
+                    label: "التيتانيوم الأسود",
+                    bgThemeClass: "bg-zinc-900 text-amber-500",
                   },
                   {
-                    id: "rose",
-                    icon: "🏛️",
-                    label: "الكلاسيكي",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-stone-200 to-stone-400 text-stone-900",
+                    id: "corporate-navy",
+                    icon: "🏦",
+                    label: "الأزرق المؤسسي",
+                    bgThemeClass: "bg-slate-800 text-sky-400",
                   },
                   {
-                    id: "sapphire",
-                    icon: "💎",
-                    label: "الزجاجي",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-sky-400/20 to-sky-600/40 text-blue-100 border border-sky-400/20 shadow-[0_0_15px_rgba(56,189,248,0.3)]",
+                    id: "graphite-gray",
+                    icon: "⚙️",
+                    label: "رمادي جرافيت",
+                    bgThemeClass: "bg-stone-800 text-amber-400",
                   },
                   {
-                    id: "ocean",
-                    icon: "💠",
-                    label: "الماسي",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-cyan-500 to-blue-600 text-white",
-                  },
-                  {
-                    id: "emerald",
-                    icon: "💡",
-                    label: "مخصص",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-emerald-600 to-teal-800 text-white",
-                  },
-                  {
-                    id: "cyber",
-                    icon: "🚀",
-                    label: "المستقبلي 2100",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-zinc-900 to-black text-[#00ff41] border border-[#00ff41]/50 shadow-[0_0_15px_rgba(0,255,65,0.3)]",
-                  },
-                  {
-                    id: "midnight",
-                    icon: "💼",
-                    label: "الاحترافي",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-slate-900 to-blue-950 text-blue-100",
-                  },
-                  {
-                    id: "crimson",
-                    icon: "🩸",
-                    label: "القرمزي الساطع",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-red-800 to-red-950 text-red-100",
-                  },
-                  {
-                    id: "amethyst",
-                    icon: "🔮",
-                    label: "الارجواني الفاخر",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-purple-800 to-purple-950 text-purple-100",
-                  },
-                  {
-                    id: "matrix",
-                    icon: "🕶️",
-                    label: "الماتريكس",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-black to-green-950 text-[#00ea3c]",
-                  },
-                  {
-                    id: "dracula",
-                    icon: "🧛",
-                    label: "دراكولا",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-[#282a36] to-[#44475a] text-[#ff79c6]",
-                  },
-                  {
-                    id: "coffee",
-                    icon: "☕",
-                    label: "القهوة",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-[#4e342e] to-[#3e2723] text-orange-100",
-                  },
-                  {
-                    id: "lavender",
-                    icon: "🪻",
-                    label: "لافندر",
-                    bgThemeClass:
-                      "bg-gradient-to-br from-[#f3e8ff] to-[#e9d5ff] text-purple-900",
+                    id: "terminal-market",
+                    icon: "📈",
+                    label: "شاشة التداول",
+                    bgThemeClass: "bg-black text-emerald-500",
                   },
                 ] as const
               ).map((theme) => (
