@@ -116,7 +116,7 @@ export default function CustomerDebtsModule({
       if (lyd !== 0) {
         amountHtml = `
           <div style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 24px; padding: 40px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); backdrop-filter: blur(8px); width: 80%; max-width: 600px; margin: 0 auto;">
-            <span style="font-size: 80px; font-weight: 900; color: ${darkText}; font-family: monospace; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);" dir="ltr">${lyd.toLocaleString("en-US")}</span>
+            <span style="font-size: 80px; font-weight: 900; color: ${darkText}; font-family: monospace; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
             <span style="font-size: 40px; font-weight: 900; color: ${darkText}; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">د.ل</span>
           </div>
         `;
@@ -131,7 +131,7 @@ export default function CustomerDebtsModule({
       container.innerHTML = `
         <div dir="rtl" style="position: relative; overflow: hidden; background: linear-gradient(135deg, #d4af37 0%, #ffef96 50%, #aa771c 100%) !important; color: #161001 !important; border: 2px solid #ffffff !important; border-radius: 28px; width: 100%; height: 100%; padding: 30px 60px 90px 60px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; box-shadow: 20px 20px 60px rgba(0,0,0,0.15), -20px -20px 60px rgba(255,255,255,0.1);">
           <div style="text-align: center; border-bottom: 2px solid rgba(22, 16, 1, 0.2); padding-bottom: 20px; width: 100%;">
-            <div style="font-size: 28px; font-weight: 900; color: ${darkText}; margin-bottom: 16px;">❖ إشعار مديونية ❖</div>
+            <div style="font-size: 28px; font-weight: 900; color: ${darkText}; margin-bottom: 16px;">${lyd < 0 ? '❖ إشعار أمانة ❖' : '❖ إشعار مديونية ❖'}</div>
             <h2 style="font-size: 65px; font-weight: 900; color: ${darkText}; margin: 0; word-break: break-word; text-shadow: 1px 1px 0px rgba(255,255,255,0.4); letter-spacing: 0; display: inline-block; padding: 0 10px; border-radius: 8px;">
               ${customerName}
             </h2>
@@ -139,7 +139,7 @@ export default function CustomerDebtsModule({
           
           <div style="text-align: center;">
             <span style="font-size: 34px; font-weight: 900; color: ${darkText}; line-height: 1.6; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">
-              إجمالي الديون المستحقة عليك:
+              ${lyd < 0 ? 'صافي لك عندنا أمانة:' : 'إجمالي الديون المستحقة عليك:'}
             </span>
           </div>
           
@@ -858,65 +858,66 @@ export default function CustomerDebtsModule({
 
       {/* القسم العلوي: إجمالي الديون وإجراءات الزبائن */}
       {!selectionMode ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* صندوق إجمالي الديون (Distinct White Style) */}
-          <div className="bg-white border-y border-x border-slate-200 border-t-4 border-t-rose-500 rounded-2xl p-5 shadow-xs relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Landmark className="w-24 h-24 text-slate-800" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          
+          {/* صندوق إجمالي الديون */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Landmark className="w-24 h-24 text-white" />
             </div>
             <div className="relative z-10 flex flex-col h-full">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-slate-500 font-extrabold text-xs tracking-wide">
+                <span className="text-white font-extrabold text-sm tracking-wide">
                   إجمالي الديون المطلوبة
                 </span>
-                <div className="bg-rose-50 p-2 rounded-xl text-rose-500">
-                  <Landmark className="w-4 h-4" />
+                <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                  <Landmark className="w-5 h-5 text-white" />
                 </div>
               </div>
               <div className="mt-auto">
-                <div className="text-3xl font-black text-rose-500 drop-shadow-sm">
+                <div className="font-mono text-3xl font-black text-rose-500 tracking-widest drop-shadow-md block mb-1">
                   {Math.round(totalOutstandingDebt).toLocaleString("en-US")}{" "}
-                  <span className="text-sm font-bold opacity-70">د.ل</span>
+                  <span className="text-lg font-bold text-slate-300">د.ل</span>
                 </div>
-                <div className="text-[10px] text-slate-400 font-bold mt-1.5 inline-block bg-slate-100 px-2 py-1 rounded-md">
+                <div className="text-[10px] text-slate-400 font-semibold bg-white/5 px-2 py-1 rounded-md inline-block">
                   {activeCustomersList.length} حساب مفتوح
                 </div>
               </div>
             </div>
           </div>
 
-          {/* كرت إضافة عميل وتصدير للمندوب (Distinct White Style) */}
-          <div className="bg-white border-y border-x border-slate-200 border-t-4 border-t-indigo-500 rounded-2xl p-5 shadow-xs relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <FileText className="w-24 h-24 text-slate-800" />
+          {/* كرت إضافة عميل جديد */}
+          <button
+            onClick={() => setShowAddCustomerModal(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
+          >
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <UserPlus className="w-24 h-24 text-white" />
             </div>
-            <div className="relative z-10 flex flex-col h-full justify-between">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-slate-500 font-extrabold text-xs tracking-wide">
-                  إجراءات ديون العملاء
-                </span>
-                <div className="bg-indigo-50 p-2 rounded-xl text-indigo-500">
-                  <FileText className="w-4 h-4" />
-                </div>
+            <div className="relative z-10 flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md text-white">
+                <UserPlus className="w-7 h-7" />
               </div>
-              <div className="flex flex-col gap-2 relative z-20 mt-auto">
-                <button
-                  onClick={() => setSelectionMode(true)}
-                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-extrabold text-[11px] px-3 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
-                >
-                  <CheckSquare className="w-4 h-4 text-indigo-500" />
-                  <span>وضع الإرسال السريع</span>
-                </button>
-                <button
-                  onClick={() => setShowAddCustomerModal(true)}
-                  className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-extrabold text-[11px] px-3 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
-                >
-                  <UserPlus className="w-4 h-4 text-indigo-500" />
-                  <span>عميل جديد</span>
-                </button>
-              </div>
+              <span className="text-white font-extrabold text-xl tracking-wide">إضافة عميل جديد</span>
             </div>
-          </div>
+          </button>
+
+          {/* كرت وضع الإرسال السريع */}
+          <button
+            onClick={() => setSelectionMode(true)}
+            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
+          >
+            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+              <CheckSquare className="w-24 h-24 text-white" />
+            </div>
+            <div className="relative z-10 flex items-center gap-4">
+              <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md text-white">
+                <CheckSquare className="w-7 h-7" />
+              </div>
+              <span className="text-white font-extrabold text-xl tracking-wide">وضع الإرسال السريع</span>
+            </div>
+          </button>
+
         </div>
       ) : (
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex justify-between items-center shadow-xs">

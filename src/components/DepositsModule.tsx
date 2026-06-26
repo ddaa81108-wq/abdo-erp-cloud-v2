@@ -716,11 +716,11 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
         amountHtml = `
           <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
             <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px);">
-              <span style="font-size: 38px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${lyd.toLocaleString("en-US")}</span>
+              <span style="font-size: 38px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
               <span style="font-size: 20px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
             </div>
             <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(59,130,246,0.15), 0 0 30px rgba(59,130,246,0.4); backdrop-filter: blur(10px);">
-              <span style="font-size: 38px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${egp.toLocaleString("en-US")}</span>
+              <span style="font-size: 38px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${Math.abs(egp).toLocaleString("en-US")}</span>
               <span style="font-size: 20px; font-weight: 900; color: #3b82f6; text-shadow: 0 0 10px #3b82f6;">ج.م</span>
             </div>
           </div>
@@ -728,14 +728,14 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
       } else if (egp !== 0) {
         amountHtml = `
           <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(59,130,246,0.15), 0 0 30px rgba(59,130,246,0.4); backdrop-filter: blur(10px); width: 100%;">
-            <span style="font-size: 42px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${egp.toLocaleString("en-US")}</span>
+            <span style="font-size: 42px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${Math.abs(egp).toLocaleString("en-US")}</span>
             <span style="font-size: 24px; font-weight: 900; color: #3b82f6; text-shadow: 0 0 10px #3b82f6;">ج.م</span>
           </div>
         `;
       } else {
         amountHtml = `
           <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px); width: 100%;">
-            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${lyd.toLocaleString("en-US")}</span>
+            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
             <span style="font-size: 24px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
           </div>
         `;
@@ -809,59 +809,75 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
         </div>
       )}
 
-      {/* TOP HEADER SUMMARY BAR */}
-      <div className="bg-slate-900 text-white rounded-xl p-4 border border-slate-800 shadow-xl">
-        <div className="flex flex-col lg:flex-row items-stretch justify-between gap-4">
-          
-          {/* Main Totals Section */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-            
-            {/* LYD Totals Card - counts as liability on treasury */}
-            <div className="bg-slate-950 border-2 border-indigo-600/60 rounded-xl p-4 flex flex-col justify-between shadow-lg relative overflow-hidden">
-              <div className="absolute top-2 left-2 text-indigo-500 opacity-20">
-                <Landmark className="w-12 h-12" />
-              </div>
-              <div>
-                <span className="text-slate-400 font-extrabold text-[11px] block mb-1">🔒 إجمالي الأمانات (بالدينار الليبي)</span>
-                <span className="font-mono text-2xl font-black text-indigo-400 block tracking-wider">
-                  {aggregateHeldLyd.toLocaleString()} <span className="text-xs font-bold text-slate-300">د.ل</span>
-                </span>
-                <p className="text-[9.5px] text-slate-400 mt-1 font-semibold">
-                  * يتم ترحيلها وقيدها بالسالب وتخصم مع المطلوبات المالية
-                </p>
+      {/* TOP HEADER SUMMARY CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        {/* LYD Totals Card - counts as liability on treasury */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Landmark className="w-24 h-24 text-white" />
+          </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-white font-extrabold text-sm tracking-wide">
+                🔒 إجمالي الأمانات (بالدينار الليبي)
+              </span>
+              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                <Landmark className="w-5 h-5 text-white" />
               </div>
             </div>
-
-            {/* EGP Totals Card */}
-            <div className="bg-slate-950 border-2 border-emerald-600/60 rounded-xl p-4 flex flex-col justify-between shadow-lg relative overflow-hidden">
-              <div className="absolute top-2 left-2 text-emerald-500 opacity-20">
-                <Coins className="w-12 h-12" />
-              </div>
-              <div>
-                <span className="text-slate-400 font-extrabold text-[11px] block mb-1">🇪🇬 إجمالي الأمانات (بالجنيه المصري)</span>
-                <span className="font-mono text-2xl font-black text-emerald-400 block tracking-wider">
-                  {aggregateHeldEgp.toLocaleString()} <span className="text-xs font-bold text-slate-300">جنيه</span>
-                </span>
-                <p className="text-[9.5px] text-emerald-500 mt-1 font-semibold">
-                  * رصيد الأمانات المحول مصري ومسجل بالصندوق الجاري
-                </p>
-              </div>
+            <div className="mt-auto">
+              <span className="font-mono text-3xl font-black text-white tracking-widest drop-shadow-md block mb-1">
+                {aggregateHeldLyd.toLocaleString()} <span className="text-lg font-bold text-slate-300">د.ل</span>
+              </span>
+              <p className="text-[10px] text-slate-400 font-semibold">
+                * يتم ترحيلها وقيدها بالسالب وتخصم مع المطلوبات المالية
+              </p>
             </div>
-
           </div>
-
-          {/* ADD CUSTOMER BUTTON */}
-          <div className="flex flex-col justify-center items-center w-full lg:max-w-xs shrink-0">
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-sm py-4 px-6 rounded-xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg w-full h-full min-h-[100px]"
-            >
-              <Plus className="w-6 h-6" />
-              <span>إضافة عميل أمانة جديد</span>
-            </button>
-          </div>
-
         </div>
+
+        {/* EGP Totals Card */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Coins className="w-24 h-24 text-white" />
+          </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-white font-extrabold text-sm tracking-wide">
+                🇪🇬 إجمالي الأمانات (بالجنيه المصري)
+              </span>
+              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                <Coins className="w-5 h-5 text-white" />
+              </div>
+            </div>
+            <div className="mt-auto">
+              <span className="font-mono text-3xl font-black text-white tracking-widest drop-shadow-md block mb-1">
+                {aggregateHeldEgp.toLocaleString()} <span className="text-lg font-bold text-slate-300">جنيه</span>
+              </span>
+              <p className="text-[10px] text-slate-400 font-semibold">
+                * رصيد الأمانات المحول مصري ومسجل بالصندوق الجاري
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ADD CUSTOMER BUTTON */}
+        <button
+          onClick={() => setIsAddModalOpen(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Plus className="w-24 h-24 text-white" />
+          </div>
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md text-white">
+              <Plus className="w-7 h-7" />
+            </div>
+            <span className="text-white font-extrabold text-xl tracking-wide">إضافة عميل أمانة جديد</span>
+          </div>
+        </button>
+
       </div>
 
       {/* ACTIVE CARDS LISTING GRID */}

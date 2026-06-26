@@ -588,50 +588,55 @@ export default function CompaniesModule({
   const handleCopyCardImage = async (company: Company, remaining: number) => {
     try {
       const container = document.createElement("div");
-      container.style.position = "absolute";
-      container.style.left = "0px";
-      container.style.top = "0px";
-      container.style.zIndex = "-9999";
-      container.style.opacity = "1";
-      container.style.width = "480px";
-      container.style.padding = "40px";
-      container.style.backgroundColor = "#0f172a";
+      container.style.width = "900px";
+      container.style.minHeight = "600px";
+      container.style.padding = "60px";
+      container.style.backgroundColor = "transparent";
       container.style.direction = "rtl";
       container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
-      container.style.display = "flex";
-      container.style.flexDirection = "column";
-      container.style.alignItems = "center";
-      container.style.justifyContent = "center";
-      container.style.border = "none";
-      
-      const isNegative = remaining < 0;
-      const displayVal = Math.abs(Math.round(remaining)).toLocaleString("en-US");
-      
-      const neonColor = isNegative ? '#10b981' : '#ef4444';
-      const neonGlow = isNegative ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)';
-      const softGlow = isNegative ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
-      const neumorphicBg = 'linear-gradient(145deg, #1e293b, #0f172a)';
+      container.style.position = "absolute";
+      container.style.top = "-9999px";
+      container.style.left = "-9999px";
+
+      const lyd = Math.round(remaining);
+      const darkText = '#161001';
+
+      let amountHtml = '';
+      if (lyd !== 0) {
+        amountHtml = `
+          <div style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 24px; padding: 40px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); backdrop-filter: blur(8px); width: 80%; max-width: 600px; margin: 0 auto;">
+            <span style="font-size: 80px; font-weight: 900; color: ${darkText}; font-family: monospace; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
+            <span style="font-size: 40px; font-weight: 900; color: ${darkText}; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">د.ل</span>
+          </div>
+        `;
+      } else {
+        amountHtml = `
+          <div style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 24px; padding: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(0,0,0,0.05); backdrop-filter: blur(8px); width: 80%; max-width: 600px; margin: 0 auto;">
+            <span style="font-size: 32px; font-weight: 900; color: ${darkText}; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">لا يوجد ديون مستحقة (خالص)</span>
+          </div>
+        `;
+      }
 
       container.innerHTML = `
-        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 20px 40px 60px 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
-          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
-            <h2 style="font-size: 28px; font-weight: 900; color: #ffffff; margin: 0; white-space: pre-wrap; word-break: break-word; text-shadow: 0 2px 10px rgba(255,255,255,0.2);">${company.name}</h2>
+        <div dir="rtl" style="position: relative; overflow: hidden; background: linear-gradient(135deg, #d4af37 0%, #ffef96 50%, #aa771c 100%) !important; color: #161001 !important; border: 2px solid #ffffff !important; border-radius: 28px; width: 100%; height: 100%; padding: 30px 60px 90px 60px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; box-shadow: 20px 20px 60px rgba(0,0,0,0.15), -20px -20px 60px rgba(255,255,255,0.1);">
+          <div style="text-align: center; border-bottom: 2px solid rgba(22, 16, 1, 0.2); padding-bottom: 20px; width: 100%;">
+            <div style="font-size: 28px; font-weight: 900; color: ${darkText}; margin-bottom: 16px;">${lyd < 0 ? '❖ إشعار أمانة ❖' : '❖ إشعار مديونية ❖'}</div>
+            <h2 style="font-size: 65px; font-weight: 900; color: ${darkText}; margin: 0; word-break: break-word; text-shadow: 1px 1px 0px rgba(255,255,255,0.4); letter-spacing: 0; display: inline-block; padding: 0 10px; border-radius: 8px;">
+              ${company.name}
+            </h2>
           </div>
           
-          <div style="text-align: center; margin-bottom: 16px;">
-            <span style="font-size: 16px; font-weight: 800; color: #94a3b8; letter-spacing: 0px !important; word-spacing: 5px !important; white-space: pre-wrap !important;">
-              إجمالي&nbsp;الديون&nbsp;المستحقة&nbsp;${isNegative ? "لك&nbsp;(أمانة)" : "عليك"}:
+          <div style="text-align: center;">
+            <span style="font-size: 34px; font-weight: 900; color: ${darkText}; line-height: 1.6; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">
+              ${lyd < 0 ? 'صافي لك عندنا أمانة:' : 'إجمالي الديون المستحقة عليك:'}
             </span>
           </div>
           
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px);">
-            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${displayVal}</span>
-            <span style="font-size: 24px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
-          </div>
+          ${amountHtml}
 
-          <div style="margin-top: 40px; text-align: center; color: #64748b; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(148,163,184,0.5));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span style="letter-spacing: 0px !important; word-spacing: 5px !important; white-space: pre-wrap !important;">تم&nbsp;الإصدار&nbsp;من&nbsp;المنظومة</span>
+          <div style="margin-top: 10px; text-align: center; color: ${darkText}; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; opacity: 0.8;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>تم الإصدار من المنظومة</span>
           </div>
         </div>
       `;
@@ -643,8 +648,8 @@ export default function CompaniesModule({
       
       const makeImagePromise = async () => {
         const canvas = await html2canvas(container, {
-          scale: 2,
-          backgroundColor: '#0f172a',
+          scale: 5,
+          backgroundColor: 'transparent',
           useCORS: true
         });
 
@@ -781,25 +786,25 @@ export default function CompaniesModule({
 
 
   return (
-    <div className="space-y-4 text-right" dir="rtl">
-      {/* Unified grid for Metrics, Actions and Companies */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total (Distinct White Style) */}
-        <div className="bg-white border-y border-x border-slate-200 border-t-4 border-t-amber-600 rounded-2xl p-5 shadow-xs relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Landmark className="w-24 h-24 text-slate-800" />
+    <div className="space-y-6 text-right" dir="rtl">
+      {/* 🔴 الكروت الإجمالية */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* الكارت الإجمالي */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Landmark className="w-24 h-24 text-white" />
           </div>
           <div className="relative z-10 flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-500 font-extrabold text-xs tracking-wide">
+              <span className="text-white font-extrabold text-sm tracking-wide">
                 إجمالي مستحقات الشركات والتجار
               </span>
-              <div className="bg-amber-50 p-2 rounded-xl text-amber-600">
-                <Landmark className="w-4 h-4" />
+              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                <Landmark className="w-5 h-5 text-white" />
               </div>
             </div>
             <div className="mt-auto">
-              <div className="text-3xl font-black text-amber-600 drop-shadow-sm">
+              <div className="text-3xl font-black text-white drop-shadow-md">
                 {totalOwedToCompanies.toLocaleString()}{" "}
                 <span className="text-sm font-bold opacity-70">د.ل</span>
               </div>
@@ -807,41 +812,60 @@ export default function CompaniesModule({
           </div>
         </div>
 
-        {/* Card 2: Actions (Distinct White Style) */}
-        <div className="bg-white border-y border-x border-slate-200 border-t-4 border-t-cyan-600 rounded-2xl p-5 shadow-xs relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <FileText className="w-24 h-24 text-slate-800" />
+        {/* كارت إضافة كشف مورد */}
+        <div 
+          onClick={() => setShowAddCompanyModal(true)}
+          className="bg-emerald-600 border border-emerald-500 rounded-2xl p-5 shadow-xl relative overflow-hidden group cursor-pointer hover:bg-emerald-700 transition-colors"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Plus className="w-24 h-24 text-white" />
           </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-slate-500 font-extrabold text-xs tracking-wide">
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-emerald-50 font-extrabold text-sm tracking-wide">
                 إجراءات سريعة
               </span>
-              <div className="bg-cyan-50 p-2 rounded-xl text-cyan-600">
-                <FileText className="w-4 h-4" />
+              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                <Plus className="w-5 h-5 text-emerald-50" />
               </div>
             </div>
-            <div className="flex flex-col gap-2 relative z-20 mt-auto">
-              <button
-                onClick={() => setShowAddCompanyModal(true)}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-extrabold text-[11px] px-3 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
-              >
-                <Plus className="w-4 h-4 text-cyan-600" />
-                <span>إضافة كشف مورد 🏭</span>
-              </button>
-
-              <button
-                onClick={handleOpenShareCard}
-                className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-extrabold text-[11px] px-3 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
-                title="تصدير كشف حساب مورد بتصميم احترافي كبطاقة"
-              >
-                <Camera className="w-4 h-4 text-cyan-600" />
-                <span>تصدير كشف حساب 📄</span>
-              </button>
+            <div className="mt-auto">
+              <div className="text-2xl font-black text-white drop-shadow-md flex items-center gap-2">
+                إضافة كشف مورد 🏭
+              </div>
             </div>
           </div>
         </div>
 
+        {/* كارت تصدير كشف حساب */}
+        <div 
+          onClick={handleOpenShareCard}
+          className="bg-amber-600 border border-amber-500 rounded-2xl p-5 shadow-xl relative overflow-hidden group cursor-pointer hover:bg-amber-700 transition-colors"
+          title="تصدير كشف حساب مورد بتصميم احترافي كبطاقة"
+        >
+          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Camera className="w-24 h-24 text-white" />
+          </div>
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-amber-50 font-extrabold text-sm tracking-wide">
+                تصدير وطباعة
+              </span>
+              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                <Camera className="w-5 h-5 text-amber-50" />
+              </div>
+            </div>
+            <div className="mt-auto">
+              <div className="text-2xl font-black text-white drop-shadow-md flex items-center gap-2">
+                تصدير كشف حساب 📄
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Unified grid for Companies */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {/* Company Cards */}
         {[...filteredCompanies].reverse().map((c, i) => {
           const prev = c.previousBalance || 0;

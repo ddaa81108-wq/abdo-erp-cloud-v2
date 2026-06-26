@@ -26,14 +26,14 @@ input[type="number"] {
   -moz-appearance: textfield !important;
 }
 
-/* 1. الوضع النهاري (الأبيض البنكي) - الافتراضي */
+/* الوضع النهاري (Light Mode) - أزرق/رمادي فاتح للعين */
 :root {
-    --bg-main: #f4f6f9;
-    --bg-surface: #ffffff;
+    --bg-main: #f1f5f9;
+    --bg-surface: #f8fafc;
     --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --accent-color: #0f172a; /* كحلي داكن */
-    --border-color: #e2e8f0;
+    --text-secondary: #475569;
+    --accent-color: #0f172a;
+    --border-color: #cbd5e1;
 }
 
 /* 2. الوضع الليلي (الأسود الملكي) */
@@ -84,12 +84,7 @@ body {
 }
 
 /* Overriding Tailwind classes globally using variables */
-header {
-  background-color: var(--bg-surface) !important;
-  border-bottom: 2px solid var(--accent-color) !important;
-}
-
-.bg-white, .bg-slate-50, .bg-slate-100, .bg-slate-900, .bg-slate-800 {
+.bg-white, .bg-slate-50, .bg-slate-100 {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
 }
@@ -108,7 +103,7 @@ select, input, textarea {
   border-color: var(--border-color) !important;
 }
 
-.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600, .text-white {
+.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600 {
   color: var(--text-primary) !important;
 }
 
@@ -116,17 +111,9 @@ select, input, textarea {
   color: var(--text-secondary) !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text-primary) !important;
-}
-
 /* Some highlight text overrides if needed */
 .text-indigo-600, .text-indigo-500, .text-indigo-400 {
     color: var(--accent-color) !important;
-}
-.bg-indigo-600, .bg-indigo-500 {
-    background-color: var(--accent-color) !important;
-    color: var(--bg-main) !important;
 }
 
 table th {

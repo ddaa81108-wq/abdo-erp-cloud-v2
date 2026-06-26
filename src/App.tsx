@@ -701,8 +701,8 @@ export default function App() {
       default:
         return {
           icon: "☀️",
-          label: "الأبيض البنكي",
-          bg: "bg-[#ffffff] hover:bg-[#f4f6f9] text-[#0f172a] border-[#e2e8f0]",
+          label: "الوضع النهاري",
+          bg: "bg-white hover:bg-slate-50 text-slate-900 border-slate-200",
         };
     }
   };
@@ -1491,7 +1491,7 @@ export default function App() {
                   {
                     id: "banker-light",
                     icon: "☀️",
-                    label: "الأبيض البنكي",
+                    label: "الوضع النهاري",
                     bgThemeClass: "bg-slate-100 text-slate-800",
                   },
                   {
