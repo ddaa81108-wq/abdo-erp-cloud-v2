@@ -735,7 +735,7 @@ export default function App() {
           <div className="relative w-full md:w-64 shrink-0 mx-2">
             <input
               type="text"
-              placeholder="🔍 ابحث بالاسم في ديون العملاء والشركات والتجار..."
+              placeholder="🔍 البحث الشامل..."
               value={globalSearchQuery}
               onChange={(e) => setGlobalSearchQuery(e.target.value)}
               className="w-full text-right text-xs pr-9 pl-8 py-2 bg-slate-800 hover:bg-slate-750/90 focus:bg-slate-750 border border-slate-700 hover:border-slate-600 focus:border-indigo-550 rounded-xl text-white font-sans placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-bold"
@@ -767,13 +767,13 @@ export default function App() {
           <button
             onClick={() => setShowCustomCardModal(true)}
             className="bg-amber-500 hover:bg-amber-600 text-white border border-amber-400 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0"
-            title="مُولد الكروت الحرة المخصصة 3D"
+            title="توليد كارت السعر"
           >
             <span className="text-sm">👑</span>
-            <span>إنشاء كارت مخصص</span>
+            <span>توليد كارت السعر</span>
           </button>
 
-          {/* Quick Universal widgets trigger buttons & DATA SEEDER BUTTON */}
+          {/* Quick Universal widgets trigger buttons */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* 👑 زر تغيير المظهر الفاخر (Prestige Dynamic Theme Controller) */}
             <button
@@ -783,16 +783,6 @@ export default function App() {
             >
               <span className="text-sm">{themeBtnData.icon}</span>
               <span>{themeBtnData.label}</span>
-            </button>
-
-            {/* 📊 A button for populating data from an example */}
-            <button
-              onClick={() => setShowSeedConfirm(true)}
-              className="bg-indigo-650 hover:bg-indigo-600 text-white border border-indigo-550 font-extrabold text-xs px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
-              title="تعبئة بيانات تجريبية (عينة) لتجربة النظام المحاسبي"
-            >
-              <Database className="w-4 h-4 text-indigo-300" />
-              <span>تعبئة بيانات تجريبية 📊</span>
             </button>
           </div>
 
