@@ -634,9 +634,9 @@ export default function CustomerDebtsModule({
 
     if (paymentType === "full") {
       setSelectedCustomerId(null); // إغلاق البطاقة لانتهاء الدين
-      alert("🎉 تم تسديد الدين بالكامل وإغلاق دورة الزبون المالية بنجاح. يمكنك الآن نسخ كارت المخالصة.");
+      setShowSuccessToast("🎉 تم تسديد الدين بالكامل وإغلاق دورة الزبون المالية بنجاح. يمكنك الآن نسخ كارت المخالصة.");
     } else {
-      alert("🎉 تم خصم الدفعة الجزئية من دين الزبون.");
+      setShowSuccessToast("🎉 تم خصم الدفعة الجزئية من دين الزبون.");
     }
   };
 

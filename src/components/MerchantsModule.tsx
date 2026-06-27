@@ -315,7 +315,7 @@ export default function MerchantsModule({
     setTxAmount("");
     setTxNote("");
     setShowAddTxModal(false);
-    alert("🎉 تم قيد وتحديث السجل المالي للتاجر بنجاح.");
+    setShowSuccessToast("🎉 تم قيد وتحديث السجل المالي للتاجر بنجاح.");
   };
 
   const handleDeleteTransaction = (txId: string) => {

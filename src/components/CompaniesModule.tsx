@@ -359,7 +359,7 @@ export default function CompaniesModule({
     setTxAmount("");
     setTxNote("");
     setShowAddTxModal(false);
-    alert("🎉 تم قيد وتحديث السجل المالي للشركة بنجاح.");
+    setShowSuccessToast("🎉 تم قيد وتحديث السجل المالي للشركة بنجاح.");
   };
 
   const handleDeleteTransaction = (txId: string) => {

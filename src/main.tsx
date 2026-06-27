@@ -9,6 +9,9 @@ Number.prototype.toLocaleString = function(locales?: string | string[], options?
   return originalNumberToLocaleString.call(this, 'en-US', options);
 };
 
+// Disable native alert globally to prevent blocking notifications
+window.alert = () => {};
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
