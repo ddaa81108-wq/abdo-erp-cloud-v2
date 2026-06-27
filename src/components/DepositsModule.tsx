@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy } from 'lucide-react';
+import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy, Calculator, Minus, CheckCircle2 } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
 import html2canvas from 'html2canvas';
 import { copySettledImage } from "../utils/imageExporterUtils";
@@ -13,6 +13,43 @@ interface DepositsModuleProps {
 export default function DepositsModule({ state, onUpdateState, onOpenExporter }: DepositsModuleProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const [showArchive, setShowArchive] = useState(false);
+
+  // Floating Calculator State
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calcRows, setCalcRows] = useState<{ id: string; value: string; price: string; operator: "multiply" | "divide" }[]>([
+    { id: '1', value: '', price: '', operator: 'multiply' }
+  ]);
+  const [calcCopied, setCalcCopied] = useState(false);
+
+  // Floating Calculator Logic
+  const handleAddCalcRow = () => {
+    setCalcRows([...calcRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
+  };
+
+  const handleUpdateCalcRow = (id: string, field: string, val: string) => {
+    setCalcRows(calcRows.map(r => r.id === id ? { ...r, [field]: val } : r));
+  };
+
+  const handleRemoveCalcRow = (id: string) => {
+    setCalcRows(calcRows.filter(r => r.id !== id));
+  };
+
+  const calculateRowResult = (row: typeof calcRows[0]) => {
+    const v = parseFloat(row.value) || 0;
+    const p = parseFloat(row.price) || 0;
+    if (v === 0 || p === 0) return 0;
+    const result = row.operator === 'multiply' ? v * p : v / p;
+    return Math.round(result);
+  };
+
+  const totalCalcResult = calcRows.reduce((acc, row) => acc + calculateRowResult(row), 0);
+
+  const handleCopyCalcResult = () => {
+    navigator.clipboard.writeText(totalCalcResult.toString());
+    setCalcCopied(true);
+    setTimeout(() => setCalcCopied(false), 2000);
+  };
+
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
 
   // Expand states for each card config
@@ -175,7 +212,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
     // Reset action state
     resetActionForm();
-    alert(`تمت إضافة قيمة ${amount.toLocaleString()} د.ل لحساب العميل وترحيل الوارد للخزينة.`);
   };
 
   // 3. TRANSACTION: WITHDRAW/REFUND LYD (سحب نقدي بالليبي)
@@ -228,10 +264,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
     resetActionForm();
     if (isNowCleared) {
-      alert(`تم صرف مبلغ ${amount.toLocaleString()} د.ل بنجاح. تم تصفية رصيد العميل للمطابقة وسيقوم النظام بنقله للأرشيف المكتمل.`);
       setExpandedCardId(null);
-    } else {
-      alert(`تم صرف مبلغ ${amount.toLocaleString()} د.ل نقداً بنجاح وتم فصمها من الخزينة.`);
     }
   };
 
@@ -291,10 +324,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     });
 
     resetActionForm();
-    alert(`نجاح العملية:
-- تم خصم ${lydAmount.toLocaleString()} د.ل من أمانة العميل.
-- تم قيد رصيد جديد بمقدار ${calculatedEgp.toLocaleString()} جنيه مصري للمودع.
-- تم خصم القيمة الليبية المستبدلة من الخزينة الرئيسية بالسالب لتسوية تحويل العملات.`);
   };
 
   // 5. TRANSACTION: WITHDRAW EGYPTIAN POUNDS (سحب أمانة مصري)
@@ -343,10 +372,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
     resetActionForm();
     if (isNowCleared) {
-      alert(`تم تسليم وصرف ${amountEgpToWithdraw.toLocaleString()} جنيه مصري للعميل. تم تصفية حساب الأمانة بالكامل ونقله للأرشيف.`);
       setExpandedCardId(null);
-    } else {
-      alert(`تم تسليم وصرف ${amountEgpToWithdraw.toLocaleString()} جنيه مصري للعميل بنجاح.`);
     }
   };
 
@@ -394,7 +420,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     });
 
     resetActionForm();
-    alert(`تم إيداع مبلغ ${amount.toLocaleString()} جنيه كأمانة مصرية للعميل بنجاح.`);
   };
 
   // 5.2 TRANSACTION: TRANSFER TO EGYPT (حوالة مرسلة داخل مصر خصماً من الأمانة)
@@ -458,7 +483,6 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     });
 
     resetActionForm();
-    alert(`نجاح العملية: تم إرسال وقيد وتأكيد الحوالة الداخلية لمصر وخصمها من أمانة العميل بنجاح.`);
   };
 
   // 6. TRANSACTION: APPLY ESCROW TO SETTLE CUSTOMER DEBT (مقاصة ديون العميل)
@@ -561,10 +585,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
     resetActionForm();
     if (isNowCleared) {
-      alert(`نجاح: تم تسوية ونقل ${amount.toLocaleString()} د.ل كدفعة سداد معتمدة لصالح ملف ديون العميل: ${dep.customerName} وتصفير الأمانة بذكاء!`);
       setExpandedCardId(null);
-    } else {
-      alert(`نجاح: تم ترحيل ومقاصة مبلغ ${amount.toLocaleString()} د.ل من الأمانة لسداد ديون العميل.`);
     }
   };
 
@@ -1523,6 +1544,142 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
           </div>
         );
       })()}
+
+      {/* Floating Calculator Component */}
+      <div className="fixed bottom-6 left-6 z-[100] flex flex-col items-start gap-4">
+        {showCalculator && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-[320px] md:w-[380px] flex flex-col transform origin-bottom-left transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h3 className="font-black text-sm text-slate-800 flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-indigo-600" />
+                مسودة حاسبة تجار
+              </h3>
+              <button
+                onClick={() => setShowCalculator(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="max-h-[250px] overflow-y-auto pr-1 space-y-2 mb-3 custom-scrollbar">
+                {calcRows.map((row, index) => (
+                  <div key={row.id} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+                    {/* Result (Readonly) */}
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        readOnly
+                        dir="ltr"
+                        value={calculateRowResult(row).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        className="w-full text-center bg-transparent border-none text-[11px] font-bold font-mono text-indigo-700 focus:outline-none"
+                      />
+                    </div>
+                    
+                    {/* Equals Sign */}
+                    <span className="text-slate-400 text-xs font-black">=</span>
+                    
+                    {/* Price */}
+                    <div className="w-[70px]">
+                      <input
+                        type="number"
+                        step="any"
+                        dir="ltr"
+                        lang="en"
+                        data-arrow-nav="true"
+                        placeholder="السعر"
+                        value={row.price}
+                        onChange={(e) => handleUpdateCalcRow(row.id, 'price', e.target.value)}
+                        className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                    {/* Operator */}
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'multiply')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'multiply' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                      >
+                        ×
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'divide')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'divide' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                      >
+                        ÷
+                      </button>
+                    </div>
+
+                    {/* Value */}
+                    <div className="w-[70px]">
+                      <input
+                        type="number"
+                        step="any"
+                        dir="ltr"
+                        lang="en"
+                        data-arrow-nav="true"
+                        placeholder="القيمة"
+                        value={row.value}
+                        onChange={(e) => handleUpdateCalcRow(row.id, 'value', e.target.value)}
+                        className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                    {/* Remove Row Button */}
+                    <button
+                      onClick={() => handleRemoveCalcRow(row.id)}
+                      className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Row Button */}
+              <button
+                onClick={handleAddCalcRow}
+                className="w-full py-2 border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 mb-4"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                إضافة صف جديد
+              </button>
+
+              {/* Total Footer */}
+              <div className="bg-slate-900 rounded-xl p-3 flex items-center justify-between">
+                <div className="flex flex-col items-start gap-1">
+                  <span className="text-slate-400 text-[10px] font-bold">الناتج الإجمالي</span>
+                  <span className="text-white font-mono font-black text-sm" dir="ltr">
+                    {Math.round(totalCalcResult).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyCalcResult}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  {calcCopied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {calcCopied ? "تم النسخ" : "نسخ الناتج"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Button */}
+        <button
+          onClick={() => setShowCalculator(!showCalculator)}
+          className={`${showCalculator ? 'bg-indigo-600 text-white shadow-indigo-500/25' : 'bg-slate-900 text-white shadow-[0_8px_30px_rgb(0,0,0,0.15)]'} hover:scale-105 p-3.5 rounded-full shadow-lg transition-all flex items-center justify-center relative group self-start`}
+          title="مسودة حاسبة تجار"
+        >
+          <Calculator className="w-5 h-5" />
+          {!showCalculator && (
+            <span className="absolute left-full ml-3 bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg">
+              مسودة حاسبة تجار
+            </span>
+          )}
+        </button>
+      </div>
 
     </div>
   );
