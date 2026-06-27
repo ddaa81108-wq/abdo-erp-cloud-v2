@@ -52,6 +52,13 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (showSuccessToast) {
+      const timer = setTimeout(() => setShowSuccessToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessToast]);
+
   // Expand states for each card config
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 

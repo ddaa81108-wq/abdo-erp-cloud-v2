@@ -135,6 +135,13 @@ export default function CustomerDebtsModule({
   const [selectedForRep, setSelectedForRep] = useState<string[]>([]);
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (showSuccessToast) {
+      const timer = setTimeout(() => setShowSuccessToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessToast]);
+
   const handleCopyDebtImage = async (customerName: string, debtBalance: number) => {
     try {
       const container = document.createElement("div");

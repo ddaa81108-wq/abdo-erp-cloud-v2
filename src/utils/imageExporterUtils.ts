@@ -87,37 +87,40 @@ export const copyCustomCardImage = async (value: string): Promise<boolean> => {
       const container = document.createElement("div");
       container.className = "custom-card-container";
       container.style.width = "1000px";
-      container.style.minHeight = "600px";
+      container.style.height = "800px";
       container.style.display = "flex";
       container.style.flexDirection = "column";
       container.style.justifyContent = "center";
       container.style.alignItems = "center";
-      container.style.background = "linear-gradient(135deg, #b38728 0%, #fbf5b7 25%, #daac3a 50%, #fcf6ba 75%, #aa771c 100%)";
-      container.style.padding = "30px 60px 90px 60px";
+      // Golden gradient background
+      container.style.background = "linear-gradient(145deg, #fde488 0%, #dfb542 50%, #b8861b 100%)";
+      container.style.padding = "60px";
       container.style.direction = "rtl";
       container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
       container.style.position = "absolute";
       container.style.top = "-9999px";
       container.style.left = "-9999px";
+      container.style.borderRadius = "20px";
       
-      const darkText = '#161001';
+      const darkText = '#110c00';
 
       container.innerHTML = `
+        <div style="width: 90%; height: 2px; background: rgba(255, 255, 255, 0.5); margin-bottom: 40px;"></div>
+        
         <div style="text-align: center; width: 100%; margin-bottom: 40px;">
-          <h2 style="font-size: 38pt; font-weight: 900; color: ${darkText}; margin: 0; line-height: 1.4; text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4); display: inline-block; padding: 0 10px; border-radius: 8px;">
-            شركة الأهرام للاتصالات وتقنية المعلومات
+          <h2 style="font-size: 50pt; font-weight: 900; color: ${darkText}; margin: 0; line-height: 1.3;">
+            شركة الأهرام للاتصالات وتقنية<br/>المعلومات
           </h2>
         </div>
         
-        <div style="width: 50%; height: 2px; background: rgba(22, 16, 1, 0.2); margin: 0 auto 40px auto;"></div>
+        <div style="width: 90%; height: 2px; background: rgba(255, 255, 255, 0.5); margin-bottom: 60px;"></div>
         
-        <div style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 24px; padding: 40px 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); backdrop-filter: blur(8px); width: 80%; position: relative; margin: 0 auto;">
-          <div style="font-size: 28px; font-weight: 900; color: ${darkText}; text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4);">إشعار تسعير اليوم المعتمد</div>
-          <span style="font-size: 65pt; font-weight: 900; color: ${darkText}; font-family: monospace; line-height: 1; text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.4);" dir="ltr">${value}</span>
+        <div style="font-size: 32pt; font-weight: bold; color: ${darkText}; margin-bottom: 40px; text-align: center;">
+          نعلمكم أن الأسعار متغيرة بتغيير سعر الدولار
         </div>
-
-        <div style="margin-top: 40px; text-align: center; color: rgba(22, 16, 1, 0.7); font-size: 22px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 10px;">
-          ❖ تم التوليد بنظام الإدارة الشامل ❖
+        
+        <div style="font-size: 160pt; font-weight: 900; color: ${darkText}; font-family: 'Arial Black', Impact, sans-serif; line-height: 1; text-align: center;" dir="ltr">
+          ${value}
         </div>
       `;
 
@@ -127,7 +130,7 @@ export const copyCustomCardImage = async (value: string): Promise<boolean> => {
 
       const makeImagePromise = async () => {
         const canvas = await html2canvas(container, {
-          scale: 5,
+          scale: 4,
           backgroundColor: null,
           useCORS: true
         });
@@ -144,11 +147,9 @@ export const copyCustomCardImage = async (value: string): Promise<boolean> => {
       await navigator.clipboard.write([item]);
       
       document.body.removeChild(container);
-      alert("تم نسخ الكارت بنجاح!");
       resolve(true);
     } catch (err) {
       console.error("Failed to copy image", err);
-      alert("حدث خطأ أثناء النسخ");
       resolve(false);
     }
   });
