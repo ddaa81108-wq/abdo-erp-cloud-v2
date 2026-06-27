@@ -865,7 +865,7 @@ export default function CompaniesModule({
       </div>
 
       {/* Unified grid for Companies */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         {/* Company Cards */}
         {[...filteredCompanies].reverse().map((c, i) => {
           const prev = c.previousBalance || 0;
@@ -891,21 +891,21 @@ export default function CompaniesModule({
                 if ((e.target as Element).closest("button")) return;
                 setSelectedCompId(c.id);
               }}
-              className={`${Number(remaining) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-2" : clr.bg + " " + clr.border} border rounded-2xl p-5 shadow-xl relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all`}
+              className={`${Number(remaining) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1" : clr.bg + " " + clr.border} border rounded-xl p-3.5 shadow-md relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all`}
             >
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Landmark className="w-24 h-24 text-white" />
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Landmark className="w-16 h-16 text-white" />
               </div>
 
               <div className="relative z-10 flex flex-col h-full">
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-3">
                   <h4
-                    className="font-extrabold text-white text-sm line-clamp-1 flex-1 text-right drop-shadow-md ml-2"
+                    className="font-extrabold text-white text-[11px] sm:text-xs line-clamp-2 flex-1 text-right drop-shadow-md ml-2"
                     title={c.name}
                   >
                     {c.name}
                   </h4>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {Number(remaining) === 0 ? (
                       <button
                         type="button"
@@ -917,10 +917,10 @@ export default function CompaniesModule({
                             alert("تم مشاركة كارت المخالصة بنجاح 📋");
                           }
                         }}
-                        className="bg-emerald-500/80 hover:bg-emerald-600 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-md border border-emerald-300"
+                        className="bg-emerald-500/80 hover:bg-emerald-600 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-sm border border-emerald-300"
                         title="نسخ كارت المخالصة 📋"
                       >
-                        <Copy className="w-4 h-4" />
+                        <Copy className="w-3.5 h-3.5" />
                       </button>
                     ) : (
                       <button
@@ -930,10 +930,10 @@ export default function CompaniesModule({
                           e.preventDefault();
                           handleCopyCardImage(c, remaining);
                         }}
-                        className="bg-white/10 hover:bg-white/30 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                        className="bg-white/10 hover:bg-white/30 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
                         title="نسخ كشف مختصر كصورة 📋"
                       >
-                        <Copy className="w-4 h-4" />
+                        <Copy className="w-3.5 h-3.5" />
                       </button>
                     )}
                     <button
@@ -943,34 +943,34 @@ export default function CompaniesModule({
                         e.preventDefault();
                         handleExecuteQuickCompanySettle("archive_only", c);
                       }}
-                      className="bg-white/10 hover:bg-rose-500/80 text-white p-2 rounded-xl transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                      className="bg-white/10 hover:bg-rose-500/80 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
                       title="أرشفة ❌"
                     >
-                      <X className="w-4 h-4" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
                 <div className="mt-auto">
-                  <div className="text-2xl font-black text-white drop-shadow-md">
+                  <div className="text-lg font-black text-white drop-shadow-md">
                     {remaining.toLocaleString()}{" "}
-                    <span className="text-[10px] font-bold opacity-70">
+                    <span className="text-[9px] font-bold opacity-70">
                       د.ل
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                  <div className="mt-1.5 flex items-center gap-1 flex-wrap">
                     {plus > 0 && (
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 backdrop-blur-md shadow-xs">
+                      <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
                         +{plus.toLocaleString()} (جديد)
                       </span>
                     )}
                     {minus > 0 && (
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 backdrop-blur-md shadow-xs">
+                      <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
                         -{minus.toLocaleString()} (دفعة)
                       </span>
                     )}
                     {plus === 0 && minus === 0 && Number(remaining) === 0 && (
-                      <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 backdrop-blur-md shadow-xs">
+                      <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
                         خالص ✓
                       </span>
                     )}
