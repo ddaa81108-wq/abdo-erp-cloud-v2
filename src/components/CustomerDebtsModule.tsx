@@ -129,6 +129,7 @@ export default function CustomerDebtsModule({
   const [newCustName, setNewCustName] = useState("");
   const [newCustPhone, setNewCustPhone] = useState("");
   const [newCustDebt, setNewCustDebt] = useState("");
+  const [newCustCollector, setNewCustCollector] = useState<'abdullah' | 'ali'>('abdullah');
 
   // حالة لتصدير المندوب (الواتساب)
   const [selectionMode, setSelectionMode] = useState<boolean>(false);
@@ -325,19 +326,21 @@ export default function CustomerDebtsModule({
     }
 
     // زبون جديد كلياً
-    createNewCustomer(finalName, newCustPhone.trim(), initialDebt);
+    createNewCustomer(finalName, newCustPhone.trim(), initialDebt, newCustCollector);
   };
 
   const createNewCustomer = (
     name: string,
     phone: string,
     debtAmount: number,
+    collector: 'abdullah' | 'ali'
   ) => {
     const id = `cust_${Date.now()}`;
     const newCust: Customer = {
       id,
       name,
       phone,
+      collector,
       createdAt: new Date().toISOString(),
       isDeleted: false,
       type: "customer", // دائماً زبون عادي
@@ -1010,24 +1013,37 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
-      {/* 3. شبكة كروت الزبائن */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
-        {/* كروت الزبائن */}
-        {[...activeCustomersList].reverse().map((acc, i) => {
-          const isSelected = selectedForRep.includes(acc.cust.id);
-          
-          const colors = [
-            { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
-            { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
-            { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
-            { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
-            { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
-            { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
-          ];
-          const clr = colors[i % colors.length];
+      {/* 3. شبكة كروت الزبائن - مقسمة */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[
+          { id: 'abdullah', title: 'ديون عبد الله', titleColor: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
+          { id: 'ali', title: 'ديون علي', titleColor: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
+        ].map(section => (
+          <div key={section.id} className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+            <h3 className={`font-black text-base mb-4 p-3 rounded-2xl border ${section.titleColor} text-center flex justify-center items-center gap-3`}>
+              <span>{section.title}</span>
+              <span className="text-xs font-bold bg-white/60 px-2.5 py-1 rounded-lg text-slate-800 shadow-xs">
+                 {[...activeCustomersList].filter(acc => section.id === 'ali' ? acc.cust.collector === 'ali' : acc.cust.collector !== 'ali').length}
+              </span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 content-start">
+              {[...activeCustomersList].reverse()
+                .filter(acc => section.id === 'ali' ? acc.cust.collector === 'ali' : acc.cust.collector !== 'ali')
+                .map((acc, i) => {
+                  const isSelected = selectedForRep.includes(acc.cust.id);
+                  
+                  const colors = [
+                    { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
+                    { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
+                    { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
+                    { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
+                    { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
+                    { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
+                  ];
+                  const clr = colors[i % colors.length];
 
-          return (
-            <div
+                  return (
+                    <div
               key={acc.cust.id}
               onClick={(e) => {
                 if ((e.target as Element).closest("button")) {
@@ -1065,30 +1081,6 @@ export default function CustomerDebtsModule({
                     title="أرشفة ❌"
                   >
                     <X className="w-3 h-3" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      let text = `*كشف حساب سريع*\nالاسم: ${acc.cust.name}\n`;
-                      if (acc.debtBalance > 0) {
-                        text += `القيمة المطلوب سدادها: ${Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل`;
-                      } else if (acc.debtBalance < 0) {
-                        text += `رصيد دائن لصالحه (أمانة): ${Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل`;
-                      } else {
-                        text += `الرصيد خالص وتم سداده.`;
-                      }
-                      window.open(
-                        `https://wa.me/?text=${encodeURIComponent(text)}`,
-                        "_blank",
-                      );
-                    }}
-                    className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
-                    title="إرسال سريع للواتساب"
-                  >
-                    <MessageCircle className="w-3 h-3" />
                   </button>
 
                   <button
@@ -1134,6 +1126,9 @@ export default function CustomerDebtsModule({
             </div>
           );
         })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/*  نافذة إضافة زبون جديد */}
@@ -1191,6 +1186,26 @@ export default function CustomerDebtsModule({
                       د.ل
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 mt-3">
+                  مُحصّل الدين *
+                </label>
+                <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                  <label className="flex-1 cursor-pointer">
+                    <div className={`p-3 rounded-lg text-center transition-all ${newCustCollector === 'abdullah' ? 'bg-indigo-100 border-2 border-indigo-500 text-indigo-900 font-bold' : 'bg-white border border-slate-200 text-slate-600'}`}>
+                      <input type="radio" name="collector" className="hidden" checked={newCustCollector === 'abdullah'} onChange={() => setNewCustCollector('abdullah')} />
+                      ديون عبد الله
+                    </div>
+                  </label>
+                  <label className="flex-1 cursor-pointer">
+                    <div className={`p-3 rounded-lg text-center transition-all ${newCustCollector === 'ali' ? 'bg-emerald-100 border-2 border-emerald-500 text-emerald-900 font-bold' : 'bg-white border border-slate-200 text-slate-600'}`}>
+                      <input type="radio" name="collector" className="hidden" checked={newCustCollector === 'ali'} onChange={() => setNewCustCollector('ali')} />
+                      ديون علي
+                    </div>
+                  </label>
                 </div>
               </div>
 

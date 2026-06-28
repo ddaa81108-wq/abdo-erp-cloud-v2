@@ -8,6 +8,7 @@ export interface Customer {
   name: string;
   createdAt: string;
   phone?: string;
+  collector?: 'abdullah' | 'ali'; // To divide debts into two sections
   isDeleted?: boolean; // track soft deleted accounts for archive discovery
   type?: 'customer' | 'employee' | 'partner'; // support the 3 parallel sections
 }
