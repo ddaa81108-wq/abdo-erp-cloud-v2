@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
 import { ERPState, Company, CompanyTransaction } from "../types";
+import { VoiceInputButton } from "./VoiceInputButton";
 
 interface CompaniesModuleProps {
   state: ERPState;
@@ -1289,14 +1290,19 @@ export default function CompaniesModule({
                 <label className="block text-xs font-bold text-slate-705 mb-1">
                   اسم المورّد / الشركة الشريكة *
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={compName}
-                  onChange={(e) => setCompName(e.target.value)}
-                  placeholder="مثال: مجموعة التضامن للاستيراد"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={compName}
+                    onChange={(e) => setCompName(e.target.value)}
+                    placeholder="مثال: مجموعة التضامن للاستيراد"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setCompName(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1405,17 +1411,22 @@ export default function CompaniesModule({
                 <label className="block text-xs font-bold text-slate-705 mb-1">
                   بيان وملاحظة السند
                 </label>
-                <input
-                  type="text"
-                  value={txNote}
-                  onChange={(e) => setTxNote(e.target.value)}
-                  placeholder={
-                    txType === "purchase_invoice"
-                      ? "فاتورة شراء بكرات أسلاك مجلفنة"
-                      : "دفعة نقدية مسلمة للمندوب"
-                  }
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={txNote}
+                    onChange={(e) => setTxNote(e.target.value)}
+                    placeholder={
+                      txType === "purchase_invoice"
+                        ? "فاتورة شراء بكرات أسلاك مجلفنة"
+                        : "دفعة نقدية مسلمة للمندوب"
+                    }
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setTxNote(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 border-t pt-3 mt-4">

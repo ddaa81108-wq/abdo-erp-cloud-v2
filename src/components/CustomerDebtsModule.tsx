@@ -30,6 +30,8 @@ import {
 } from "../types";
 import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
 
+import { VoiceInputButton } from "./VoiceInputButton";
+
 interface CustomerDebtsModuleProps {
   state: ERPState;
   onUpdateState: (newState: ERPState) => void;
@@ -1073,14 +1075,19 @@ export default function CustomerDebtsModule({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   اسم الزبون بالكامل *
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={newCustName}
-                  onChange={(e) => setNewCustName(e.target.value)}
-                  placeholder="مثال: صالح الفرجاني"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newCustName}
+                    onChange={(e) => setNewCustName(e.target.value)}
+                    placeholder="مثال: صالح الفرجاني"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setNewCustName(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1464,13 +1471,18 @@ export default function CustomerDebtsModule({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   البيان / ملاحظة (اختياري)
                 </label>
-                <input
-                  type="text"
-                  value={innerDebtNote}
-                  onChange={(e) => setInnerDebtNote(e.target.value)}
-                  placeholder="مثال: دين إضافي عن بضاعة"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={innerDebtNote}
+                    onChange={(e) => setInnerDebtNote(e.target.value)}
+                    placeholder="مثال: دين إضافي عن بضاعة"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setInnerDebtNote(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t">
@@ -1534,13 +1546,18 @@ export default function CustomerDebtsModule({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   ملاحظة عامة أو بيان السند (اختياري)
                 </label>
-                <input
-                  type="text"
-                  value={paymentNote}
-                  onChange={(e) => setPaymentNote(e.target.value)}
-                  placeholder="مثال: مستلم نقدًا بالكامل"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={paymentNote}
+                    onChange={(e) => setPaymentNote(e.target.value)}
+                    placeholder="مثال: مستلم نقدًا بالكامل"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setPaymentNote(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t">

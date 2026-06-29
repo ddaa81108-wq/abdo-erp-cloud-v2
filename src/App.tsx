@@ -36,6 +36,7 @@ import { db } from "./firebase";
 
 // Import subcomponents
 import AlertCenter from "./components/AlertCenter";
+import { VoiceInputButton } from "./components/VoiceInputButton";
 import GlobalSearch from "./components/GlobalSearch";
 import BackupCenter from "./components/BackupCenter";
 import ExcelImporter from "./components/ExcelImporter";
@@ -742,15 +743,21 @@ export default function App() {
               dir="rtl"
             />
             <Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" />
-            {globalSearchQuery && (
-              <button
-                onClick={() => setGlobalSearchQuery("")}
-                className="absolute left-3 top-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-700 p-0.5 flex items-center justify-center"
-                title="تصفير البحث ✕"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+            <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
+              <VoiceInputButton 
+                onResult={(text) => setGlobalSearchQuery(text)}
+                className="bg-slate-700 text-slate-300 hover:bg-slate-600 border-none scale-90"
+              />
+              {globalSearchQuery && (
+                <button
+                  onClick={() => setGlobalSearchQuery("")}
+                  className="text-slate-400 hover:text-white rounded-full hover:bg-slate-700 p-1 flex items-center justify-center"
+                  title="تصفير البحث ✕"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
 
             {globalSearchQuery && (
               <div className="absolute top-full right-0 w-[90vw] md:w-[600px] mt-2 z-50">

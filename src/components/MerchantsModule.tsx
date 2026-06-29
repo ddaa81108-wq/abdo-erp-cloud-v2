@@ -18,6 +18,7 @@ import {
 import { ERPState, Merchant, MerchantTransaction } from "../types";
 import DebtBird from "./DebtBird";
 import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
+import { VoiceInputButton } from "./VoiceInputButton";
 
 interface MerchantsModuleProps {
   state: ERPState;
@@ -1023,14 +1024,19 @@ export default function MerchantsModule({
                 <label className="block text-xs font-bold text-slate-705 mb-1">
                   اسم التاجر الشريك بالكامل *
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={merchName}
-                  onChange={(e) => setMerchName(e.target.value)}
-                  placeholder="مثال: الحاج صالح التاجوري"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={merchName}
+                    onChange={(e) => setMerchName(e.target.value)}
+                    placeholder="مثال: الحاج صالح التاجوري"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setMerchName(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1137,17 +1143,22 @@ export default function MerchantsModule({
                 <label className="block text-xs font-bold text-slate-705 mb-1">
                   بيان وملاحظة السند
                 </label>
-                <input
-                  type="text"
-                  value={txNote}
-                  onChange={(e) => setTxNote(e.target.value)}
-                  placeholder={
-                    txType === "debt"
-                      ? "فاتورة سحب كابلات وأسلاك نحاسية"
-                      : "استلام دفعة نقدية بيد المودع"
-                  }
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={txNote}
+                    onChange={(e) => setTxNote(e.target.value)}
+                    placeholder={
+                      txType === "debt"
+                        ? "فاتورة سحب كابلات وأسلاك نحاسية"
+                        : "استلام دفعة نقدية بيد المودع"
+                    }
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setTxNote(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 border-t pt-3 mt-4">

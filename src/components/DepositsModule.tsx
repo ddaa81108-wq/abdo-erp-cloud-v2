@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy, Calculator, Minus, CheckCircle2 } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
 import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
+import { VoiceInputButton } from "./VoiceInputButton";
 
 interface DepositsModuleProps {
   state: ERPState;
@@ -1232,14 +1233,19 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                 </div>
                                 <div>
                                   <label className="block text-[10px] font-bold text-slate-500 mb-1">تفاصيل الحوالة (اسم المستلم بمصر ورقم Vodafone Cash أو التفاصيل) *</label>
-                                  <input
-                                    type="text"
-                                    required
-                                    value={actionNote}
-                                    onChange={(e) => setActionNote(e.target.value)}
-                                    placeholder="مثال: حوالة باسم صلاح أحمد - فودافون كاش 010xxxxxxxx"
-                                    className="w-full text-right p-2 border rounded text-xs"
-                                  />
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      required
+                                      value={actionNote}
+                                      onChange={(e) => setActionNote(e.target.value)}
+                                      placeholder="مثال: حوالة باسم صلاح أحمد - فودافون كاش 010xxxxxxxx"
+                                      className="w-full text-right pr-9 p-2 border rounded text-xs"
+                                    />
+                                    <div className="absolute right-1 top-1">
+                                      <VoiceInputButton onResult={(text) => setActionNote(prev => (prev ? prev + ' ' + text : text))} className="scale-90" />
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -1259,13 +1265,18 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                                 </div>
                                 <div>
                                   <label className="block text-[10px] font-bold text-slate-500 mb-1">ملاحظة المقاصة</label>
-                                  <input
-                                    type="text"
-                                    value={actionNote}
-                                    onChange={(e) => setActionNote(e.target.value)}
-                                    placeholder="سداد حساب تحت التسوية لملف الديون الجاري"
-                                    className="w-full text-right p-2 border rounded text-xs"
-                                  />
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={actionNote}
+                                      onChange={(e) => setActionNote(e.target.value)}
+                                      placeholder="سداد حساب تحت التسوية لملف الديون الجاري"
+                                      className="w-full text-right pr-9 p-2 border rounded text-xs"
+                                    />
+                                    <div className="absolute right-1 top-1">
+                                      <VoiceInputButton onResult={(text) => setActionNote(prev => (prev ? prev + ' ' + text : text))} className="scale-90" />
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
                             )}
@@ -1362,14 +1373,19 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
             <form onSubmit={handleCreateCustomerDeposit} className="space-y-4">
               <div>
                 <label className="block text-slate-500 text-[11px] font-bold mb-1.5">اسم المودع المعتمد *</label>
-                <input
-                  type="text"
-                  required
-                  value={newCustName}
-                  onChange={(e) => setNewCustName(e.target.value)}
-                  placeholder="مثال: أكرم بوعجيله"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newCustName}
+                    onChange={(e) => setNewCustName(e.target.value)}
+                    placeholder="مثال: أكرم بوعجيله"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setNewCustName(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -1399,13 +1415,18 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
               <div>
                 <label className="block text-slate-500 text-[11px] font-bold mb-1.5">طبيعة الحجز (البيان)</label>
-                <input
-                  type="text"
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="اختياري: مثال دفعة كذا"
-                  className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="اختياري: مثال دفعة كذا"
+                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
+                  />
+                  <div className="absolute right-1.5 top-1.5">
+                    <VoiceInputButton onResult={(text) => setNewNote(prev => (prev ? prev + ' ' + text : text))} />
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
