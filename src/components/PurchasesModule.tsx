@@ -90,6 +90,8 @@ export default function PurchasesModule({
   // State for Egypt currency exchange transfer rate
   const [egTransferRate, setEgTransferRate] = useState<string>("1.0");
 
+  const lastEditTime = useRef<number>(0);
+
   // States for the new Giant HD Capture modal
   const [showHdModal, setShowHdModal] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -211,6 +213,10 @@ export default function PurchasesModule({
     const docRef = doc(db, "erp_system", "purchases_module_v4");
     const unsubscribe = onSnapshot(docRef, async (docSnap) => {
       if (docSnap.exists()) {
+        if (Date.now() - lastEditTime.current < 3000) {
+          // User is actively typing, ignore the snapshot to prevent keystroke loss
+          return;
+        }
         const data = docSnap.data();
         if (!unmounted && data.merchStates) {
           // Ensure consumerRows exists
@@ -336,6 +342,7 @@ export default function PurchasesModule({
   const updateCurrentMerchantState = (
     updater: (prev: MerchantPurchaseState) => MerchantPurchaseState,
   ) => {
+    lastEditTime.current = Date.now();
     setMerchStates((prev) => ({
       ...prev,
       [activeMerch]: updater(
@@ -960,23 +967,24 @@ export default function PurchasesModule({
               </button>
             </div>
 
-            {/* 3 small Vodafone cash inputs */}
-            <div className="flex items-center gap-1.5 bg-purple-50 p-1.5 rounded-lg border border-purple-100">
-              <span className="text-[10px] font-bold text-purple-700 mx-1">
+            {/* 3 small Vodafone cash inputs (Rendered as separate squares) */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-1.5 rounded-lg border border-purple-100 shadow-sm">
                 خصم كاش:
               </span>
               {consumerRows.map((row, idx) => (
-                <input
-                  key={row.id}
-                  type="text"
-                  value={row.amount || ""}
-                  onChange={(e) =>
-                    handleUpdateConsumerRow(row.id, e.target.value)
-                  }
-                  className="w-16 text-center bg-white border border-slate-200/60 rounded px-1 py-1.5 outline-none font-bold text-[11px] text-slate-900 focus:border-purple-500"
-                  placeholder="0"
-                  title={`الخصم ${idx + 1}`}
-                />
+                <div key={row.id} className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden flex flex-col w-20 sm:w-24">
+                  <input
+                    type="number"
+                    value={row.amount || ""}
+                    onChange={(e) =>
+                      handleUpdateConsumerRow(row.id, e.target.value)
+                    }
+                    className="w-full text-center bg-transparent px-1.5 py-1.5 outline-none font-extrabold text-[12px] sm:text-[13px] text-slate-900 focus:bg-purple-50/30 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="0"
+                    title={`الخصم ${idx + 1}`}
+                  />
+                </div>
               ))}
             </div>
           </div>
