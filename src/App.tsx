@@ -765,12 +765,12 @@ export default function App() {
           </div>
 
           <button
-            onClick={() => setShowCustomCardModal(true)}
+            onClick={() => window.open("/card-generator.html", "_blank")}
             className="bg-amber-500 hover:bg-amber-600 text-white border border-amber-400 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0"
-            title="توليد كارت السعر"
+            title="منظومة توليد الكروت الشاملة"
           >
             <span className="text-sm">👑</span>
-            <span>توليد كارت السعر</span>
+            <span>منظومة الكروت الذكية</span>
           </button>
 
           {/* Quick Universal widgets trigger buttons */}

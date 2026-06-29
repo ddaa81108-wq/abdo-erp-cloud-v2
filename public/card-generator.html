@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>منظومة توليد الكروت الشاملة والذكية</title>
+    <!-- مكتبة تحويل الكارت لصورة -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 30px;
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            background-color: #e9ecef;
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        /* ----------------------------------
+           لوحة التحكم (يسار)
+        ----------------------------------- */
+        .controls-sidebar {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border: 2px solid #b38728;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 360px;
+            position: sticky;
+            top: 30px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .controls-sidebar h3 {
+            margin: 0;
+            color: #b38728;
+            text-align: center;
+            font-size: 18pt;
+            border-bottom: 2px dashed #eee;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .input-group label {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .input-group input[type="text"], 
+        .input-group select,
+        .input-group textarea {
+            padding: 10px;
+            font-size: 12pt;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            outline: none;
+            transition: all 0.3s ease;
+            resize: none;
+        }
+
+        .input-group input[type="text"]:focus,
+        .input-group select:focus,
+        .input-group textarea:focus {
+            border-color: #b38728;
+        }
+
+        .input-group input:disabled, .input-group select:disabled {
+            background-color: #f1f2f6;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+
+        .toggle-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .toggle-group label {
+            font-size: 11pt;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            color: #d35400;
+        }
+
+        .copy-btn {
+            background-color: #2c3e50;
+            color: white;
+            border: none;
+            padding: 15px;
+            font-size: 16pt;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .copy-btn:hover { background-color: #1a252f; transform: translateY(-2px); }
+        .copy-btn.success { background-color: #27ae60 !important; }
+
+        /* ----------------------------------
+           الكارت العملاق المستقر (يمين)
+        ----------------------------------- */
+        .card {
+            width: 1000px;
+            height: 800px; 
+            border-radius: 30px;
+            padding: 40px; 
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between; 
+            align-items: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative;
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            color: var(--text-main);
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        .header { font-size: 26pt; font-weight: bold; margin-top: 5px; }
+        
+        .price-card-title {
+            font-size: 38pt; font-weight: 900;
+            border-top: 3px solid var(--title-border);
+            border-bottom: 3px solid var(--title-border);
+            padding: 15px 0; margin-top: 20px; width: 90%; text-align: center;
+        }
+
+        .client-name { font-size: 55pt; font-weight: 900; margin: 0; line-height: 1.1; text-align: center; }
+        .label { font-size: 24pt; font-weight: bold; text-align: center;}
+        
+        .amount-box {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .amount-text {
+            font-size: 120pt; font-weight: 900;
+            font-family: 'Arial Black', Impact, Arial, sans-serif;
+            margin: 0; line-height: 1; display: flex; align-items: center; gap: 20px;
+            color: var(--text-main);
+        }
+        
+        .currency { font-size: 35pt; font-weight: bold; }
+
+        .exchange-transfer-box {
+            display: flex;
+            gap: 30px;
+            background: var(--badge-bg);
+            border: 2px solid var(--badge-border);
+            padding: 15px 40px;
+            border-radius: 20px;
+            width: 85%;
+            justify-content: space-around;
+            margin-bottom: 10px;
+        }
+
+        .transfer-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .transfer-col-label { font-size: 16pt; font-weight: bold; opacity: 0.8; }
+        .transfer-col-value { font-size: 28pt; font-weight: 900; }
+
+        .price-badge {
+            font-size: 22pt; font-weight: bold; color: var(--text-main);
+            background: var(--badge-bg); border: 2px solid var(--badge-border);
+            padding: 8px 30px; border-radius: 15px; margin-bottom: 10px;
+            display: flex; align-items: center; gap: 10px;
+        }
+
+        .custom-note-box {
+            font-size: 18pt; font-weight: bold; color: var(--text-main);
+            background: var(--badge-bg); border: 2px dashed var(--badge-border);
+            padding: 12px 30px; border-radius: 15px; margin-bottom: 10px;
+            text-align: center; line-height: 1.5; width: 85%; white-space: pre-wrap; 
+        }
+
+        .large-note { font-size: 34pt !important; line-height: 1.8; padding: 30px !important; border: none !important; background: transparent !important; }
+
+        .footer { font-size: 20pt; font-weight: 900; opacity: 0.95; white-space: nowrap; }
+        .spacer { height: 35px; width: 100%; }
+        
+        .hidden-element { display: none !important; }
+        .center-content { justify-content: center !important; gap: 40px; }
+
+        /* ----------------------------------
+           الإضافة الجديدة: الكشف النهائي (المنظومة الماسية)
+        ----------------------------------- */
+        .final-statement-box {
+            background-color: #fdfdfd;
+            border: 3px solid #342875;
+            border-radius: 25px;
+            width: 95%;
+            padding: 30px 40px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            margin: 15px 0;
+            box-sizing: border-box;
+        }
+        .stmt-header { text-align: center; font-size: 30pt; font-weight: 900; margin-bottom: 10px; color: #342875; }
+        .stmt-date { text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 25px; color: #342875; }
+        .stmt-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 0; border-bottom: 1px solid #d1d8e0;
+        }
+        .stmt-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .stmt-label { font-size: 24pt; font-weight: bold; color: #1a1a1a; }
+        .stmt-value {
+            font-size: 32pt; font-weight: 900; color: #1a1a1a;
+            background: #f4f6f9; padding: 5px 25px; border-radius: 8px;
+            min-width: 250px; text-align: left; font-family: 'Arial Black', Impact, sans-serif;
+            border: 1px solid #e1e5eb;
+        }
+        .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { 
+            color: #8e158e; /* اللون البنفسجي للناتج النهائي */
+            background: transparent; border: none; font-size: 36pt;
+        }
+
+        /* الألوان والخلفيات */
+        .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%); --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); --title-border: rgba(255, 255, 255, 0.4); }
+        .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%); --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); --title-border: rgba(0, 0, 0, 0.2); }
+        .bg-navy { background: linear-gradient(135deg, #141e30 0%, #243b55 100%); --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.3); --badge-border: rgba(255, 255, 255, 0.3); --title-border: rgba(255, 255, 255, 0.3); }
+        .bg-dark { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%); --text-main: #f1c40f; --badge-bg: rgba(255, 255, 255, 0.1); --badge-border: rgba(241, 196, 15, 0.5); --title-border: rgba(241, 196, 15, 0.4); }
+        .bg-emerald { background: linear-gradient(135deg, #0f3422 0%, #1e5639 50%, #2ecc71 100%); --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --title-border: rgba(255, 255, 255, 0.3); }
+        .bg-ruby { background: linear-gradient(135deg, #640d14 0%, #ad2831 50%, #e5383b 100%); --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --title-border: rgba(255, 255, 255, 0.3); }
+        .bg-ocean { background: linear-gradient(135deg, #021B79 0%, #0575E6 100%); --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --title-border: rgba(255, 255, 255, 0.3); }
+        .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); --title-border: rgba(0, 0, 0, 0.1); }
+        .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%); --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --title-border: rgba(255, 255, 255, 0.3); }
+        .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%); --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --title-border: rgba(255, 255, 255, 0.3); }
+    </style>
+</head>
+<body onload="generateDate()">
+
+    <div class="app-container">
+        
+        <!-- الكارت (يمين) -->
+        <div class="card-wrapper">
+            <div class="card bg-gold" id="goldenCard">
+                <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
+                <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                <div class="client-name" id="display-name">سامي طرابلس</div>
+                <div class="label" id="status-label">إجمالي الديون المستحقة عليك:</div>
+                
+                <div class="amount-box" id="amount-box-container">
+                    <div class="amount-text" id="amount-container">
+                        <span id="display-amount">144,500</span> <span class="currency" id="currency-label">د.ل</span>
+                    </div>
+                </div>
+
+                <!-- الإضافة الجراحية: جدول الكشف النهائي -->
+                <div class="final-statement-box hidden-element" id="final-statement-box">
+                    <div class="stmt-header" id="stmt-header-title">الكشف النهائي للمنظومة الماسيه الملكيه</div>
+                    <div class="stmt-date" id="stmt-date-display">2026-06-29</div>
+                    <div class="stmt-row">
+                        <div class="stmt-label">القيمة السابقة:</div>
+                        <div class="stmt-value" id="val-previous">0</div>
+                    </div>
+                    <div class="stmt-row">
+                        <div class="stmt-label">المستلمة اليوم:</div>
+                        <div class="stmt-value" id="val-received">1,250,000</div>
+                    </div>
+                    <div class="stmt-row">
+                        <div class="stmt-label">إجمالي الشغل:</div>
+                        <div class="stmt-value" id="val-total">655,226</div>
+                    </div>
+                    <div class="stmt-row final-row">
+                        <div class="stmt-label">الباقي النهائي:</div>
+                        <div class="stmt-value" id="val-remaining">594,774</div>
+                    </div>
+                </div>
+                <!-- نهاية الجدول -->
+
+                <div class="exchange-transfer-box hidden-element" id="exchange-transfer-box">
+                    <div class="transfer-column">
+                        <span class="transfer-col-label">المبلغ المستلم</span>
+                        <span class="transfer-col-value" id="display-received">0 د.ل</span>
+                    </div>
+                    <div class="transfer-column">
+                        <span class="transfer-col-label">سعر الصرف</span>
+                        <span class="transfer-col-value" id="display-rate">0.00</span>
+                    </div>
+                    <div class="transfer-column">
+                        <span class="transfer-col-label">المبلغ المحول</span>
+                        <span class="transfer-col-value" id="display-converted" style="color: #000000; background: #f1c40f; padding: 2px 10px; border-radius: 8px;">0 ج.م</span>
+                    </div>
+                </div>
+
+                <div class="price-badge hidden-element" id="price-badge">
+                    السعر: <span id="display-price">0</span>
+                </div>
+
+                <div class="custom-note-box hidden-element" id="custom-note-box"></div>
+                
+                <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                <div class="spacer" id="card-spacer"></div>
+            </div>
+        </div>
+
+        <!-- لوحة التحكم (يسار) -->
+        <div class="controls-sidebar">
+            <h3>⚙️ لوحة التحكم الشاملة</h3>
+            
+            <div class="input-group" style="background: #f8f9fa; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <label style="color: #c0392b; margin-bottom: 5px;">🔍 حجم الخط (الاسم والمبلغ):</label>
+                <div style="display: flex; gap: 5px;">
+                    <button type="button" onclick="changeFontSize('increase')" style="flex: 1; padding: 8px; font-size: 12pt; font-weight: bold; cursor: pointer; border-radius: 6px; border: 1px solid #bdc3c7; background: #fff;">➕ تكبير</button>
+                    <button type="button" onclick="changeFontSize('decrease')" style="flex: 1; padding: 8px; font-size: 12pt; font-weight: bold; cursor: pointer; border-radius: 6px; border: 1px solid #bdc3c7; background: #fff;">➖ تصغير</button>
+                    <button type="button" onclick="changeFontSize('reset')" style="flex: 1; padding: 8px; font-size: 11pt; cursor: pointer; border-radius: 6px; border: 1px solid #bdc3c7; background: #ecf0f1; color: #333;">🔄 الافتراضي</button>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>لون وخلفية الكارت:</label>
+                <select id="themeSelect" onchange="updateCard()">
+                    <optgroup label="✨ الألوان الأساسية">
+                        <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>
+                        <option value="bg-silver">الفضي اللامع</option>
+                        <option value="bg-navy">الكحلي المؤسسي</option>
+                        <option value="bg-dark">الأسود الفاخر</option>
+                    </optgroup>
+                    <optgroup label="🌟 الألوان الإضافية">
+                        <option value="bg-emerald">الأخضر الزمردي</option>
+                        <option value="bg-ruby">الأحمر الياقوتي</option>
+                        <option value="bg-ocean">الأزرق المحيطي</option>
+                        <option value="bg-pearl">الأبيض اللؤلؤي</option>
+                        <option value="bg-copper">النحاسي الكلاسيكي</option>
+                        <option value="bg-purple">البنفسجي الملكي</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>نوع الكارت:</label>
+                <select id="typeSelect" onchange="updateCard()">
+                    <option value="debt">ديون (عليه فلوس)</option>
+                    <option value="trust">أمانة (ليه فلوس)</option>
+                    <option value="clearance">مخالصة مالية</option>
+                    <option value="zero">تصفير حساب</option>
+                    <option value="transfer">إشعار تحويل عملة (حوالة مزدوجة) 🔄</option>
+                    <option value="instruction">رسالة تعليمات (بدون أرقام)</option>
+                    <option value="exchange_rate">إعلان سعر صرف (دولار)</option>
+                    <!-- الخيار الجديد للجدول -->
+                    <option value="final_statement">كشف حساب نهائي (المنظومة الماسية) 📊</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label style="display: flex; justify-content: space-between;">
+                    <span id="name-input-label">اسم العميل / الشركة:</span>
+                    <span style="font-size: 9pt; color: #7f8c8d; cursor: pointer; text-decoration: underline;" onclick="clearClientMemory()" title="مسح الأسماء المحفوظة">مسح الذاكرة 🗑️</span>
+                </label>
+                <input type="text" id="nameInput" placeholder="الاسم أو عنوان الكشف..." value="الكشف النهائي للمنظومة الماسيه الملكيه" list="clientNames" autocomplete="off" oninput="updateCard()">
+                <datalist id="clientNames"></datalist>
+            </div>
+
+            <!-- جروب المدخلات العادية -->
+            <div class="input-group" id="main-amount-group">
+                <label id="amount-input-label">المبلغ / السعر الأساسي:</label>
+                <input type="text" id="amountInput" placeholder="أدخل الرقم..." value="144500" oninput="updateCard()">
+            </div>
+
+            <!-- جروب مدخلات الجدول الجديد (بإيدك) -->
+            <div id="statement-inputs-group" class="hidden-element" style="display:flex; flex-direction:column; gap:8px; background: #fdfdfd; padding: 15px; border-radius: 10px; border: 2px solid #342875;">
+                <label style="color:#342875; font-weight:bold; border-bottom: 1px solid #ccc; padding-bottom:5px;">إدخال أرقام الكشف النهائي:</label>
+                <div class="input-group">
+                    <label>القيمة السابقة:</label>
+                    <input type="text" id="input-prev" value="0" oninput="updateCard()">
+                </div>
+                <div class="input-group">
+                    <label>المستلمة اليوم:</label>
+                    <input type="text" id="input-recv" value="1250000" oninput="updateCard()">
+                </div>
+                <div class="input-group">
+                    <label>إجمالي الشغل:</label>
+                    <input type="text" id="input-total" value="655226" oninput="updateCard()">
+                </div>
+                <div class="input-group">
+                    <label>الباقي النهائي:</label>
+                    <input type="text" id="input-remain" value="594774" oninput="updateCard()">
+                </div>
+            </div>
+
+            <div id="transfer-inputs-group" class="hidden-element" style="display:flex; flex-direction:column; gap:10px;">
+                <div class="input-group">
+                    <label>سعر الصرف (مثال: 1.25):</label>
+                    <input type="text" id="exchangeRateInput" placeholder="0.00" value="1.25" oninput="updateCard()">
+                </div>
+                <div class="input-group">
+                    <label>رمز العملة المحول إليها (مثال: ج.م):</label>
+                    <input type="text" id="targetCurrencyInput" placeholder="ج.م" value="ج.م" oninput="updateCard()">
+                </div>
+            </div>
+
+            <div class="input-group" id="secondary-price-group">
+                <label>السعر الإضافي (اختياري):</label>
+                <input type="text" id="priceInput" placeholder="أدخل السعر الفرعي..." value="" oninput="updateCard()">
+            </div>
+
+            <div class="input-group">
+                <label>ملاحظات جاهزة وإضافية:</label>
+                <select id="templateSelect" onchange="loadTemplate()" style="font-size: 11pt; padding: 6px;">
+                    <option value="">-- اختر رسالة جاهزة --</option>
+                    <optgroup label="عمليات الإيداع والتسليم">
+                        <option value="houta">توجيه إيداع (مكتب الحوتة)</option>
+                        <option value="receipt">تأكيد استلام (عام)</option>
+                        <option value="delivery">تأكيد تسليم (عام)</option>
+                    </optgroup>
+                    <optgroup label="عمليات التحويلات">
+                        <option value="vodafone">تأكيد تحويل (فودافون كاش)</option>
+                        <option value="kafr_elsheikh">تسليم يدوي (كفر الشيخ)</option>
+                        <option value="post_office">تحويل (بريد مصري)</option>
+                    </optgroup>
+                    <optgroup label="المديونيات والحسابات">
+                        <option value="debt_reminder">تذكير بسداد مديونية</option>
+                        <option value="trust_deposit">إيداع أمانة في الحساب</option>
+                        <option value="clearance_note">مخالصة مالية نهائية</option>
+                    </optgroup>
+                    <optgroup label="أخرى">
+                        <option value="exchange_update">تنبيه بتغيير أسعار الصرف</option>
+                    </optgroup>
+                </select>
+                <textarea id="customNote" rows="2" placeholder="اكتب ملاحظتك هنا..." oninput="updateCard()"></textarea>
+            </div>
+
+            <label class="toggle-group">
+                <input type="checkbox" id="companyToggle" checked onchange="updateCard()">
+                إظهار اسم "شركة الأهرام"
+            </label>
+
+            <button class="copy-btn" id="mainCopyBtn" onclick="copyCard(this)">📋 تأكيد ونسخ الكارت</button>
+
+        </div>
+    </div>
+
+    <script>
+        function generateDate() {
+            let now = new Date();
+            let day = ("0" + now.getDate()).slice(-2);
+            let month = ("0" + (now.getMonth() + 1)).slice(-2);
+            let year = now.getFullYear();
+            document.getElementById('stmt-date-display').innerText = `${year}-${month}-${day}`;
+        }
+
+        function loadClientNames() {
+            let clients = JSON.parse(localStorage.getItem('ahram_clients'));
+            if (!clients) {
+                clients = ["شنينه", "ايمن خضار", "ابراهيم الزاويه", "عبدالمجيد علام", "كاريكا", "محمد اسماعيل", "هانى الخياط", "سميح حجازي", "أحمد حمادة", "خالد الزواوي", "القايد", "سامي طرابلس", "الكشف النهائي للمنظومة الماسيه الملكيه"];
+                localStorage.setItem('ahram_clients', JSON.stringify(clients));
+            }
+            let dataList = document.getElementById('clientNames');
+            dataList.innerHTML = '';
+            clients.forEach(client => {
+                let option = document.createElement('option');
+                option.value = client;
+                dataList.appendChild(option);
+            });
+        }
+
+        function saveClientName(name) {
+            if (!name || name === '...' || name.trim() === '') return;
+            name = name.trim();
+            let clients = JSON.parse(localStorage.getItem('ahram_clients')) || [];
+            if (!clients.includes(name)) {
+                clients.push(name);
+                localStorage.setItem('ahram_clients', JSON.stringify(clients));
+                loadClientNames(); 
+            }
+        }
+
+        function clearClientMemory() {
+            if (confirm("هل أنت متأكد أنك تريد مسح جميع أسماء العملاء المحفوظة؟")) {
+                localStorage.removeItem('ahram_clients');
+                loadClientNames(); 
+                alert("تم تنظيف الذاكرة بنجاح!");
+            }
+        }
+        
+        window.onload = function() {
+            loadClientNames();
+            generateDate();
+        };
+
+        let zoomLevel = 0;
+        function changeFontSize(action) {
+            if (action === 'increase') {
+                zoomLevel += 1;
+            } else if (action === 'decrease') {
+                zoomLevel -= 1;
+            } else {
+                zoomLevel = 0;
+            }
+
+            let nameSize = 55 + (zoomLevel * 4); 
+            let amountSize = 120 + (zoomLevel * 8); 
+            let currencySize = 35 + (zoomLevel * 2);
+
+            document.getElementById('display-name').style.fontSize = nameSize + 'pt';
+            
+            let amountTextDiv = document.getElementById('amount-container');
+            if(amountTextDiv) amountTextDiv.style.fontSize = amountSize + 'pt';
+            
+            let currencySpan = document.getElementById('currency-label');
+            if(currencySpan) currencySpan.style.fontSize = currencySize + 'pt';
+        }
+
+        function loadTemplate() {
+            let val = document.getElementById('templateSelect').value;
+            let noteBox = document.getElementById('customNote');
+            
+            if (val === 'houta') {
+                noteBox.value = "يرجى التوجه إلى مكتب «الحوتة» لإيداع القيمة المستحقة عليكم.\nوعند إتمام عملية الإيداع، نرجو إبلاغنا لتأكيد الحساب.\nشاكرين ومقدرين حسن تعاونكم معنا.";
+            } else if (val === 'receipt') {
+                noteBox.value = "نُعلمكم بأنه قد تم استلام القيمة الموضحة أعلاه بنجاح.\nشاكرين لكم ثقتكم وحسن تعاملكم معنا.\nنرجو مراجعة رصيد حسابكم للتأكيد.";
+            } else if (val === 'delivery') {
+                noteBox.value = "نُعلمكم بأنه قد تم تسليم القيمة الموضحة أعلاه بنجاح.\nيرجى مراجعة الحساب وتأكيد الاستلام من طرفكم.\nنسعد دائماً بخدمتكم.";
+            } else if (val === 'vodafone') {
+                noteBox.value = "نُعلمكم بأنه تم تحويل المبلغ المطلوب عبر محفظة (فودافون كاش) بنجاح.\nيرجى التأكد من وصول الرسالة للمستفيد.\nنسعد بخدمتكم دائماً.";
+            } else if (val === 'kafr_elsheikh') {
+                noteBox.value = "تم تجهيز المبلغ للتسليم اليدوي في محافظة (كفر الشيخ).\nيرجى التواصل مع المندوب للتنسيق والاستلام.\nشكراً لثقتكم بشركة الأهرام.";
+            } else if (val === 'post_office') {
+                noteBox.value = "تم تحويل المبلغ عبر (البريد المصري) بنجاح.\nيمكن للمستفيد التوجه لأقرب فرع بريد للاستلام بالبطاقة الشخصية.\nشاكرين تعاملكم معنا.";
+            } else if (val === 'debt_reminder') {
+                noteBox.value = "نود تذكيركم بضرورة تسوية المديونية الموضحة أعلاه في أقرب وقت ممكن.\nنرجو سرعة الاستجابة لتحديث رصيدكم.\nمقدرين تفهمكم وحسن تعاونكم.";
+            } else if (val === 'trust_deposit') {
+                noteBox.value = "تم إيداع القيمة الموضحة كأمانة في حسابكم لدينا بنجاح.\nرصيدكم الآن محدث ومتاح للاستخدام في أي وقت.\nنسعد دائماً بخدمتكم.";
+            } else if (val === 'clearance_note') {
+                noteBox.value = "تم تصفية الحساب وعمل مخالصة مالية نهائية.\nرصيدكم الحالي (صفر) ولا توجد أي التزامات مالية بين الطرفين.\nنتطلع لاستمرار التعامل معكم.";
+            } else if (val === 'exchange_update') {
+                noteBox.value = "نظراً للتقلبات المستمرة في أسعار الدولار، نُعلمكم بأن أسعار الصرف تخضع للتحديث الفوري وفقاً لمتغيرات السوق.\nيرجى التكرم بمراجعة وتأكيد الأسعار الجديدة قبل تنفيذ أي عملية تحويل.\nشاكرين ومقدرين تفهمكم وثقتكم بنا.";
+            } else { 
+                noteBox.value = ""; 
+            }
+            updateCard();
+        }
+
+        function formatNumberWithDecimals(numStr) {
+            let clean = numStr.replace(/,/g, '').replace(/-/g, '').trim();
+            if (clean === "") return "0";
+            let parts = clean.split('.');
+            let integerPart = parseInt(parts[0], 10);
+            if (isNaN(integerPart)) return clean;
+            let formattedInt = integerPart.toLocaleString('en-US');
+            if (parts.length > 1) { return formattedInt + '.' + parts[1]; }
+            return formattedInt;
+        }
+
+        function updateCard() {
+            let themeValue = document.getElementById('themeSelect').value;
+            let typeValue = document.getElementById('typeSelect').value;
+            let nameValue = document.getElementById('nameInput').value || '...';
+            let rawAmount = document.getElementById('amountInput').value || '0';
+            let priceValue = document.getElementById('priceInput').value.trim();
+            let customNoteText = document.getElementById('customNote').value.trim();
+            let showCompany = document.getElementById('companyToggle').checked;
+            
+            let exchangeRate = parseFloat(document.getElementById('exchangeRateInput').value) || 0;
+            let targetCurrency = document.getElementById('targetCurrencyInput').value || 'ج.م';
+
+            let cardContainer = document.getElementById('goldenCard');
+            let statusLabel = document.getElementById('status-label');
+            let cardHeader = document.getElementById('card-header');
+            let priceCardTitle = document.getElementById('price-card-title');
+            let amountBoxContainer = document.getElementById('amount-box-container');
+            let displayAmount = document.getElementById('display-amount');
+            let currencyLabel = document.getElementById('currency-label');
+            let priceBadge = document.getElementById('price-badge');
+            let displayPrice = document.getElementById('display-price');
+            let customNoteBox = document.getElementById('custom-note-box');
+            let footer = document.getElementById('card-footer');
+            let spacer = document.getElementById('card-spacer');
+            let clientName = document.getElementById('display-name');
+            
+            let exchangeTransferBox = document.getElementById('exchange-transfer-box');
+            let transferInputsGroup = document.getElementById('transfer-inputs-group');
+            let mainAmountGroup = document.getElementById('main-amount-group');
+            let secondaryPriceGroup = document.getElementById('secondary-price-group');
+            
+            let statementBox = document.getElementById('final-statement-box');
+            let statementInputs = document.getElementById('statement-inputs-group');
+
+            cardContainer.className = "card " + themeValue;
+            let formattedAmount = formatNumberWithDecimals(rawAmount);
+
+            if (customNoteText !== "") {
+                customNoteBox.innerText = customNoteText;
+                customNoteBox.classList.remove('hidden-element');
+            } else {
+                customNoteBox.classList.add('hidden-element');
+            }
+
+            priceCardTitle.classList.add('hidden-element');
+            footer.classList.add('hidden-element');
+            spacer.classList.add('hidden-element');
+            statementBox.classList.add('hidden-element');
+            statementInputs.classList.add('hidden-element');
+
+            if (showCompany) {
+                if (typeValue === 'exchange_rate') {
+                    priceCardTitle.classList.remove('hidden-element');
+                } else {
+                    footer.classList.remove('hidden-element');
+                    spacer.classList.remove('hidden-element');
+                }
+            }
+
+            exchangeTransferBox.classList.add('hidden-element');
+            transferInputsGroup.classList.add('hidden-element');
+            mainAmountGroup.classList.remove('hidden-element');
+            secondaryPriceGroup.classList.remove('hidden-element');
+            cardContainer.classList.remove('center-content');
+            cardHeader.classList.remove('hidden-element');
+            clientName.classList.remove('hidden-element');
+            currencyLabel.classList.remove('hidden-element');
+            amountBoxContainer.classList.remove('hidden-element');
+            statusLabel.classList.remove('hidden-element');
+            customNoteBox.classList.remove('large-note');
+            document.getElementById('nameInput').disabled = false;
+            document.getElementById('amountInput').disabled = false;
+            document.getElementById('name-input-label').innerText = "اسم العميل / الشركة:";
+
+            if (typeValue === 'final_statement') {
+                // إخفاء العناصر العادية وإظهار الجدول
+                cardHeader.classList.add('hidden-element');
+                clientName.classList.add('hidden-element');
+                currencyLabel.classList.add('hidden-element');
+                amountBoxContainer.classList.add('hidden-element');
+                statusLabel.classList.add('hidden-element');
+                customNoteBox.classList.add('hidden-element');
+                secondaryPriceGroup.classList.add('hidden-element');
+                mainAmountGroup.classList.add('hidden-element');
+
+                statementBox.classList.remove('hidden-element');
+                statementInputs.classList.remove('hidden-element');
+                
+                document.getElementById('name-input-label').innerText = "عنوان الكشف (أو اسم العميل):";
+                document.getElementById('stmt-header-title').innerText = nameValue;
+
+                // تحديث أرقام الجدول من المدخلات اليدوية
+                document.getElementById('val-previous').innerText = formatNumberWithDecimals(document.getElementById('input-prev').value);
+                document.getElementById('val-received').innerText = formatNumberWithDecimals(document.getElementById('input-recv').value);
+                document.getElementById('val-total').innerText = formatNumberWithDecimals(document.getElementById('input-total').value);
+                document.getElementById('val-remaining').innerText = formatNumberWithDecimals(document.getElementById('input-remain').value);
+            }
+            else if (typeValue === 'transfer') {
+                amountBoxContainer.classList.add('hidden-element'); 
+                secondaryPriceGroup.classList.add('hidden-element');
+                exchangeTransferBox.classList.remove('hidden-element'); 
+                transferInputsGroup.classList.remove('hidden-element');
+
+                cardHeader.innerText = "❖ إشعار تحويل مالي ❖";
+                statusLabel.innerText = "تفاصيل حوالة الصرف المستلمة والمحولة:";
+                clientName.innerText = nameValue;
+
+                let numericAmount = parseFloat(rawAmount.replace(/,/g, '')) || 0;
+                let convertedResult = numericAmount * exchangeRate;
+
+                document.getElementById('display-received').innerText = formattedAmount + " د.ل";
+                document.getElementById('display-rate').innerText = exchangeRate.toFixed(2);
+                document.getElementById('display-converted').innerText = convertedResult.toLocaleString('en-US', {maximumFractionDigits:2}) + " " + targetCurrency;
+                
+                document.getElementById('amount-input-label').innerText = "المبلغ المستلم (بالدينار):";
+            }
+            else if (typeValue === 'exchange_rate') {
+                cardHeader.classList.add('hidden-element');
+                clientName.classList.add('hidden-element');
+                currencyLabel.classList.add('hidden-element');
+                priceBadge.classList.add('hidden-element');
+                
+                cardContainer.classList.add('center-content');
+
+                statusLabel.innerText = "نعلمكم أن الأسعار متغيرة بتغيير سعر الدولار";
+                displayAmount.innerText = formattedAmount;
+                document.getElementById('nameInput').disabled = true;
+                secondaryPriceGroup.classList.add('hidden-element');
+                document.getElementById('amount-input-label').innerText = "سعر الدولار اليوم:";
+            } 
+            else if (typeValue === 'instruction') {
+                amountBoxContainer.classList.add('hidden-element');
+                priceBadge.classList.add('hidden-element');
+                statusLabel.classList.add('hidden-element');
+                customNoteBox.classList.add('large-note');
+                
+                cardHeader.innerText = "❖ تنويه هام ❖";
+                clientName.innerText = nameValue;
+
+                secondaryPriceGroup.classList.add('hidden-element');
+                document.getElementById('amountInput').disabled = true;
+            }
+            else {
+                document.getElementById('amount-input-label').innerText = "المبلغ / السعر الأساسي:";
+                clientName.innerText = nameValue;
+
+                if (priceValue !== "") {
+                    displayPrice.innerText = priceValue;
+                    priceBadge.classList.remove('hidden-element');
+                } else {
+                    priceBadge.classList.add('hidden-element');
+                }
+
+                if (typeValue === 'debt') {
+                    statusLabel.innerText = "إجمالي الديون المستحقة عليك:";
+                    cardHeader.innerText = "❖ إشعار مديونية ❖";
+                    displayAmount.innerText = formattedAmount;
+                } 
+                else if (typeValue === 'trust') {
+                    statusLabel.innerText = "صافي لك عندنا أمانة:";
+                    cardHeader.innerText = "❖ إشعار أمانة ❖";
+                    displayAmount.innerText = formattedAmount;
+                }
+                else if (typeValue === 'clearance') {
+                    statusLabel.innerText = "تمت المخالصة المالية بالكامل";
+                    cardHeader.innerText = "❖ إشعار مخالصة ❖";
+                    displayAmount.innerText = formattedAmount; 
+                }
+                else if (typeValue === 'zero') {
+                    statusLabel.innerText = "تم تصفير رصيد الحساب بنجاح";
+                    cardHeader.innerText = "❖ تصفير حساب ❖";
+                    displayAmount.innerText = "0";
+                }
+            }
+        }
+
+        async function copyCard(btnElement) {
+            saveClientName(document.getElementById('nameInput').value);
+
+            const card = document.getElementById('goldenCard');
+            const originalText = btnElement.innerHTML;
+            btnElement.innerHTML = "⚡ جاري الحفظ والنسخ للحافظة...";
+            btnElement.style.pointerEvents = "none";
+
+            try {
+                const canvas = await html2canvas(card, {
+                    scale: 2.5, 
+                    useCORS: true,
+                    backgroundColor: null,
+                    dir: 'rtl',
+                    logging: false
+                });
+
+                canvas.toBlob(async (blob) => {
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        btnElement.innerHTML = "✅ تم النسخ! جاهز للصق";
+                        btnElement.classList.add("success");
+                        setTimeout(() => {
+                            btnElement.innerHTML = originalText;
+                            btnElement.classList.remove("success");
+                            btnElement.style.pointerEvents = "auto";
+                        }, 2000);
+                    } catch (err) {
+                        console.error(err);
+                        alert("فشل النسخ التلقائي! يرجى إعطاء صلاحية للمتصفح.");
+                        btnElement.innerHTML = originalText;
+                        btnElement.style.pointerEvents = "auto";
+                    }
+                });
+            } catch (error) {
+                alert("حدث خطأ أثناء التصوير.");
+                btnElement.innerHTML = originalText;
+                btnElement.style.pointerEvents = "auto";
+            }
+        }
+        
+        updateCard();
+    </script>
+</body>
+</html>

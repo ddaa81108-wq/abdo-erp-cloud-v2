@@ -28,8 +28,7 @@ import {
   DebtTransaction,
   TreasuryTransaction,
 } from "../types";
-import html2canvas from "html2canvas";
-import { copySettledImage } from "../utils/imageExporterUtils";
+import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
 
 interface CustomerDebtsModuleProps {
   state: ERPState;
@@ -145,85 +144,14 @@ export default function CustomerDebtsModule({
 
   const handleCopyDebtImage = async (customerName: string, debtBalance: number) => {
     try {
-      const container = document.createElement("div");
-      container.style.width = "900px";
-      container.style.minHeight = "600px";
-      container.style.padding = "60px";
-      container.style.backgroundColor = "transparent";
-      container.style.direction = "rtl";
-      container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
-      container.style.position = "absolute";
-      container.style.top = "-9999px";
-      container.style.left = "-9999px";
-      
-      const lyd = Math.round(debtBalance);
-      const darkText = '#161001';
-
-      let amountHtml = '';
-      if (lyd !== 0) {
-        amountHtml = `
-          <div style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 24px; padding: 40px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.05); backdrop-filter: blur(8px); width: 80%; max-width: 600px; margin: 0 auto;">
-            <span style="font-size: 80px; font-weight: 900; color: ${darkText}; font-family: monospace; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
-            <span style="font-size: 40px; font-weight: 900; color: ${darkText}; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">د.ل</span>
-          </div>
-        `;
+      const type = debtBalance < 0 ? "trust" : "debt";
+      const success = await generateUnifiedSmartCard(customerName, debtBalance, type, undefined, "د.ل");
+      if (success) {
+        setShowSuccessToast("تم نسخ صورة كارت الدين بنجاح 📋");
+        setTimeout(() => setShowSuccessToast(null), 3000);
       } else {
-        amountHtml = `
-          <div style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 24px; padding: 40px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 32px rgba(0,0,0,0.05); backdrop-filter: blur(8px); width: 80%; max-width: 600px; margin: 0 auto;">
-            <span style="font-size: 32px; font-weight: 900; color: ${darkText}; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">لا يوجد ديون مستحقة (خالص)</span>
-          </div>
-        `;
+        alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
       }
-
-      container.innerHTML = `
-        <div dir="rtl" style="position: relative; overflow: hidden; background: linear-gradient(135deg, #d4af37 0%, #ffef96 50%, #aa771c 100%) !important; color: #161001 !important; border: 2px solid #ffffff !important; border-radius: 28px; width: 100%; height: 100%; padding: 30px 60px 90px 60px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; box-shadow: 20px 20px 60px rgba(0,0,0,0.15), -20px -20px 60px rgba(255,255,255,0.1);">
-          <div style="text-align: center; border-bottom: 2px solid rgba(22, 16, 1, 0.2); padding-bottom: 20px; width: 100%;">
-            <div style="font-size: 28px; font-weight: 900; color: ${darkText}; margin-bottom: 16px;">${lyd < 0 ? '❖ إشعار أمانة ❖' : '❖ إشعار مديونية ❖'}</div>
-            <h2 style="font-size: 65px; font-weight: 900; color: ${darkText}; margin: 0; word-break: break-word; text-shadow: 1px 1px 0px rgba(255,255,255,0.4); letter-spacing: 0; display: inline-block; padding: 0 10px; border-radius: 8px;">
-              ${customerName}
-            </h2>
-          </div>
-          
-          <div style="text-align: center;">
-            <span style="font-size: 34px; font-weight: 900; color: ${darkText}; line-height: 1.6; text-shadow: 1px 1px 0px rgba(255,255,255,0.4);">
-              ${lyd < 0 ? 'صافي لك عندنا أمانة:' : 'إجمالي الديون المستحقة عليك:'}
-            </span>
-          </div>
-          
-          ${amountHtml}
-
-          <div style="margin-top: 10px; text-align: center; color: ${darkText}; font-size: 18px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; opacity: 0.8;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>تم الإصدار من المنظومة</span>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(container);
-
-      await new Promise(r => setTimeout(r, 100)); // allow render
-
-      const makeImagePromise = async () => {
-        const canvas = await html2canvas(container, {
-          scale: 5,
-          backgroundColor: 'transparent',
-          useCORS: true
-        });
-
-        return new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Failed to create blob"));
-          }, 'image/png');
-        });
-      };
-
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': makeImagePromise() })
-      ]);
-      document.body.removeChild(container);
-      setShowSuccessToast("تم نسخ صورة كارت الدين بنجاح 📋");
-      setTimeout(() => setShowSuccessToast(null), 3000);
     } catch (err) {
       console.error("Failed to copy image", err);
       alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");

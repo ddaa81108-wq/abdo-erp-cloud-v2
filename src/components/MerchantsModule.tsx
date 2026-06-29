@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ERPState, Merchant, MerchantTransaction } from "../types";
 import DebtBird from "./DebtBird";
-import { copySettledImage } from "../utils/imageExporterUtils";
+import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
 
 interface MerchantsModuleProps {
   state: ERPState;
@@ -931,7 +931,7 @@ export default function MerchantsModule({
                   <span>أرشفة وإخفاء التاجر من الشاشة 🗑️</span>
                 </button>
 
-                {Number(selectedMerchDetails.merch.balance) === 0 && (
+                {Number(selectedMerchDetails.merch.balance) === 0 ? (
                   <button
                     onClick={async () => {
                       const success = await copySettledImage(selectedMerchDetails.merch.name, "كارت مخالصة للتاجر");
@@ -944,6 +944,24 @@ export default function MerchantsModule({
                   >
                     <Copy className="w-4 h-4" />
                     <span>نسخ كارت المخالصة 📋</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      const remaining = selectedMerchDetails.merch.balance || 0;
+                      const type = remaining < 0 ? "trust" : "debt";
+                      const success = await generateUnifiedSmartCard(selectedMerchDetails.merch.name, remaining, type, undefined, "د.ل");
+                      if (success) {
+                        alert("تم نسخ كارت الدين السريع 📋");
+                      } else {
+                        alert("حدث خطأ أثناء نسخ الصورة");
+                      }
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer shadow-md"
+                    title="نسخ كارت الدين السريع 📋"
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>نسخ كارت الدين السريع 📋</span>
                   </button>
                 )}
 

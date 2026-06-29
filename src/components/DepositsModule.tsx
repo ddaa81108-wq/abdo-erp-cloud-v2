@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy, Calculator, Minus, CheckCircle2 } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
-import html2canvas from 'html2canvas';
-import { copySettledImage } from "../utils/imageExporterUtils";
+import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
 
 interface DepositsModuleProps {
   state: ERPState;
@@ -628,7 +627,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   const handleExportSingleDepositDraft = (d: TrustDeposit) => {
     const headers = ['تاريخ الحركة', 'نوع الحركة والمجال', 'تأثير ليبي د.ل', 'تأثير مصري جنيه', 'البيان والتفاصيل'];
     
-    const historyList = getHistory(d);
+    const historyList = [...getHistory(d)].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const rows = historyList.map(tx => {
       let typeText = '';
       if (tx.type === 'deposit_lyd') typeText = '➕ إيداع ليبي';
@@ -666,9 +665,8 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
   // Full master export of all ACTIVE deposits
   const handleExportAllActiveImage = () => {
     const headers = ['مستند الأمانة', 'صاحب الأمانة', 'تاريخ الفتح', 'الأمانة بالليبي', 'الأمانة بالمصري', 'ملاحظات وتفاصيل'];
-    const activeDeposits = state.trustDeposits.filter(d => !d.isDeleted && d.status === 'held' && (getAmountLyd(d) > 0 || getAmountEgp(d) > 0));
     
-    const rows = activeDeposits.map(d => [
+    const rows = activeHeldDeposits.map(d => [
       d.referenceNo,
       d.customerName,
       new Date(d.date).toLocaleDateString('ar-LY'),
@@ -685,7 +683,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
         label2: 'إجمالي الأمانات بالمصري',
         value2: `${aggregateHeldEgp.toLocaleString()} جنيه`,
         label3: 'عدد الحسابات المفتوحة',
-        value3: `${activeDeposits.length} حسابات`
+        value3: `${activeHeldDeposits.length} حسابات`
       },
       headers,
       rows
@@ -714,115 +712,28 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
   const handleCopyDepositImage = async (d: TrustDeposit) => {
     try {
-      const container = document.createElement("div");
-      container.style.position = "absolute";
-      container.style.left = "0px";
-      container.style.top = "0px";
-      container.style.zIndex = "-9999";
-      container.style.opacity = "1";
-      container.style.width = "480px";
-      container.style.padding = "40px";
-      container.style.backgroundColor = "#0f172a";
-      container.style.direction = "rtl";
-      container.style.fontFamily = "'Tajawal', 'Inter', system-ui, sans-serif";
-      container.style.display = "flex";
-      container.style.flexDirection = "column";
-      container.style.alignItems = "center";
-      container.style.justifyContent = "center";
-      container.style.border = "none";
-      
       const lyd = Math.round(getAmountLyd(d));
       const egp = Math.round(getAmountEgp(d));
       
-      const neonColor = '#10b981';
-      const neonGlow = 'rgba(16, 185, 129, 0.4)';
-      const softGlow = 'rgba(16, 185, 129, 0.15)';
-      const neumorphicBg = 'linear-gradient(145deg, #1e293b, #0f172a)';
-
-      let amountHtml = '';
+      let success = false;
+      
       if (lyd !== 0 && egp !== 0) {
-        amountHtml = `
-          <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
-            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px);">
-              <span style="font-size: 38px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
-              <span style="font-size: 20px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
-            </div>
-            <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 16px; padding: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(59,130,246,0.15), 0 0 30px rgba(59,130,246,0.4); backdrop-filter: blur(10px);">
-              <span style="font-size: 38px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${Math.abs(egp).toLocaleString("en-US")}</span>
-              <span style="font-size: 20px; font-weight: 900; color: #3b82f6; text-shadow: 0 0 10px #3b82f6;">ج.م</span>
-            </div>
-          </div>
-        `;
+        success = await generateUnifiedSmartCard(d.customerName, lyd, "trust_dual", undefined, "د.ل", egp, "ج.م");
       } else if (egp !== 0) {
-        amountHtml = `
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid #3b82f6; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px rgba(59,130,246,0.15), 0 0 30px rgba(59,130,246,0.4); backdrop-filter: blur(10px); width: 100%;">
-            <span style="font-size: 42px; font-weight: 900; color: #3b82f6; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px #3b82f6;" dir="ltr">${Math.abs(egp).toLocaleString("en-US")}</span>
-            <span style="font-size: 24px; font-weight: 900; color: #3b82f6; text-shadow: 0 0 10px #3b82f6;">ج.م</span>
-          </div>
-        `;
+        success = await generateUnifiedSmartCard(d.customerName, egp, "trust", undefined, "ج.م");
       } else {
-        amountHtml = `
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid ${neonColor}; border-radius: 16px; padding: 32px; display: flex; align-items: center; justify-content: center; gap: 16px; box-shadow: inset 0 0 20px ${softGlow}, 0 0 30px ${neonGlow}; backdrop-filter: blur(10px); width: 100%;">
-            <span style="font-size: 42px; font-weight: 900; color: ${neonColor}; font-family: monospace; letter-spacing: -1px; text-shadow: 0 0 20px ${neonColor};" dir="ltr">${Math.abs(lyd).toLocaleString("en-US")}</span>
-            <span style="font-size: 24px; font-weight: 900; color: ${neonColor}; text-shadow: 0 0 10px ${neonColor};">د.ل</span>
-          </div>
-        `;
+        success = await generateUnifiedSmartCard(d.customerName, lyd, "trust", undefined, "د.ل");
       }
 
-      container.innerHTML = `
-        <div dir="rtl" style="direction: rtl; background: ${neumorphicBg}; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 20px 40px 60px 40px; width: 100%; box-shadow: 20px 20px 60px #0a0f1c, -20px -20px 60px #141f38;">
-          <div style="text-align: center; margin-bottom: 32px; border-bottom: 2px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
-            <h2 style="font-size: 32px; font-weight: 900; color: #ffffff; margin: 0; white-space: pre-wrap; word-break: break-word; text-shadow: 0 2px 10px rgba(255,255,255,0.2);">${d.customerName}</h2>
-          </div>
-          
-          <div style="text-align: center; margin-bottom: 20px;">
-            <span style="font-size: 18px; font-weight: 800; color: #94a3b8; letter-spacing: 0px !important; word-spacing: 5px !important; white-space: pre-wrap !important;">
-              إجمالي&nbsp;الأمانات&nbsp;لكم:
-            </span>
-          </div>
-          
-          ${amountHtml}
-
-          <div style="margin-top: 40px; text-align: center; color: #64748b; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(148,163,184,0.5));"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span style="letter-spacing: 0px !important; word-spacing: 5px !important; white-space: pre-wrap !important;">تم&nbsp;الإصدار&nbsp;من&nbsp;المنظومة</span>
-          </div>
-        </div>
-      `;
-      
-      document.body.appendChild(container);
-      
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      
-      const makeImagePromise = async () => {
-        const canvas = await html2canvas(container, {
-          scale: 2,
-          backgroundColor: '#0f172a',
-          useCORS: true
-        });
-
-        document.body.removeChild(container);
-        
-        return new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Failed to create blob"));
-          }, 'image/png');
-        });
-      };
-
-      await navigator.clipboard.write([
-        new ClipboardItem({ 'image/png': makeImagePromise() })
-      ]);
-      setShowSuccessToast("تم نسخ صورة الأمانة بنجاح 📋");
-      setTimeout(() => setShowSuccessToast(null), 3000);
+      if (success) {
+        setShowSuccessToast("تم نسخ صورة الأمانة بنجاح 📋");
+        setTimeout(() => setShowSuccessToast(null), 3000);
+      } else {
+        alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
+      }
     } catch (err) {
       console.error("Failed to copy image", err);
-      alert("حدث خطأ أثناء نسخ الصورة.");
-      const container = document.getElementById("export-container");
-      if (container && document.body.contains(container)) {
-        document.body.removeChild(container);
-      }
+      alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
     }
   };
 
@@ -1403,7 +1314,7 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
                               </tr>
                             </thead>
                             <tbody>
-                              {getHistory(d).map(tx => (
+                              {[...getHistory(d)].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
                                 <tr key={tx.id} className="border-b border-slate-200 hover:bg-slate-200/40 text-slate-700">
                                   <td className="py-1 font-mono text-slate-500">{new Date(tx.date).toLocaleDateString('ar-LY')}</td>
                                   <td className="py-1 font-semibold text-slate-900">
