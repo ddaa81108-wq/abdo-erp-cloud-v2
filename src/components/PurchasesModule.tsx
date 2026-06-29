@@ -1057,33 +1057,33 @@ export default function PurchasesModule({
           </div>
 
           {/* Card 4 - Highlighted */}
-          <div className="bg-white border border-indigo-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 border-t-indigo-500">
+          <div className={`bg-white border rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 ${remainingTotalOwed > 0 ? "border-indigo-100 border-t-rose-500" : remainingTotalOwed < 0 ? "border-indigo-100 border-t-emerald-500" : "border-indigo-100 border-t-indigo-500"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-indigo-700/80 font-bold text-[11px]">
-                🎒 4. الباقي من الشغل
+              <span className={`font-bold text-[11px] ${remainingTotalOwed > 0 ? "text-rose-700/80" : remainingTotalOwed < 0 ? "text-emerald-700/80" : "text-indigo-700/80"}`}>
+                🎒 4. إجمالي الديون
               </span>
             </div>
             <div className="relative z-10">
-              <span className="font-mono text-xl font-black text-indigo-900 leading-none">
+              <span className={`font-mono text-xl font-black leading-none ${remainingTotalOwed > 0 ? "text-rose-600" : remainingTotalOwed < 0 ? "text-emerald-600" : "text-indigo-900"}`}>
                 {remainingTotalOwed.toLocaleString()}{" "}
-                <span className="text-xs font-bold text-indigo-400">د.ل</span>
+                <span className={`text-xs font-bold ${remainingTotalOwed > 0 ? "text-rose-400" : remainingTotalOwed < 0 ? "text-emerald-400" : "text-indigo-400"}`}>د.ل</span>
               </span>
             </div>
           </div>
 
           {/* Card 5 - Highlighted Egypt */}
-          <div className="bg-white border border-purple-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 border-t-purple-500">
+          <div className={`bg-white border rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 ${remainingEgyptianValue > 0 ? "border-purple-100 border-t-emerald-500" : remainingEgyptianValue < 0 ? "border-purple-100 border-t-rose-500" : "border-purple-100 border-t-purple-500"}`}>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-purple-700/80 font-bold text-[11px]">
-                🇪🇬 5. الباقية مصري
+              <span className={`font-bold text-[11px] ${remainingEgyptianValue > 0 ? "text-emerald-700/80" : remainingEgyptianValue < 0 ? "text-rose-700/80" : "text-purple-700/80"}`}>
+                🇪🇬 5. الباقي المصري
               </span>
             </div>
             <div>
               <span
-                className={`font-mono text-xl font-black leading-none ${remainingEgyptianValue < 0 ? "text-rose-600" : "text-purple-600"}`}
+                className={`font-mono text-xl font-black leading-none ${remainingEgyptianValue > 0 ? "text-emerald-600" : remainingEgyptianValue < 0 ? "text-rose-600" : "text-purple-600"}`}
               >
                 {remainingEgyptianValue.toLocaleString()}{" "}
-                <span className="text-xs font-bold text-purple-400">EGP</span>
+                <span className={`text-xs font-bold ${remainingEgyptianValue > 0 ? "text-emerald-400" : remainingEgyptianValue < 0 ? "text-rose-400" : "text-purple-400"}`}>EGP</span>
               </span>
             </div>
           </div>
