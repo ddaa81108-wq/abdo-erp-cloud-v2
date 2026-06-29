@@ -94,7 +94,7 @@ export default function CustomerDebtsModule({
 
   // Floating Calculator State
   const [showCalculator, setShowCalculator] = useState(false);
-  const [calcRows, setCalcRows] = useState<{ id: string; value: string; price: string; operator: "multiply" | "divide" }[]>([
+  const [calcRows, setCalcRows] = useState<{ id: string; value: string; price: string; operator: "multiply" | "divide" | "add" | "subtract" }[]>([
     { id: '1', value: '', price: '', operator: 'multiply' }
   ]);
   const [calcCopied, setCalcCopied] = useState(false);
@@ -115,8 +115,16 @@ export default function CustomerDebtsModule({
   const calculateRowResult = (row: typeof calcRows[0]) => {
     const v = parseFloat(row.value) || 0;
     const p = parseFloat(row.price) || 0;
-    if (v === 0 || p === 0) return 0;
-    const result = row.operator === 'multiply' ? v * p : v / p;
+    
+    if (v === 0 && p === 0) return 0;
+    
+    let result = 0;
+    switch (row.operator) {
+      case 'multiply': result = v * p; break;
+      case 'divide': result = p !== 0 ? v / p : 0; break;
+      case 'add': result = v + p; break;
+      case 'subtract': result = v - p; break;
+    }
     return Math.round(result);
   };
 
@@ -1631,18 +1639,34 @@ export default function CustomerDebtsModule({
                     </div>
 
                     {/* Operator */}
-                    <div className="flex flex-col gap-0.5">
+                    <div className="grid grid-cols-2 gap-0.5 w-[42px]">
                       <button
                         onClick={() => handleUpdateCalcRow(row.id, 'operator', 'multiply')}
                         className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'multiply' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="ضرب"
                       >
                         ×
                       </button>
                       <button
                         onClick={() => handleUpdateCalcRow(row.id, 'operator', 'divide')}
                         className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'divide' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="قسمة"
                       >
                         ÷
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'add')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'add' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="جمع"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'subtract')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'subtract' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="طرح"
+                      >
+                        -
                       </button>
                     </div>
 

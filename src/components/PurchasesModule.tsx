@@ -281,6 +281,50 @@ export default function PurchasesModule({
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyFilterDate, setHistoryFilterDate] = useState("");
 
+  // Floating Calculator State
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calcRows, setCalcRows] = useState<{ id: string; value: string; price: string; operator: "multiply" | "divide" | "add" | "subtract" }[]>([
+    { id: '1', value: '', price: '', operator: 'multiply' }
+  ]);
+  const [calcCopied, setCalcCopied] = useState(false);
+
+  // Floating Calculator Logic
+  const handleAddCalcRow = () => {
+    setCalcRows([...calcRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
+  };
+
+  const handleUpdateCalcRow = (id: string, field: string, val: string) => {
+    setCalcRows(calcRows.map(r => r.id === id ? { ...r, [field]: val } : r));
+  };
+
+  const handleRemoveCalcRow = (id: string) => {
+    setCalcRows(calcRows.filter(r => r.id !== id));
+  };
+
+  const calculateRowResult = (row: typeof calcRows[0]) => {
+    const v = parseFloat(row.value) || 0;
+    const p = parseFloat(row.price) || 0;
+    
+    if (v === 0 && p === 0) return 0;
+    
+    let result = 0;
+    switch (row.operator) {
+      case 'multiply': result = v * p; break;
+      case 'divide': result = p !== 0 ? v / p : 0; break;
+      case 'add': result = v + p; break;
+      case 'subtract': result = v - p; break;
+    }
+    return Math.round(result);
+  };
+
+  const totalCalcResult = calcRows.reduce((acc, row) => acc + calculateRowResult(row), 0);
+
+  const handleCopyCalcResult = () => {
+    navigator.clipboard.writeText(totalCalcResult.toString());
+    setCalcCopied(true);
+    setTimeout(() => setCalcCopied(false), 2000);
+  };
+
   const currentData = merchStates[activeMerch] || {
     previousBalance: 0,
     rows: [],
@@ -1095,34 +1139,34 @@ export default function PurchasesModule({
             ) : (
               <div className="overflow-x-auto flex-grow p-4 pt-0">
                 <div className="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm mt-4">
-                  <table className="w-full text-right text-[11px] border-collapse">
+                  <table className="w-full text-right text-[11px] border-collapse min-w-[950px] table-fixed">
                     <thead className="bg-slate-100 text-slate-500 font-bold border-b-2 border-slate-200/80">
                       <tr>
-                        <th className="p-2 border-l border-slate-200/80 text-center w-8">
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[4%]">
                           ت
                         </th>
-                        <th className="p-0 border-l border-slate-200/80 text-center">
+                        <th className="p-0 border-l border-slate-200/80 text-center w-[20%]">
                           النوع
                         </th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-28">
+                        <th className="p-0 border-l border-slate-200/80 text-center w-[12%]">
                           القيمة (مصري)
                         </th>
-                        <th className="p-2 border-l border-slate-200/80 text-center w-24">
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[13%]">
                           العملية
                         </th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-20">
+                        <th className="p-0 border-l border-slate-200/80 text-center w-[10%]">
                           صرف
                         </th>
-                        <th className="p-2 border-l border-slate-200/80 text-right w-24">
+                        <th className="p-2 border-l border-slate-200/80 text-right w-[12%]">
                           الناتج
                         </th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-28 text-emerald-700">
+                        <th className="p-0 border-l border-slate-200/80 text-center w-[13%] text-emerald-700">
                           المسدد د.ل
                         </th>
-                        <th className="p-2 border-l border-slate-200/80 text-right w-24 text-indigo-700">
+                        <th className="p-2 border-l border-slate-200/80 text-right w-[12%] text-indigo-700">
                           الباقي د.ل
                         </th>
-                        <th className="p-2 text-center w-10">
+                        <th className="p-2 text-center w-[4%]">
                           <Trash2 className="w-3 h-3 mx-auto" />
                         </th>
                       </tr>
@@ -1135,7 +1179,7 @@ export default function PurchasesModule({
                             key={row.id}
                             className={`group transition-colors ${isVod ? "bg-purple-50/20 font-bold hover:bg-purple-50/40" : "hover:bg-indigo-50/10"}`}
                           >
-                            <td className="p-1 border-l border-slate-200/80 text-center font-bold bg-slate-50/50 w-8 text-slate-400">
+                            <td className="p-1 border-l border-slate-200/80 text-center font-bold bg-slate-50/50 text-slate-400">
                               {row.seq}
                             </td>
                             <td className="p-0 border-l border-slate-200/80 relative h-9">
@@ -1757,6 +1801,157 @@ export default function PurchasesModule({
           </div>
         </div>
       )}
+
+      {/* Floating Calculator Component */}
+      <div className="fixed bottom-6 left-6 z-[100] flex flex-col items-start gap-4">
+        {showCalculator && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-[320px] md:w-[380px] flex flex-col transform origin-bottom-left transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h3 className="font-black text-sm text-slate-800 flex items-center gap-2">
+                <Calculator className="w-4 h-4 text-indigo-600" />
+                مسودة حاسبة تجار
+              </h3>
+              <button
+                onClick={() => setShowCalculator(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <div className="max-h-[250px] overflow-y-auto pr-1 space-y-2 mb-3 custom-scrollbar">
+                {calcRows.map((row, index) => (
+                  <div key={row.id} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
+                    {/* Result (Readonly) */}
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        readOnly
+                        dir="ltr"
+                        value={calculateRowResult(row).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        className="w-full text-center bg-transparent border-none text-[11px] font-bold font-mono text-indigo-700 focus:outline-none"
+                      />
+                    </div>
+                    
+                    {/* Equals Sign */}
+                    <span className="text-slate-400 text-xs font-black">=</span>
+                    
+                    {/* Price */}
+                    <div className="w-[70px]">
+                      <input
+                        type="number"
+                        step="any"
+                        dir="ltr"
+                        lang="en"
+                        data-arrow-nav="true"
+                        placeholder="القيمة 2"
+                        value={row.price}
+                        onChange={(e) => handleUpdateCalcRow(row.id, 'price', e.target.value)}
+                        className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                    {/* Operator */}
+                    <div className="grid grid-cols-2 gap-0.5 w-[42px]">
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'multiply')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'multiply' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="ضرب"
+                      >
+                        ×
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'divide')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'divide' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="قسمة"
+                      >
+                        ÷
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'add')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'add' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="جمع"
+                      >
+                        +
+                      </button>
+                      <button
+                        onClick={() => handleUpdateCalcRow(row.id, 'operator', 'subtract')}
+                        className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'subtract' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
+                        title="طرح"
+                      >
+                        -
+                      </button>
+                    </div>
+
+                    {/* Value */}
+                    <div className="w-[70px]">
+                      <input
+                        type="number"
+                        step="any"
+                        dir="ltr"
+                        lang="en"
+                        data-arrow-nav="true"
+                        placeholder="القيمة 1"
+                        value={row.value}
+                        onChange={(e) => handleUpdateCalcRow(row.id, 'value', e.target.value)}
+                        className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+
+                    {/* Remove Row Button */}
+                    <button
+                      onClick={() => handleRemoveCalcRow(row.id)}
+                      className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Row Button */}
+              <button
+                onClick={handleAddCalcRow}
+                className="w-full py-2 border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 mb-4"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                إضافة صف جديد
+              </button>
+
+              {/* Total Output */}
+              <div className="bg-slate-900 text-white rounded-xl p-4 flex flex-col relative overflow-hidden shadow-inner">
+                <div className="text-[10px] text-slate-400 font-bold mb-1">الناتج الإجمالي</div>
+                <div className="text-2xl font-mono font-black text-left" dir="ltr">
+                  {totalCalcResult.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </div>
+                
+                <button
+                  onClick={handleCopyCalcResult}
+                  className={`absolute bottom-3 right-3 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${calcCopied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
+                >
+                  {calcCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {calcCopied ? 'تم النسخ' : 'نسخ الناتج'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Button */}
+        <button
+          onClick={() => setShowCalculator(!showCalculator)}
+          className={`${showCalculator ? 'bg-indigo-600 text-white shadow-indigo-500/25' : 'bg-slate-900 text-white shadow-[0_8px_30px_rgb(0,0,0,0.15)]'} hover:scale-105 p-3.5 rounded-full shadow-lg transition-all flex items-center justify-center relative group self-start`}
+          title="مسودة حاسبة تجار"
+        >
+          <Calculator className="w-5 h-5" />
+          {!showCalculator && (
+            <span className="absolute left-full ml-3 bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg">
+              مسودة حاسبة تجار
+            </span>
+          )}
+        </button>
+      </div>
 
       <style>{`
         @keyframes birdSwoopIn {
