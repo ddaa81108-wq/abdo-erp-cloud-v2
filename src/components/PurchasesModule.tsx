@@ -204,6 +204,8 @@ export default function PurchasesModule({
 
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
 
+  const [isLoaded, setIsLoaded] = useState(false);
+
   // Load and sync from Firestore
   useEffect(() => {
     let unmounted = false;
@@ -239,6 +241,9 @@ export default function PurchasesModule({
         if (!unmounted && data.historyRecords) {
           setHistoryRecords(data.historyRecords);
         }
+        if (!unmounted) {
+          setIsLoaded(true);
+        }
       } else {
         // Fallback to localStorage migration once
         const localMerch = localStorage.getItem("ABDO_DAILY_PURCHASES_V4");
@@ -261,6 +266,7 @@ export default function PurchasesModule({
         if (nextData.merchStates || nextData.historyRecords) {
           await setDoc(docRef, nextData);
         }
+        if (!unmounted) setIsLoaded(true);
       }
     });
 
@@ -272,6 +278,7 @@ export default function PurchasesModule({
 
   // Write changes to Firestore (debounced)
   useEffect(() => {
+    if (!isLoaded) return; // Wait until initial load is complete
     const handler = setTimeout(() => {
       if (!db) return;
       const docRef = doc(db, "erp_system", "purchases_module_v4");
@@ -282,7 +289,7 @@ export default function PurchasesModule({
       );
     }, 1500);
     return () => clearTimeout(handler);
-  }, [merchStates, historyRecords]);
+  }, [merchStates, historyRecords, isLoaded]);
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyFilterDate, setHistoryFilterDate] = useState("");
