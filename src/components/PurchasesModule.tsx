@@ -236,10 +236,20 @@ export default function PurchasesModule({
               ];
             }
           });
-          setMerchStates(patchedMerch);
+          setMerchStates((current) => {
+            if (JSON.stringify(current) === JSON.stringify(patchedMerch)) {
+              return current;
+            }
+            return patchedMerch;
+          });
         }
         if (!unmounted && data.historyRecords) {
-          setHistoryRecords(data.historyRecords);
+          setHistoryRecords((current) => {
+            if (JSON.stringify(current) === JSON.stringify(data.historyRecords)) {
+              return current;
+            }
+            return data.historyRecords;
+          });
         }
         if (!unmounted) {
           setIsLoaded(true);
@@ -479,6 +489,7 @@ export default function PurchasesModule({
   ];
 
   const handleUpdateConsumerRow = (id: string, amount: number | string) => {
+    const cleanAmount = typeof amount === "string" ? amount.replace(/,/g, "") : amount;
     updateCurrentMerchantState((prev) => {
       const rows = prev.consumerRows || [
         {
@@ -489,7 +500,7 @@ export default function PurchasesModule({
         { id: "c_2", name: "المستهلك الثاني", amount: 0 },
         { id: "c_3", name: "المستهلك الثالث", amount: 0 },
       ];
-      const updated = rows.map((r) => (r.id === id ? { ...r, amount } : r));
+      const updated = rows.map((r) => (r.id === id ? { ...r, amount: cleanAmount } : r));
       const newSum = updated.reduce(
         (sum, r) => sum + (Number(r.amount) || 0),
         0,
@@ -974,24 +985,24 @@ export default function PurchasesModule({
               </button>
             </div>
 
-            {/* 3 small Vodafone cash inputs (Rendered as separate squares) */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-1.5 rounded-lg border border-purple-100 shadow-sm">
-                خصم كاش:
+            {/* 3 small Vodafone cash inputs (Rendered as a vertical stack) */}
+            <div className="flex flex-col gap-1.5 bg-white p-2 rounded-xl border border-purple-200 shadow-sm w-28">
+              <span className="text-[11px] font-bold text-purple-700 text-center border-b border-purple-100 pb-1 mb-0.5">
+                خصم كاش
               </span>
               {consumerRows.map((row, idx) => (
-                <div key={row.id} className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden flex flex-col w-20 sm:w-24">
-                  <input
-                    type="number"
-                    value={row.amount || ""}
-                    onChange={(e) =>
-                      handleUpdateConsumerRow(row.id, e.target.value)
-                    }
-                    className="w-full text-center bg-transparent px-1.5 py-1.5 outline-none font-extrabold text-[12px] sm:text-[13px] text-slate-900 focus:bg-purple-50/30 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    placeholder="0"
-                    title={`الخصم ${idx + 1}`}
-                  />
-                </div>
+                <input
+                  key={row.id}
+                  type="text"
+                  inputMode="numeric"
+                  value={row.amount || ""}
+                  onChange={(e) =>
+                    handleUpdateConsumerRow(row.id, e.target.value)
+                  }
+                  className="w-full text-center bg-slate-50 border border-slate-200 rounded px-1.5 py-1.5 outline-none font-extrabold text-[13px] text-slate-900 focus:bg-purple-50 focus:border-purple-300 transition-colors"
+                  placeholder="0"
+                  title={`الخصم ${idx + 1}`}
+                />
               ))}
             </div>
           </div>
@@ -1004,6 +1015,25 @@ export default function PurchasesModule({
             <div className="absolute inset-0 bg-white/20 translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
             <Smartphone className="w-4 h-4" />
             <span>تصوير الكروت 📸</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const url = new URL("/card-generator.html", window.location.origin);
+              url.searchParams.set("type", "total_purchasing");
+              url.searchParams.set("prev", prevBalance.toString());
+              url.searchParams.set("work", totalTodayWork.toString());
+              url.searchParams.set("paid", totalPaidToday.toString());
+              url.searchParams.set("debt", remainingTotalOwed.toString());
+              url.searchParams.set("egp", remainingEgyptianValue.toString());
+              url.searchParams.set("name", activeMerch === "baqy" ? "البيان" : "سمسم");
+              window.open(url.toString(), "_blank");
+            }}
+            className="group relative bg-gradient-to-l from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2 transition overflow-hidden shadow-sm"
+          >
+            <Smartphone className="w-4 h-4" />
+            <span>النظام الذكي 🛍️</span>
           </button>
 
           <button
@@ -1394,12 +1424,12 @@ export default function PurchasesModule({
                   <div className="grid grid-cols-6 gap-4 font-sans">
                     {/* Card 1 */}
                     <div className="col-span-2 bg-white border border-slate-200/70 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                      <span className="text-slate-500 font-bold text-xs shrink-0 mb-2">
+                      <span className="text-slate-500 font-bold text-sm shrink-0 mb-2">
                         📝 1. القيمة السابقة
                       </span>
-                      <span className="font-mono text-xl font-extrabold text-slate-800 tracking-wide text-left overflow-hidden text-ellipsis">
+                      <span className="font-mono text-2xl font-extrabold text-slate-800 tracking-wide text-left break-all">
                         {prevBalance.toLocaleString()}{" "}
-                        <span className="text-xs text-slate-400 font-bold">
+                        <span className="text-sm text-slate-400 font-bold">
                           د.ل
                         </span>
                       </span>
@@ -1407,12 +1437,12 @@ export default function PurchasesModule({
 
                     {/* Card 2 */}
                     <div className="col-span-2 bg-white border-t-2 border-slate-200 border-t-emerald-400 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                      <span className="text-emerald-700/80 font-bold text-xs shrink-0 mb-2">
+                      <span className="text-emerald-700/80 font-bold text-sm shrink-0 mb-2">
                         ⚡ 2. إجمالي الشغل
                       </span>
-                      <span className="font-mono text-xl font-extrabold text-emerald-600 tracking-wide text-left overflow-hidden text-ellipsis">
+                      <span className="font-mono text-2xl font-extrabold text-emerald-600 tracking-wide text-left break-all">
                         {totalTodayWork.toLocaleString()}{" "}
-                        <span className="text-xs text-emerald-400 font-bold">
+                        <span className="text-sm text-emerald-400 font-bold">
                           د.ل
                         </span>
                       </span>
@@ -1420,40 +1450,40 @@ export default function PurchasesModule({
 
                     {/* Card 3 */}
                     <div className="col-span-2 bg-white border-t-2 border-slate-200 border-t-rose-400 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                      <span className="text-rose-700/80 font-bold text-xs shrink-0 mb-2">
+                      <span className="text-rose-700/80 font-bold text-sm shrink-0 mb-2">
                         🟢 3. إجمالي المسددة
                       </span>
-                      <span className="font-mono text-xl font-extrabold text-rose-600 tracking-wide text-left overflow-hidden text-ellipsis">
+                      <span className="font-mono text-2xl font-extrabold text-rose-600 tracking-wide text-left break-all">
                         {totalPaidToday.toLocaleString()}{" "}
-                        <span className="text-xs text-rose-400 font-bold">
+                        <span className="text-sm text-rose-400 font-bold">
                           د.ل
                         </span>
                       </span>
                     </div>
 
                     {/* Card 4 */}
-                    <div className="col-span-3 bg-white border-t-2 border-slate-200 border-t-indigo-500 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden">
-                      <div className="absolute inset-0 bg-indigo-50/50 outline-none"></div>
-                      <span className="text-indigo-700 font-bold text-xs relative z-10 shrink-0 mb-2">
+                    <div className="col-span-6 sm:col-span-3 bg-white border-t-2 border-slate-200 border-t-indigo-500 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative">
+                      <div className="absolute inset-0 bg-indigo-50/50 outline-none rounded-2xl"></div>
+                      <span className="text-indigo-700 font-bold text-sm relative z-10 shrink-0 mb-2">
                         🎒 4. الباقي من الشغل
                       </span>
-                      <span className="font-mono text-2xl font-black text-indigo-900 tracking-wide relative z-10 text-left overflow-hidden text-ellipsis">
+                      <span className="font-mono text-3xl font-black text-indigo-900 tracking-wide relative z-10 text-left break-all">
                         {remainingTotalOwed.toLocaleString()}{" "}
-                        <span className="text-xs text-indigo-400 font-bold">
+                        <span className="text-sm text-indigo-400 font-bold">
                           د.ل
                         </span>
                       </span>
                     </div>
 
                     {/* Card 5 */}
-                    <div className="col-span-3 bg-white border-t-2 border-slate-200 border-t-purple-500 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative overflow-hidden">
-                      <div className="absolute inset-0 bg-purple-50/50 outline-none"></div>
-                      <span className="text-purple-700 font-bold text-xs relative z-10 shrink-0 mb-2">
+                    <div className="col-span-6 sm:col-span-3 bg-white border-t-2 border-slate-200 border-t-purple-500 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative">
+                      <div className="absolute inset-0 bg-purple-50/50 outline-none rounded-2xl"></div>
+                      <span className="text-purple-700 font-bold text-sm relative z-10 shrink-0 mb-2">
                         🇪🇬 5. الباقية مصري
                       </span>
-                      <span className="font-mono text-2xl font-black text-purple-900 tracking-wide relative z-10 text-left overflow-hidden text-ellipsis">
+                      <span className="font-mono text-3xl font-black text-purple-900 tracking-wide relative z-10 text-left break-all">
                         {remainingEgyptianValue.toLocaleString()}{" "}
-                        <span className="text-xs text-purple-400 font-bold">
+                        <span className="text-sm text-purple-400 font-bold">
                           EGP
                         </span>
                       </span>

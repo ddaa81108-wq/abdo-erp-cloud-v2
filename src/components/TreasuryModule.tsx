@@ -79,7 +79,7 @@ export default function TreasuryModule({
             const data = docSnap.data();
             if (data.merchStates) {
               Object.values(data.merchStates).forEach((merch: any) => {
-                const prev = merch.previousBalance || 0;
+                const prev = Number(merch.previousBalance) || 0;
                 const rowsRes = (merch.rows || []).reduce(
                   (s: number, r: any) => s + (Number(r.result) || 0),
                   0,

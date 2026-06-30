@@ -951,122 +951,113 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
-      {/* 3. شبكة كروت الزبائن - مقسمة */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {[
-          { id: 'abdullah', title: 'ديون عبد الله', titleColor: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-          { id: 'ali', title: 'ديون علي', titleColor: 'text-emerald-700 bg-emerald-50 border-emerald-200' }
-        ].map(section => (
-          <div key={section.id} className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
-            <h3 className={`font-black text-base mb-4 p-3 rounded-2xl border ${section.titleColor} text-center flex justify-center items-center gap-3`}>
-              <span>{section.title}</span>
-              <span className="text-xs font-bold bg-white/60 px-2.5 py-1 rounded-lg text-slate-800 shadow-xs">
-                 {[...activeCustomersList].filter(acc => section.id === 'ali' ? acc.cust.collector === 'ali' : acc.cust.collector !== 'ali').length}
-              </span>
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 content-start">
-              {[...activeCustomersList].reverse()
-                .filter(acc => section.id === 'ali' ? acc.cust.collector === 'ali' : acc.cust.collector !== 'ali')
-                .map((acc, i) => {
-                  const isSelected = selectedForRep.includes(acc.cust.id);
-                  
-                  const colors = [
-                    { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
-                    { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
-                    { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
-                    { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
-                    { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
-                    { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
-                  ];
-                  const clr = colors[i % colors.length];
+      {/* 3. شبكة كروت الزبائن */}
+      <div className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+        <h3 className="font-black text-base mb-4 p-3 rounded-2xl border text-indigo-700 bg-indigo-50 border-indigo-200 text-center flex justify-center items-center gap-3">
+          <span>قائمة ديون الزبائن</span>
+          <span className="text-xs font-bold bg-white/60 px-2.5 py-1 rounded-lg text-slate-800 shadow-xs">
+            {activeCustomersList.length}
+          </span>
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 content-start">
+          {[...activeCustomersList].reverse().map((acc, i) => {
+            const isSelected = selectedForRep.includes(acc.cust.id);
+            
+            const colors = [
+              { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
+              { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
+              { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
+              { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
+              { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
+              { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
+            ];
+            const clr = colors[i % colors.length];
 
-                  return (
-                    <div
-              key={acc.cust.id}
-              onClick={(e) => {
-                if ((e.target as Element).closest("button")) {
-                  return;
-                }
-                if (selectionMode) {
-                  setSelectedForRep((prev) =>
-                    prev.includes(acc.cust.id)
-                      ? prev.filter((id) => id !== acc.cust.id)
-                      : [...prev, acc.cust.id],
-                  );
-                } else {
-                  setSelectedCustomerId(acc.cust.id);
-                }
-              }}
-              className={`bg-white border-x border-b border-t-4 border-slate-200 ${Number(acc.debtBalance) === 0 ? "border-t-emerald-400 bg-emerald-50/30" : clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
-            >
-              {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
-              {selectionMode && isSelected && (
-                <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-md z-10 scale-90">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              )}
+            return (
+              <div
+                key={acc.cust.id}
+                onClick={(e) => {
+                  if ((e.target as Element).closest("button")) {
+                    return;
+                  }
+                  if (selectionMode) {
+                    setSelectedForRep((prev) =>
+                      prev.includes(acc.cust.id)
+                        ? prev.filter((id) => id !== acc.cust.id)
+                        : [...prev, acc.cust.id],
+                    );
+                  } else {
+                    setSelectedCustomerId(acc.cust.id);
+                  }
+                }}
+                className={`bg-white border-x border-b border-t-4 border-slate-200 ${Number(acc.debtBalance) === 0 ? "border-t-emerald-400 bg-emerald-50/30" : clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
+              >
+                {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
+                {selectionMode && isSelected && (
+                  <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-md z-10 scale-90">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                )}
 
-              {!selectionMode && (
-                <>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      handleQuickDelete(acc.cust.id);
-                    }}
-                    className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
-                    title="أرشفة ❌"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                {!selectionMode && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        handleQuickDelete(acc.cust.id);
+                      }}
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
+                      title="أرشفة ❌"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      if (Number(acc.debtBalance) === 0) {
-                        const success = await copySettledImage(acc.cust.name);
-                        if (success) {
-                          setShowSuccessToast("تم مشاركة كارت المخالصة بنجاح 📋");
-                          setTimeout(() => setShowSuccessToast(null), 3000);
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (Number(acc.debtBalance) === 0) {
+                          const success = await copySettledImage(acc.cust.name);
+                          if (success) {
+                            setShowSuccessToast("تم مشاركة كارت المخالصة بنجاح 📋");
+                            setTimeout(() => setShowSuccessToast(null), 3000);
+                          }
+                        } else {
+                          handleCopyDebtImage(acc.cust.name, acc.debtBalance);
                         }
-                      } else {
-                        handleCopyDebtImage(acc.cust.name, acc.debtBalance);
-                      }
-                    }}
-                    className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`}
-                    title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-                </>
-              )}
+                      }}
+                      className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`}
+                      title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </>
+                )}
 
-              <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>
-                {acc.cust.name}
-              </h4>
+                <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>
+                  {acc.cust.name}
+                </h4>
 
-              {acc.debtBalance > 0 ? (
-                <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
-                  {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
-                </span>
-              ) : acc.debtBalance < 0 ? (
-                <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
-                  {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
-                </span>
-              ) : (
-                <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>
-                  مسدد ✓
-                </span>
-              )}
-            </div>
-          );
-        })}
-            </div>
-          </div>
-        ))}
+                {acc.debtBalance > 0 ? (
+                  <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
+                    {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
+                  </span>
+                ) : acc.debtBalance < 0 ? (
+                  <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
+                    {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
+                  </span>
+                ) : (
+                  <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>
+                    مسدد ✓
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/*  نافذة إضافة زبون جديد */}
@@ -1282,14 +1273,6 @@ export default function CustomerDebtsModule({
                     </span>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <button
-                      onClick={() =>
-                        handleExportSingleCustomerImage(selectedAccDetails)
-                      }
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer"
-                    >
-                      تصدير الكشف المبوب 📸
-                    </button>
                     {selectedAccDetails.debtBalance === 0 ? (
                       <button
                         onClick={async () => {

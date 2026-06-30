@@ -341,7 +341,12 @@ export default function App() {
           if (!data.egyptianCashRecords) data.egyptianCashRecords = [];
 
           if (!unmounted) {
-            setState(data);
+            setState((current) => {
+              if (JSON.stringify(current) === JSON.stringify(data)) {
+                return current;
+              }
+              return data;
+            });
             try {
               localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(data));
             } catch (e) {

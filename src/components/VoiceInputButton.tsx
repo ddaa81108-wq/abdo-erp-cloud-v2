@@ -14,6 +14,11 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 }) => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const onResultRef = useRef(onResult);
+
+  useEffect(() => {
+    onResultRef.current = onResult;
+  }, [onResult]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
@@ -25,16 +30,15 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
-        // Append a space so that it doesn't merge directly with existing text without spacing, 
-        // or just let the parent handle the concatenation. We'll pass the raw transcript.
-        onResult(transcript);
+        onResultRef.current(transcript);
         setIsListening(false);
       };
 
       recognition.onerror = (event: any) => {
-        console.error("Speech recognition error", event.error);
         if (event.error === 'not-allowed') {
           alert("الرجاء السماح بالوصول إلى الميكروفون لاستخدام هذه الميزة.");
+        } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
+          console.warn("Speech recognition error:", event.error);
         }
         setIsListening(false);
       };
@@ -44,8 +48,16 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
       };
 
       recognitionRef.current = recognition;
+
+      return () => {
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.abort();
+          } catch(e) {}
+        }
+      };
     }
-  }, [lang, onResult]);
+  }, [lang]);
 
   const toggleListening = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -57,14 +69,23 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     }
 
     if (isListening) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.error("Failed to stop speech recognition", err);
+      }
       setIsListening(false);
     } else {
       try {
         recognitionRef.current.start();
         setIsListening(true);
-      } catch (err) {
-        console.error("Failed to start speech recognition", err);
+      } catch (err: any) {
+        if (err?.name === 'InvalidStateError' || err?.message?.includes('already started')) {
+          setIsListening(true);
+        } else {
+          console.warn("Failed to start speech recognition", err);
+          setIsListening(false);
+        }
       }
     }
   };
@@ -88,3 +109,4 @@ export const VoiceInputButton: React.FC<VoiceInputButtonProps> = ({
     </button>
   );
 };
+
