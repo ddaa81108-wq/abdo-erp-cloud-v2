@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import * as XLSX from "xlsx";
 import {
@@ -272,6 +272,8 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const syncTimeoutRef = useRef<any>(null);
+
   // 1. Firebase Synchronization Core
   useEffect(() => {
     let unmounted = false;
@@ -397,11 +399,16 @@ export default function App() {
     }
     
     if (db) {
-      try {
-        await setDoc(doc(db, "erp_system", "main_state"), cleanedState);
-      } catch (err) {
-        console.error("Failed to sync to Firebase", err);
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
       }
+      syncTimeoutRef.current = setTimeout(async () => {
+        try {
+          await setDoc(doc(db, "erp_system", "main_state"), cleanedState);
+        } catch (err) {
+          console.error("Failed to sync to Firebase", err);
+        }
+      }, 500);
     }
   };
 

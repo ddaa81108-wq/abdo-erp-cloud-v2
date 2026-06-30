@@ -953,12 +953,6 @@ export default function CustomerDebtsModule({
 
       {/* 3. شبكة كروت الزبائن */}
       <div className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
-        <h3 className="font-black text-base mb-4 p-3 rounded-2xl border text-indigo-700 bg-indigo-50 border-indigo-200 text-center flex justify-center items-center gap-3">
-          <span>قائمة ديون الزبائن</span>
-          <span className="text-xs font-bold bg-white/60 px-2.5 py-1 rounded-lg text-slate-800 shadow-xs">
-            {activeCustomersList.length}
-          </span>
-        </h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 content-start">
           {[...activeCustomersList].reverse().map((acc, i) => {
             const isSelected = selectedForRep.includes(acc.cust.id);

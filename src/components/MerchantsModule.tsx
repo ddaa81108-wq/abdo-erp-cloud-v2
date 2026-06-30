@@ -14,6 +14,7 @@ import {
   FileText,
   Camera,
   Copy,
+  Calculator,
 } from "lucide-react";
 import { ERPState, Merchant, MerchantTransaction } from "../types";
 import DebtBird from "./DebtBird";
