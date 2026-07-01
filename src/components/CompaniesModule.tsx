@@ -496,6 +496,128 @@ export default function CompaniesModule({
     c.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  const isLabeledCompany = (name: string) => {
+    const n = name.toLowerCase();
+    return n.includes("شركة") || n.includes("شركه") || n.includes("شركات") || n.includes("company");
+  };
+
+  const companiesList = filteredCompanies.filter(c => isLabeledCompany(c.name));
+  const merchantsList = filteredCompanies.filter(c => !isLabeledCompany(c.name));
+
+  const renderCompanyCard = (c: Company, i: number) => {
+    const prev = c.previousBalance || 0;
+    const plus = c.newDebt || 0;
+    const minus = c.paymentToday || 0;
+    const remaining = prev + plus - minus;
+
+    const colors = [
+      { bg: "bg-indigo-600", border: "border-indigo-500" },
+      { bg: "bg-rose-600", border: "border-rose-500" },
+      { bg: "bg-amber-600", border: "border-amber-500" },
+      { bg: "bg-emerald-600", border: "border-emerald-500" },
+      { bg: "bg-purple-600", border: "border-purple-500" },
+      { bg: "bg-teal-600", border: "border-teal-500" },
+      { bg: "bg-fuchsia-600", border: "border-fuchsia-500" },
+    ];
+    const clr = colors[i % colors.length];
+
+    return (
+      <div
+        key={c.id}
+        onClick={(e) => {
+          if ((e.target as Element).closest("button")) return;
+          setSelectedCompId(c.id);
+        }}
+        className={`${Number(remaining) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1" : clr.bg + " " + clr.border} border rounded-xl p-3.5 shadow-md relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all`}
+      >
+        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Landmark className="w-16 h-16 text-white" />
+        </div>
+
+        <div className="relative z-10 flex flex-col h-full">
+          <div className="flex items-start justify-between mb-3">
+            <h4
+              className="font-extrabold text-white text-[11px] sm:text-xs line-clamp-2 flex-1 text-right drop-shadow-md ml-2"
+              title={c.name}
+            >
+              {c.name}
+            </h4>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {Number(remaining) === 0 ? (
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const success = await copySettledImage(c.name, "كارت مخالصة للشركة");
+                    if (success) {
+                      alert("تم مشاركة كارت المخالصة بنجاح 📋");
+                    }
+                  }}
+                  className="bg-emerald-500/80 hover:bg-emerald-600 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-sm border border-emerald-300"
+                  title="نسخ كارت المخالصة 📋"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleCopyCardImage(c, remaining);
+                  }}
+                  className="bg-white/10 hover:bg-white/30 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                  title="نسخ كشف مختصر كصورة 📋"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleExecuteQuickCompanySettle("archive_only", c);
+                }}
+                className="bg-white/10 hover:bg-rose-500/80 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
+                title="أرشفة ❌"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-auto">
+            <div className="text-lg font-black text-white drop-shadow-md">
+              {remaining.toLocaleString()}{" "}
+              <span className="text-[9px] font-bold opacity-70">
+                د.ل
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+              {plus > 0 && (
+                <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
+                  +{plus.toLocaleString()} (جديد)
+                </span>
+              )}
+              {minus > 0 && (
+                <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
+                  -{minus.toLocaleString()} (دفعة)
+                </span>
+              )}
+              {plus === 0 && minus === 0 && Number(remaining) === 0 && (
+                <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
+                  خالص ✓
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const totalOwedToCompanies = activeCompanies.reduce(
     (sum, c) => sum + (c.balance || 0),
     0,
@@ -796,131 +918,45 @@ export default function CompaniesModule({
         </div>
       </div>
 
-      {/* Unified grid for Companies */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-        {/* Company Cards */}
-        {[...filteredCompanies].reverse().map((c, i) => {
-          const prev = c.previousBalance || 0;
-          const plus = c.newDebt || 0;
-          const minus = c.paymentToday || 0;
-          const remaining = prev + plus - minus;
-
-          const colors = [
-            { bg: "bg-indigo-600", border: "border-indigo-500" },
-            { bg: "bg-rose-600", border: "border-rose-500" },
-            { bg: "bg-amber-600", border: "border-amber-500" },
-            { bg: "bg-emerald-600", border: "border-emerald-500" },
-            { bg: "bg-purple-600", border: "border-purple-500" },
-            { bg: "bg-teal-600", border: "border-teal-500" },
-            { bg: "bg-fuchsia-600", border: "border-fuchsia-500" },
-          ];
-          const clr = colors[i % colors.length];
-
-          return (
-            <div
-              key={c.id}
-              onClick={(e) => {
-                if ((e.target as Element).closest("button")) return;
-                setSelectedCompId(c.id);
-              }}
-              className={`${Number(remaining) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1" : clr.bg + " " + clr.border} border rounded-xl p-3.5 shadow-md relative overflow-hidden group cursor-pointer hover:scale-[1.02] transition-all`}
-            >
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Landmark className="w-16 h-16 text-white" />
-              </div>
-
-              <div className="relative z-10 flex flex-col h-full">
-                <div className="flex items-start justify-between mb-3">
-                  <h4
-                    className="font-extrabold text-white text-[11px] sm:text-xs line-clamp-2 flex-1 text-right drop-shadow-md ml-2"
-                    title={c.name}
-                  >
-                    {c.name}
-                  </h4>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {Number(remaining) === 0 ? (
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          const success = await copySettledImage(c.name, "كارت مخالصة للشركة");
-                          if (success) {
-                            alert("تم مشاركة كارت المخالصة بنجاح 📋");
-                          }
-                        }}
-                        className="bg-emerald-500/80 hover:bg-emerald-600 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-sm border border-emerald-300"
-                        title="نسخ كارت المخالصة 📋"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleCopyCardImage(c, remaining);
-                        }}
-                        className="bg-white/10 hover:bg-white/30 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
-                        title="نسخ كشف مختصر كصورة 📋"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        handleExecuteQuickCompanySettle("archive_only", c);
-                      }}
-                      className="bg-white/10 hover:bg-rose-500/80 text-white p-1.5 rounded-lg transition-all cursor-pointer backdrop-blur-md shadow-xs border border-white/10"
-                      title="أرشفة ❌"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-auto">
-                  <div className="text-lg font-black text-white drop-shadow-md">
-                    {remaining.toLocaleString()}{" "}
-                    <span className="text-[9px] font-bold opacity-70">
-                      د.ل
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-1 flex-wrap">
-                    {plus > 0 && (
-                      <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
-                        +{plus.toLocaleString()} (جديد)
-                      </span>
-                    )}
-                    {minus > 0 && (
-                      <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
-                        -{minus.toLocaleString()} (دفعة)
-                      </span>
-                    )}
-                    {plus === 0 && minus === 0 && Number(remaining) === 0 && (
-                      <span className="bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded border border-white/10 backdrop-blur-md shadow-xs">
-                        خالص ✓
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {filteredCompanies.length === 0 && (
-          <div className="bg-white/5 border border-slate-200 border-dashed rounded-2xl p-12 col-span-full text-center text-slate-400">
-            <Landmark className="w-12 h-12 text-slate-300 mx-auto mb-3 opacity-50" />
-            <h4 className="font-bold text-slate-500 text-sm mb-1">
-              لا توجد شركات مسجلة مطابقة
-            </h4>
+      {/* Split grid for Merchants (Right) and Companies (Left) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Right side: Merchants (Since dir="rtl", first item is right) */}
+        <div className="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-xl font-bold text-slate-800 border-b-2 border-emerald-500 pb-1">التجار</h3>
+            <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">{merchantsList.length}</span>
           </div>
-        )}
+          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {[...merchantsList].reverse().map((c, i) => renderCompanyCard(c, i))}
+          </div>
+          {merchantsList.length === 0 && (
+            <div className="bg-white/50 border border-slate-200 border-dashed rounded-2xl p-6 text-center text-slate-400">
+              <Landmark className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-50" />
+              <h4 className="font-bold text-slate-500 text-xs mb-1">
+                لا يوجد تجار مسجلين
+              </h4>
+            </div>
+          )}
+        </div>
+
+        {/* Left side: Companies (Second item) */}
+        <div className="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+          <div className="flex items-center gap-2 mb-2">
+            <h3 className="text-xl font-bold text-slate-800 border-b-2 border-indigo-500 pb-1">الشركات</h3>
+            <span className="bg-indigo-100 text-indigo-800 text-xs font-bold px-2 py-0.5 rounded-full">{companiesList.length}</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {[...companiesList].reverse().map((c, i) => renderCompanyCard(c, i))}
+          </div>
+          {companiesList.length === 0 && (
+            <div className="bg-white/50 border border-slate-200 border-dashed rounded-2xl p-6 text-center text-slate-400">
+              <Landmark className="w-8 h-8 text-slate-300 mx-auto mb-2 opacity-50" />
+              <h4 className="font-bold text-slate-500 text-xs mb-1">
+                لا توجد شركات مسجلة
+              </h4>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 📂 النافذة الكبيرة: تفاصيل أرشيف الشركة وحركات قيودها التاريخية */}
