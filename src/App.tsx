@@ -44,6 +44,7 @@ import ImageExporter from "./components/ImageExporter";
 import LoginScreen from "./components/LoginScreen";
 import SettingsModule from "./components/SettingsModule";
 import { copyCustomCardImage } from "./utils/imageExporterUtils";
+import { fireWelcomeCelebration } from "./utils/welcomeCelebration";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -274,6 +275,9 @@ export default function App() {
   }, []);
 
   const syncTimeoutRef = useRef<any>(null);
+  const welcomeToastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // 1. Firebase Synchronization Core
   useEffect(() => {
@@ -382,6 +386,14 @@ export default function App() {
     return () => {
       unmounted = true;
       unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (welcomeToastTimeoutRef.current) {
+        clearTimeout(welcomeToastTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -634,7 +646,14 @@ export default function App() {
     }
 
     setShowWelcomeToast(true);
-    setTimeout(() => setShowWelcomeToast(false), 4500);
+    fireWelcomeCelebration();
+
+    if (welcomeToastTimeoutRef.current) {
+      clearTimeout(welcomeToastTimeoutRef.current);
+    }
+    welcomeToastTimeoutRef.current = setTimeout(() => {
+      setShowWelcomeToast(false);
+    }, 7000);
   };
 
   const handleLogout = () => {
@@ -1459,31 +1478,89 @@ export default function App() {
         </div>
       )}
 
-      {/* 4. Welcome Toast — appears at top after successful login */}
+      {/* 4. Welcome Toast — cinematic center merge after successful login */}
       <AnimatePresence>
         {showWelcomeToast && (
           <motion.div
-            initial={{ opacity: 0, y: -40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -30, scale: 0.97 }}
-            transition={{ type: "spring", damping: 22, stiffness: 280 }}
-            className="fixed top-5 inset-x-0 flex justify-center z-[99999] pointer-events-none px-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45 }}
+            className="fixed inset-0 flex items-center justify-center z-[99999] pointer-events-none px-4"
             dir="rtl"
           >
-            <div className="pointer-events-auto max-w-xl w-full bg-gradient-to-l from-[#1a1508] via-[#0b0f19] to-[#1a1508] border border-[#d4af37]/40 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.55),0_0_30px_rgba(212,175,55,0.15)] px-5 py-4 flex items-center gap-4 relative overflow-hidden">
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/70 to-transparent" />
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#fceabb] to-[#d4af37] flex items-center justify-center shrink-0 shadow-lg shadow-[#d4af37]/25">
-                <span className="text-lg">👑</span>
-              </div>
-              <div className="flex-1 text-right">
-                <p className="text-[10px] font-extrabold text-[#d4af37]/80 tracking-widest mb-1">
+            <motion.div
+              className="pointer-events-auto relative max-w-2xl w-full"
+              initial={{ scale: 0.72, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.88, opacity: 0, y: -12 }}
+              transition={{
+                delay: 0.52,
+                type: "spring",
+                damping: 16,
+                stiffness: 210,
+              }}
+            >
+              <div className="relative overflow-hidden rounded-3xl border border-[#d4af37]/45 bg-gradient-to-br from-[#1a1508] via-[#0b0f19] to-[#120d04] px-6 py-7 md:px-10 md:py-8 text-center shadow-[0_25px_80px_rgba(0,0,0,0.65),0_0_45px_rgba(212,175,55,0.18)]">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/80 to-transparent" />
+                <div className="absolute -top-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-[#d4af37]/10 blur-3xl" />
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  transition={{
+                    delay: 0.75,
+                    type: "spring",
+                    damping: 12,
+                    stiffness: 180,
+                  }}
+                  className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#fceabb] to-[#d4af37] text-2xl shadow-lg shadow-[#d4af37]/30"
+                >
+                  👑
+                </motion.div>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.82, duration: 0.35 }}
+                  className="mb-4 text-[11px] font-extrabold tracking-[0.25em] text-[#d4af37]/85"
+                >
                   مرحباً بك في المنظومة الملكية
-                </p>
-                <p className="text-sm font-bold text-slate-100 leading-relaxed">
-                  نبدأ بسم الله ما شاء الله ولا حول ولا قوة إلا بالله
-                </p>
+                </motion.p>
+
+                <div className="relative flex flex-wrap items-center justify-center gap-x-2 overflow-hidden">
+                  <motion.span
+                    className="text-base font-black leading-relaxed text-slate-100 md:text-xl"
+                    initial={{ x: "55vw", opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{
+                      duration: 0.7,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                  >
+                    نبدأ بسم الله ما شاء الله
+                  </motion.span>
+                  <motion.span
+                    className="text-base font-black leading-relaxed text-[#fceabb] md:text-xl"
+                    initial={{ x: "-55vw", opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{
+                      duration: 0.7,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                  >
+                    ولا حول ولا قوة إلا بالله
+                  </motion.span>
+                </div>
+
+                <motion.div
+                  className="mx-auto mt-5 h-px bg-gradient-to-r from-transparent via-[#d4af37] to-transparent"
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "78%", opacity: 1 }}
+                  transition={{ delay: 0.68, duration: 0.55, ease: "easeOut" }}
+                />
               </div>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
