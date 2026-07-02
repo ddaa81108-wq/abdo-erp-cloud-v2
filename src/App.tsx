@@ -149,6 +149,7 @@ export default function App() {
   const [showSeedConfirm, setShowSeedConfirm] = useState(false);
   const [showSeedBannerConfirm, setShowSeedBannerConfirm] = useState(false);
   const [showCustomToast, setShowCustomToast] = useState("");
+  const [showWelcomeToast, setShowWelcomeToast] = useState(false);
 
   // Global Keyboard Navigation (ArrowUp / ArrowDown / ArrowLeft / ArrowRight / Enter)
   useEffect(() => {
@@ -631,6 +632,9 @@ export default function App() {
     } else {
       setActiveTab("settings");
     }
+
+    setShowWelcomeToast(true);
+    setTimeout(() => setShowWelcomeToast(false), 4500);
   };
 
   const handleLogout = () => {
@@ -1455,7 +1459,36 @@ export default function App() {
         </div>
       )}
 
-      {/* 4. Beautiful Custom Toast Alert Overlay */}
+      {/* 4. Welcome Toast — appears at top after successful login */}
+      <AnimatePresence>
+        {showWelcomeToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -40, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -30, scale: 0.97 }}
+            transition={{ type: "spring", damping: 22, stiffness: 280 }}
+            className="fixed top-5 inset-x-0 flex justify-center z-[99999] pointer-events-none px-4"
+            dir="rtl"
+          >
+            <div className="pointer-events-auto max-w-xl w-full bg-gradient-to-l from-[#1a1508] via-[#0b0f19] to-[#1a1508] border border-[#d4af37]/40 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.55),0_0_30px_rgba(212,175,55,0.15)] px-5 py-4 flex items-center gap-4 relative overflow-hidden">
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/70 to-transparent" />
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#fceabb] to-[#d4af37] flex items-center justify-center shrink-0 shadow-lg shadow-[#d4af37]/25">
+                <span className="text-lg">👑</span>
+              </div>
+              <div className="flex-1 text-right">
+                <p className="text-[10px] font-extrabold text-[#d4af37]/80 tracking-widest mb-1">
+                  مرحباً بك في المنظومة الملكية
+                </p>
+                <p className="text-sm font-bold text-slate-100 leading-relaxed">
+                  نبدأ بسم الله ما شاء الله ولا حول ولا قوة إلا بالله
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 5. Beautiful Custom Toast Alert Overlay */}
       {showCustomToast && (
         <div
           className="fixed bottom-6 left-6 max-w-md bg-[#0b0f19] border border-slate-800 p-4 rounded-2xl z-[99999] shadow-2xl text-right animate-slide-up flex items-center gap-3 border-l-4 border-l-emerald-500"
