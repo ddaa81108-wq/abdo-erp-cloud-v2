@@ -877,22 +877,25 @@ export default function DepositsModule({
               const isExpanded = expandedCardId === d.id;
 
               return (
-                <div 
-                  key={d.id} 
+                <div
+                  key={d.id}
                   onClick={() => {
                     setExpandedCardId(isExpanded ? null : d.id);
                     if (!isExpanded) resetActionForm();
                   }}
-                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'border-r-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300' : (customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
+                  className={`relative overflow-hidden bg-white border border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-sm hover:shadow-lg group min-h-[90px] text-center hover:scale-[1.02]`}
                 >
+                  {/* Modern gradient top bar */}
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 rounded-t-xl ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : (customerLyd < 0 || customerEgp < 0) ? 'bg-gradient-to-r from-rose-500 to-pink-600' : 'bg-gradient-to-r from-indigo-500 to-blue-600'}`}></div>
+
                   {/* CARD TILE BODY */}
-                  <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1">{d.customerName}</h4>
+                  <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1 mt-1">{d.customerName}</h4>
                   <div className="flex flex-col items-center">
-                    <span className={`font-mono text-lg font-black ${customerLyd < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                    <span className={`font-mono text-lg font-black bg-gradient-to-r ${customerLyd < 0 ? 'from-rose-50 to-rose-100 text-rose-600' : 'from-indigo-50 to-indigo-100 text-indigo-600'} px-2.5 py-0.5 rounded-lg border ${customerLyd < 0 ? 'border-rose-200' : 'border-indigo-200'}`}>
                       {Math.round(customerLyd).toLocaleString('en-US')} د.ل
                     </span>
                     {customerEgp !== 0 && (
-                      <span className={`font-mono text-base font-black mt-1 ${customerEgp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <span className={`font-mono text-base font-black mt-1 bg-gradient-to-r ${customerEgp < 0 ? 'from-rose-50 to-rose-100 text-rose-600 border-rose-200' : 'from-emerald-50 to-emerald-100 text-emerald-600 border-emerald-200'} px-2.5 py-0.5 rounded-lg border`}>
                         {Math.round(customerEgp).toLocaleString('en-US')} ج.م
                       </span>
                     )}

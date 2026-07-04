@@ -677,6 +677,25 @@ export default function CustomerDebtsModule({
   };
 
   // ----------------------------------------------------
+  // حذف معاملة واحدة من سجل المعاملات
+  // ----------------------------------------------------
+  const handleDeleteSingleTransaction = (txId: string) => {
+    const currentState = stateRef.current;
+    const txToDelete = currentState.debtTransactions.find((t) => t.id === txId);
+    if (!txToDelete) return;
+
+    // Remove the transaction
+    const updatedTransactions = currentState.debtTransactions.filter((t) => t.id !== txId);
+
+    onUpdateState({
+      ...currentState,
+      debtTransactions: updatedTransactions,
+    });
+
+    setShowSuccessToast("تم حذف المعاملة بنجاح");
+  };
+
+  // ----------------------------------------------------
   // تصوير شاشات وتقارير مبسطة للواتساب وصناعة الكروت
   // ----------------------------------------------------
   const handleShareWhatsApp = () => {
@@ -939,16 +958,16 @@ export default function CustomerDebtsModule({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 content-start">
           {[...activeCustomersList].reverse().map((acc, i) => {
             const isSelected = selectedForRep.includes(acc.cust.id);
-            
-            const colors = [
-              { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
-              { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
-              { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
-              { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
-              { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
-              { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
+
+            const gradients = [
+              { gradient: "from-indigo-500 to-blue-600", text: "text-indigo-600", bgBadge: "bg-indigo-50", borderAccent: "border-indigo-400" },
+              { gradient: "from-rose-500 to-pink-600", text: "text-rose-600", bgBadge: "bg-rose-50", borderAccent: "border-rose-400" },
+              { gradient: "from-amber-500 to-orange-600", text: "text-amber-600", bgBadge: "bg-amber-50", borderAccent: "border-amber-400" },
+              { gradient: "from-emerald-500 to-teal-600", text: "text-emerald-600", bgBadge: "bg-emerald-50", borderAccent: "border-emerald-400" },
+              { gradient: "from-cyan-500 to-sky-600", text: "text-cyan-600", bgBadge: "bg-cyan-50", borderAccent: "border-cyan-400" },
+              { gradient: "from-violet-500 to-purple-600", text: "text-violet-600", bgBadge: "bg-violet-50", borderAccent: "border-violet-400" },
             ];
-            const clr = colors[i % colors.length];
+            const clr = gradients[i % gradients.length];
 
             return (
               <div
@@ -967,8 +986,11 @@ export default function CustomerDebtsModule({
                     setSelectedCustomerId(acc.cust.id);
                   }
                 }}
-                className={`bg-white border-x border-b border-t-4 border-slate-200 ${Number(acc.debtBalance) === 0 ? "border-t-emerald-400 bg-emerald-50/30" : clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
+                className={`relative overflow-hidden bg-white border border-slate-200 text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-[1.02] hover:shadow-lg"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-sm group min-h-[75px] ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
               >
+                {/* Modern gradient top bar */}
+                <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${Number(acc.debtBalance) === 0 ? "from-emerald-400 to-teal-500" : clr.gradient} rounded-t-xl`}></div>
+
                 {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
                 {selectionMode && isSelected && (
                   <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-md z-10 scale-90">
@@ -985,7 +1007,7 @@ export default function CustomerDebtsModule({
                         e.preventDefault();
                         handleQuickDelete(acc.cust.id);
                       }}
-                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
+                      className="absolute top-2.5 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded-md transition-all cursor-pointer z-10 border border-rose-200 shadow-xs"
                       title="أرشفة ❌"
                     >
                       <X className="w-3 h-3" />
@@ -1006,7 +1028,7 @@ export default function CustomerDebtsModule({
                           handleCopyDebtImage(acc.cust.name, acc.debtBalance);
                         }
                       }}
-                      className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`}
+                      className={`absolute top-2.5 left-1 opacity-0 group-hover:opacity-100 p-1 rounded-md transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-indigo-200'}`}
                       title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
                     >
                       <Copy className="w-3 h-3" />
@@ -1014,20 +1036,20 @@ export default function CustomerDebtsModule({
                   </>
                 )}
 
-                <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>
+                <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5 mt-1`}>
                   {acc.cust.name}
                 </h4>
 
                 {acc.debtBalance > 0 ? (
-                  <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
+                  <span className="font-mono font-black text-rose-600 text-xs bg-gradient-to-r from-rose-50 to-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 shadow-xs">
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : acc.debtBalance < 0 ? (
-                  <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
+                  <span className="font-mono font-black text-emerald-700 text-xs bg-gradient-to-r from-emerald-50 to-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-300 shadow-xs ring-1 ring-emerald-500" title="رصيد دائن لصالحه (أمانة)">
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : (
-                  <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>
+                  <span className="font-sans font-black text-emerald-600 text-[10px] bg-gradient-to-r from-emerald-50 to-teal-50 px-2.5 py-1 rounded-lg border border-emerald-200 shadow-xs">
                     مسدد ✓
                   </span>
                 )}
@@ -1187,16 +1209,54 @@ export default function CustomerDebtsModule({
                 </h3>
               </div>
 
-              <button
-                onClick={() => setSelectedCustomerId(null)}
-                className="bg-slate-100 hover:bg-slate-200 p-1 px-3 rounded-lg text-xs font-bold text-slate-700 transition"
-              >
-                إغلاق النافذة ✕
-              </button>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => {
+                    setInnerDebtAmount("");
+                    setInnerDebtNote("");
+                    setShowAddDebtInnerModal(true);
+                  }}
+                  className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs py-2 px-3 rounded-lg transition cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  إضافة دين
+                </button>
+
+                <button
+                  onClick={() => {
+                    setPaymentType("partial");
+                    setPaymentAmount("");
+                    setShowPaymentModal(true);
+                  }}
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs py-2 px-3 rounded-lg transition cursor-pointer flex items-center gap-1"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                  سداد جزئي
+                </button>
+
+                <button
+                  onClick={() => {
+                    setPaymentType("full");
+                    setPaymentAmount(selectedAccDetails.debtBalance.toString());
+                    setShowPaymentModal(true);
+                  }}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs py-2 px-3 rounded-lg transition cursor-pointer flex items-center gap-1"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  سداد كامل
+                </button>
+
+                <button
+                  onClick={() => setSelectedCustomerId(null)}
+                  className="bg-slate-100 hover:bg-slate-200 p-2 px-3 rounded-lg text-xs font-bold text-slate-700 transition"
+                >
+                  إغلاق ✕
+                </button>
+              </div>
             </div>
 
-            {/* أرقام تجميع ديون هذا الزبون مع تصدير الصورة */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            {/* رصيد العميل */}
+            <div className="mb-4">
               {selectedAccDetails.debtBalance > 0 ? (
                 <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl">
                   <span className="text-rose-800 text-[10px] font-bold block mb-0.5">
@@ -1225,59 +1285,6 @@ export default function CustomerDebtsModule({
                   </span>
                 </div>
               )}
-
-              <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">
-                  مجموع الدفوعات المسددة من قبل
-                </span>
-                <span className="text-base font-mono font-black text-emerald-700">
-                  {Math.round(selectedAccDetails.historicalTxs
-                    .filter((t) => t.type === "payment")
-                    .reduce((sum, t) => sum + t.amount, 0)
-                  ).toLocaleString("en-US")}{" "}
-                  د.ل
-                </span>
-              </div>
-
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-slate-500 font-bold text-[10px] block mb-0.5">
-                      إرسال كشف للزبون
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      اضغط لتصدير نسخة مخصصة للواتساب
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {selectedAccDetails.debtBalance === 0 ? (
-                      <button
-                        onClick={async () => {
-                          const success = await copySettledImage(selectedAccDetails.cust.name);
-                          if (success) {
-                            setShowSuccessToast("تم مشاركة كارت المخالصة بنجاح 📋");
-                            setTimeout(() => setShowSuccessToast(null), 3000);
-                          }
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center shadow-md border border-emerald-500"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        نسخ كارت المخالصة 📋
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          handleCopyDebtImage(selectedAccDetails.cust.name, selectedAccDetails.debtBalance)
-                        }
-                        className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        نسخ كارت الدين السريع 📋
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* الأرشيف وحركات الدفوعات التاريخية */}
@@ -1285,8 +1292,7 @@ export default function CustomerDebtsModule({
               <h4 className="text-xs font-extrabold text-slate-700 mb-2.5 pb-1.5 border-b border-slate-200 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-indigo-500 font-bold" />
                 <span>
-                  أرشيف الزبون (جميع الحركات التاريخية، السابقة والجديدة مع
-                  الوقت والتاريخ والنوع)
+                  سجل المعاملات (للقراءة فقط)
                 </span>
               </h4>
 
@@ -1300,11 +1306,10 @@ export default function CustomerDebtsModule({
                     <thead>
                       <tr className="bg-slate-200 text-slate-700 font-bold border-b border-slate-300">
                         <th className="p-2 text-right">الوقت والتاريخ</th>
-                        <th className="p-2 text-right">
-                          الحركة (خيار الدفع / الذمة)
-                        </th>
+                        <th className="p-2 text-right">نوع العملية</th>
                         <th className="p-2 text-right">رقم المستند</th>
                         <th className="p-2 text-left">قيمة الحركة</th>
+                        <th className="p-2 text-center w-10"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1331,8 +1336,10 @@ export default function CustomerDebtsModule({
                                 }`}
                               >
                                 {tx.type === "debt"
-                                  ? "🔴 إضافة دين (مستحق)"
-                                  : "🟢 سداد دفعة (مدفوع)"}
+                                  ? "إضافة دين"
+                                  : tx.note?.includes("جزئي") || tx.amount < (selectedAccDetails.debtBalance || Infinity)
+                                    ? "سداد جزئي"
+                                    : "سداد"}
                               </span>
                             </td>
                             <td className="p-2 text-slate-500">
@@ -1347,60 +1354,21 @@ export default function CustomerDebtsModule({
                             >
                               {Math.round(tx.amount).toLocaleString("en-US")} د.ل
                             </td>
+                            <td className="p-2 text-center">
+                              <button
+                                onClick={() => handleDeleteSingleTransaction(tx.id)}
+                                className="opacity-50 hover:opacity-100 text-rose-500 hover:text-rose-700 hover:bg-rose-50 p-1 rounded transition cursor-pointer"
+                                title="حذف هذه المعاملة"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
                 </div>
               )}
-            </div>
-
-            {/* شريط الإجراءات السفلي (سداد كامل/جزء ومسح الحساب) */}
-            <div className="border-t pt-3 flex flex-wrap gap-2 justify-between items-center">
-              {/* تصفير وحذف الزبون بالأول */}
-              <button
-                onClick={() => handleQuickDelete()}
-                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>مسح وإلغاء الزبون بالكامل 🗑️</span>
-              </button>
-
-              {/* تحصيل بالبوابة */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setInnerDebtAmount("");
-                    setInnerDebtNote("");
-                    setShowAddDebtInnerModal(true);
-                  }}
-                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer"
-                >
-                  🔴 إضافة دين جديد
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPaymentType("partial");
-                    setPaymentAmount("");
-                    setShowPaymentModal(true);
-                  }}
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer"
-                >
-                  🟢 دفع جزء من الدين
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPaymentType("full");
-                    setPaymentAmount(selectedAccDetails.debtBalance.toString());
-                    setShowPaymentModal(true);
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs p-2.5 px-4 rounded-xl shadow-xs transition cursor-pointer"
-                >
-                  ✅ سداد كامل وتصفير
-                </button>
-              </div>
             </div>
           </div>
         </div>
