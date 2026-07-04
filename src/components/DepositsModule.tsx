@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy, Calculator, Minus, CheckCircle2 } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
-import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
+import { copySettledImage, generateUnifiedSmartCard, openSmartCardStudio } from "../utils/imageExporterUtils";
 import { VoiceInputButton } from "./VoiceInputButton";
 
 interface DepositsModuleProps {
@@ -720,30 +720,35 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
     .reduce((sum, d) => sum + getAmountEgp(d), 0);
 
   const handleCopyDepositImage = async (d: TrustDeposit) => {
-    try {
-      const lyd = Math.round(getAmountLyd(d));
-      const egp = Math.round(getAmountEgp(d));
-      
-      let success = false;
-      
-      if (lyd !== 0 && egp !== 0) {
-        success = await generateUnifiedSmartCard(d.customerName, lyd, "trust_dual", undefined, "د.ل", egp, "ج.م");
-      } else if (egp !== 0) {
-        success = await generateUnifiedSmartCard(d.customerName, egp, "trust", undefined, "ج.م");
-      } else {
-        success = await generateUnifiedSmartCard(d.customerName, lyd, "trust", undefined, "د.ل");
-      }
+    const lyd = Math.round(getAmountLyd(d));
+    const egp = Math.round(getAmountEgp(d));
 
-      if (success) {
-        setShowSuccessToast("تم نسخ صورة الأمانة بنجاح 📋");
-        setTimeout(() => setShowSuccessToast(null), 3000);
-      } else {
+    // الأمانة بعملتين لا يوجد لها قسم مقابل في منظومة الكروت الذكية بعد، تُنسخ بالطريقة القديمة
+    if (lyd !== 0 && egp !== 0) {
+      try {
+        const success = await generateUnifiedSmartCard(d.customerName, lyd, "trust_dual", undefined, "د.ل", egp, "ج.م");
+        if (success) {
+          setShowSuccessToast("تم نسخ صورة الأمانة بنجاح 📋");
+          setTimeout(() => setShowSuccessToast(null), 3000);
+        } else {
+          alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
+        }
+      } catch (err) {
+        console.error("Failed to copy image", err);
         alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
       }
-    } catch (err) {
-      console.error("Failed to copy image", err);
-      alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
+      return;
     }
+
+    const isEgp = egp !== 0;
+    openSmartCardStudio({
+      type: "trust",
+      name: d.customerName,
+      amount: Math.abs(isEgp ? egp : lyd),
+      currency: isEgp ? "ج.م" : "د.ل",
+    });
+    setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");
+    setTimeout(() => setShowSuccessToast(null), 3000);
   };
 
 

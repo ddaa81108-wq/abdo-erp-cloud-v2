@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { ERPState, Merchant, MerchantTransaction } from "../types";
 import DebtBird from "./DebtBird";
-import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
+import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUtils";
 import { VoiceInputButton } from "./VoiceInputButton";
 
 interface MerchantsModuleProps {
@@ -993,21 +993,21 @@ export default function MerchantsModule({
                   </button>
                 ) : (
                   <button
-                    onClick={async () => {
+                    onClick={() => {
                       const remaining = selectedMerchDetails.merch.balance || 0;
-                      const type = remaining < 0 ? "trust" : "debt";
-                      const success = await generateUnifiedSmartCard(selectedMerchDetails.merch.name, remaining, type, undefined, "د.ل");
-                      if (success) {
-                        alert("تم نسخ كارت الدين السريع 📋");
-                      } else {
-                        alert("حدث خطأ أثناء نسخ الصورة");
-                      }
+                      openSmartCardStudio({
+                        type: "companies",
+                        acctype: "merchant",
+                        name: selectedMerchDetails.merch.name,
+                        amount: Math.abs(remaining),
+                        currency: "د.ل",
+                      });
                     }}
                     className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer shadow-md"
-                    title="نسخ كارت الدين السريع 📋"
+                    title="فتح كارت التاجر في منظومة الكروت الذكية 👑"
                   >
                     <Copy className="w-4 h-4" />
-                    <span>نسخ كارت الدين السريع 📋</span>
+                    <span>كارت التاجر الذكي 👑</span>
                   </button>
                 )}
 

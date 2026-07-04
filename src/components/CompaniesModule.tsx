@@ -16,7 +16,7 @@ import {
   Calculator,
   Copy,
 } from "lucide-react";
-import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
+import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUtils";
 import { ERPState, Company, CompanyTransaction } from "../types";
 import { VoiceInputButton } from "./VoiceInputButton";
 
@@ -715,21 +715,16 @@ export default function CompaniesModule({
     );
   };
 
-  const handleCopyCardImage = async (company: Company, remaining: number) => {
-    try {
-      const type = remaining < 0 ? "trust" : "debt";
-      const success = await generateUnifiedSmartCard(company.name, remaining, type, undefined, "د.ل");
-      
-      if (success) {
-        setShowSuccessToast("تم نسخ صورة الكشف بنجاح، يمكنك لصقها الآن");
-        setTimeout(() => setShowSuccessToast(null), 3000);
-      } else {
-        alert("حدث خطأ أثناء نسخ الصورة. الميزة قد لا تعمل في هذا المتصفح.");
-      }
-    } catch (err) {
-      console.error("Failed to copy image", err);
-      alert("حدث خطأ أثناء نسخ الصورة. الميزة قد لا تعمل في هذا المتصفح.");
-    }
+  const handleCopyCardImage = (company: Company, remaining: number) => {
+    openSmartCardStudio({
+      type: "companies",
+      acctype: "company",
+      name: company.name,
+      amount: Math.abs(remaining),
+      currency: "د.ل",
+    });
+    setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");
+    setTimeout(() => setShowSuccessToast(null), 3000);
   };
 
   const handleOpenShareCard = () => {

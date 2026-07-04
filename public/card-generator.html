@@ -1,1594 +1,760 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
-  <head>
-    <meta charset="UTF-8" />
-    <title>منظومة توليد الكروت الشاملة والذكية</title>
-    <!-- مكتبة تحويل الكارت لصورة -->
+<head>
+    <meta charset="UTF-8">
+    <title>استوديو الكروت الذكية - المنظومة الملكية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-      body {
-        margin: 0;
-        padding: 30px;
-        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-        background-color: #e9ecef;
-        display: flex;
-        justify-content: center;
-      }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-      .app-container {
-        display: flex;
-        gap: 40px;
-        align-items: flex-start;
-      }
+        /* الألوان والخلفيات - تم وضع !important لمنع أي تضارب وجعلها تعمل بقوة */
+        .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); }
+        .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); }
+        .bg-navy { background: linear-gradient(135deg, #141e30 0%, #243b55 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.3); --badge-border: rgba(255, 255, 255, 0.3); }
+        .bg-dark { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important; --text-main: #f1c40f; --badge-bg: rgba(255, 255, 255, 0.1); --badge-border: rgba(241, 196, 15, 0.5); }
+        .bg-emerald { background: linear-gradient(135deg, #0f3422 0%, #1e5639 50%, #2ecc71 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-ruby { background: linear-gradient(135deg, #640d14 0%, #ad2831 50%, #e5383b 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-ocean { background: linear-gradient(135deg, #021B79 0%, #0575E6 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); }
+        .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
 
-      /* ----------------------------------
-           لوحة التحكم (يسار)
-        ----------------------------------- */
-      .controls-sidebar {
-        background: white;
-        padding: 25px;
-        border-radius: 20px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-        border: 2px solid #b38728;
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        width: 360px;
-        position: sticky;
-        top: 30px;
-        max-height: 90vh;
-        overflow-y: auto;
-      }
+        /* تنسيق الكارت الأساسي */
+        .card { width: 100%; max-width: 1000px; min-height: 800px; border-radius: 30px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; }
+        .header { font-size: 26pt; font-weight: bold; margin-top: 5px; transition: color 0.3s ease; }
+        .price-card-title { font-size: 38pt; font-weight: 900; margin-top: 20px; width: 90%; text-align: center; }
+        .client-name { font-size: 55pt; font-weight: 900; margin: 0; line-height: 1.1; text-align: center; transition: filter 0.3s ease, color 0.3s ease; }
+        .label { font-size: 24pt; font-weight: bold; text-align: center;}
+        
+        .amount-box-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; margin-bottom: 5px; }
+        .amount-box { display: flex; justify-content: center; align-items: center; }
+        .amount-text { font-size: 120pt; font-weight: 900; font-family: 'Arial Black', Impact, Arial, sans-serif; margin: 0; line-height: 1; display: flex; align-items: center; gap: 20px; }
+        .currency { font-size: 35pt; font-weight: bold; }
+        .tafqeet-text { font-size: 24pt; font-weight: bold; margin-top: 15px; color: var(--text-main); opacity: 0.85; text-align: center; }
 
-      .controls-sidebar h3 {
-        margin: 0;
-        color: #b38728;
-        text-align: center;
-        font-size: 18pt;
-        border-bottom: 2px dashed #eee;
-        padding-bottom: 10px;
-      }
+        .price-badge { font-size: 22pt; font-weight: bold; background: var(--badge-bg); padding: 8px 30px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; border: none; }
+        .custom-note-box { font-size: 18pt; font-weight: bold; background: var(--badge-bg); padding: 12px 30px; border-radius: 15px; margin-bottom: 10px; text-align: center; line-height: 1.5; width: 85%; white-space: pre-wrap; border: none; }
+        .large-note { font-size: 38pt !important; line-height: 1.8; padding: 40px !important; background: transparent !important; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
 
-      .input-group {
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
+        /* الكشف الماسي */
+        .final-statement-box { width: 95%; display: flex; flex-direction: column; margin: 10px 0; background: transparent; border: none; gap: 15px; }
+        .stmt-header { text-align: center; font-size: 34pt; font-weight: 900; margin-bottom: 5px; color: var(--text-main); transition: color 0.3s ease; }
+        .stmt-date { text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 20px; color: var(--text-main); opacity: 0.8; }
+        .stmt-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: var(--badge-bg); border-radius: 15px; border: none; }
+        .stmt-label { font-size: 24pt; font-weight: bold; color: var(--text-main); }
+        .stmt-value { font-size: 32pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; }
+        .stmt-row.final-row { background: transparent; border: 3px dashed var(--badge-border); margin-top: 10px; }
+        .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 38pt; }
 
-      .input-group label {
-        font-size: 11pt;
-        font-weight: bold;
-        color: #2c3e50;
-      }
+        /* كارت المشتريات */
+        .purchases-box { width: 95%; display: flex; flex-direction: column; gap: 15px; margin: 10px 0; background: transparent; border: none; }
+        .purchases-top-bar { display: flex; justify-content: space-between; align-items: center; font-size: 22pt; font-weight: 900; margin-bottom: 10px; transition: color 0.3s ease; }
+        .purchases-merchant-name { transition: filter 0.3s ease; }
+        .purchases-row { background: #ffffff; border-radius: 15px; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Arial Black', Impact, sans-serif; border-width: 3px; border-style: solid; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .p-label { font-size: 26pt; font-weight: bold; }
+        .p-value { font-size: 40pt; font-weight: 900; display: flex; align-items: center; gap: 15px; direction: ltr; }
+        .p-currency { font-size: 18pt; font-weight: bold; opacity: 0.6; }
+        
+        .row-1 { border-color: #bdc3c7; color: #2c3e50; }
+        .row-2 { border-color: #27ae60; color: #27ae60; }
+        .row-3 { border-color: #c0392b; color: #c0392b; }
+        .row-4 { border-color: #8b0000; color: #8b0000; }
+        .row-5 { border-color: #16a085; color: #16a085; }
 
-      .input-group input[type="text"],
-      .input-group select,
-      .input-group textarea {
-        padding: 10px;
-        font-size: 12pt;
-        border: 2px solid #bdc3c7;
-        border-radius: 8px;
-        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-        outline: none;
-        transition: all 0.3s ease;
-        resize: none;
-      }
-
-      .input-group input[type="text"]:focus,
-      .input-group select:focus,
-      .input-group textarea:focus {
-        border-color: #b38728;
-      }
-
-      .input-group input:disabled,
-      .input-group select:disabled {
-        background-color: #f1f2f6;
-        cursor: not-allowed;
-        opacity: 0.6;
-      }
-
-      .toggle-group {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: #f8f9fa;
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-        cursor: pointer;
-      }
-
-      .toggle-group input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-      }
-
-      .toggle-group label {
-        font-size: 11pt;
-        font-weight: bold;
-        cursor: pointer;
-        user-select: none;
-        color: #d35400;
-      }
-
-      .copy-btn {
-        background-color: #2c3e50;
-        color: white;
-        border: none;
-        padding: 15px;
-        font-size: 16pt;
-        font-weight: bold;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-        font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-        margin-top: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-      }
-
-      .copy-btn:hover {
-        background-color: #1a252f;
-        transform: translateY(-2px);
-      }
-      .copy-btn.success {
-        background-color: #27ae60 !important;
-      }
-
-      /* ----------------------------------
-           الكارت العملاق المستقر (يمين)
-        ----------------------------------- */
-      .card {
-        width: 1000px;
-        height: 800px;
-        border-radius: 30px;
-        padding: 40px;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-        position: relative;
-        border: 4px solid rgba(255, 255, 255, 0.8);
-        color: var(--text-main);
-        transition:
-          background 0.5s ease,
-          color 0.5s ease;
-      }
-
-      .header {
-        font-size: 26pt;
-        font-weight: bold;
-        margin-top: 5px;
-      }
-
-      .price-card-title {
-        font-size: 38pt;
-        font-weight: 900;
-        border-top: 3px solid var(--title-border);
-        border-bottom: 3px solid var(--title-border);
-        padding: 15px 0;
-        margin-top: 20px;
-        width: 90%;
-        text-align: center;
-      }
-
-      .client-name {
-        font-size: 55pt;
-        font-weight: 900;
-        margin: 0;
-        line-height: 1.1;
-        text-align: center;
-      }
-      .label {
-        font-size: 24pt;
-        font-weight: bold;
-        text-align: center;
-      }
-
-      .amount-box {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-top: 5px;
-        margin-bottom: 5px;
-      }
-
-      .amount-text {
-        font-size: 120pt;
-        font-weight: 900;
-        font-family: "Arial Black", Impact, Arial, sans-serif;
-        margin: 0;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        color: var(--text-main);
-      }
-
-      .currency {
-        font-size: 35pt;
-        font-weight: bold;
-      }
-
-      .exchange-transfer-box {
-        display: flex;
-        gap: 30px;
-        background: var(--badge-bg);
-        border: 2px solid var(--badge-border);
-        padding: 15px 40px;
-        border-radius: 20px;
-        width: 85%;
-        justify-content: space-around;
-        margin-bottom: 10px;
-      }
-
-      .transfer-column {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .transfer-col-label {
-        font-size: 16pt;
-        font-weight: bold;
-        opacity: 0.8;
-      }
-      .transfer-col-value {
-        font-size: 28pt;
-        font-weight: 900;
-      }
-
-      .price-badge {
-        font-size: 22pt;
-        font-weight: bold;
-        color: var(--text-main);
-        background: var(--badge-bg);
-        border: 2px solid var(--badge-border);
-        padding: 8px 30px;
-        border-radius: 15px;
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .custom-note-box {
-        font-size: 18pt;
-        font-weight: bold;
-        color: var(--text-main);
-        background: var(--badge-bg);
-        border: 2px dashed var(--badge-border);
-        padding: 12px 30px;
-        border-radius: 15px;
-        margin-bottom: 10px;
-        text-align: center;
-        line-height: 1.5;
-        width: 85%;
-        white-space: pre-wrap;
-      }
-
-      .large-note {
-        font-size: 34pt !important;
-        line-height: 1.8;
-        padding: 30px !important;
-        border: none !important;
-        background: transparent !important;
-      }
-
-      .footer {
-        font-size: 20pt;
-        font-weight: 900;
-        opacity: 0.95;
-        white-space: nowrap;
-      }
-      .spacer {
-        height: 35px;
-        width: 100%;
-      }
-
-      .hidden-element {
-        display: none !important;
-      }
-      .center-content {
-        justify-content: center !important;
-        gap: 40px;
-      }
-
-      /* ----------------------------------
-           الإضافة الجديدة: الكشف النهائي (المنظومة الماسية)
-        ----------------------------------- */
-      .final-statement-box {
-        background-color: transparent;
-        border: none;
-        border-radius: 25px;
-        width: 100%;
-        padding: 10px 40px;
-        display: flex;
-        flex-direction: column;
-        margin: 5px 0;
-        box-sizing: border-box;
-      }
-      .stmt-header {
-        text-align: right;
-        font-size: 34pt;
-        font-weight: 900;
-        margin-bottom: 0px;
-        color: var(--text-main);
-      }
-      .stmt-date {
-        text-align: left;
-        font-size: 22pt;
-        font-weight: bold;
-        margin-bottom: 0px;
-        padding-bottom: 5px;
-        color: var(--text-main);
-      }
-      .stmt-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 30px;
-        border: 2px solid var(--badge-border);
-        border-radius: 15px;
-        background: var(--badge-bg);
-        margin-bottom: 12px;
-      }
-      .stmt-row:last-child {
-        margin-bottom: 0;
-        padding-bottom: 15px;
-      }
-      .stmt-label {
-        font-size: 26pt;
-        font-weight: bold;
-        color: var(--text-main);
-      }
-      .stmt-value {
-        font-size: 32pt;
-        font-weight: 900;
-        color: var(--text-main);
-        background: transparent;
-        padding: 5px 25px;
-        border-radius: 8px;
-        min-width: 250px;
-        text-align: left;
-        font-family: "Arial Black", Impact, sans-serif;
-        border: none;
-      }
-      .stmt-row.final-row .stmt-label,
-      .stmt-row.final-row .stmt-value {
-        color: #8e158e; /* اللون البنفسجي للناتج النهائي */
-        background: transparent;
-        border: none;
-        font-size: 36pt;
-      }
-
-      /* الألوان والخلفيات */
-      .bg-gold {
-        background: linear-gradient(
-          135deg,
-          #fceabb 0%,
-          #f8b500 40%,
-          #d4af37 70%,
-          #b38728 100%
-        );
-        --text-main: #110c00;
-        --badge-bg: rgba(255, 255, 255, 0.4);
-        --badge-border: rgba(255, 255, 255, 0.6);
-        --title-border: rgba(255, 255, 255, 0.4);
-      }
-      .bg-silver {
-        background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%);
-        --text-main: #1a1a1a;
-        --badge-bg: rgba(255, 255, 255, 0.5);
-        --badge-border: rgba(255, 255, 255, 0.8);
-        --title-border: rgba(0, 0, 0, 0.2);
-      }
-      .bg-navy {
-        background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
-        --text-main: #ffffff;
-        --badge-bg: rgba(0, 0, 0, 0.3);
-        --badge-border: rgba(255, 255, 255, 0.3);
-        --title-border: rgba(255, 255, 255, 0.3);
-      }
-      .bg-dark {
-        background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
-        --text-main: #f1c40f;
-        --badge-bg: rgba(255, 255, 255, 0.1);
-        --badge-border: rgba(241, 196, 15, 0.5);
-        --title-border: rgba(241, 196, 15, 0.4);
-      }
-      .bg-emerald {
-        background: linear-gradient(
-          135deg,
-          #0f3422 0%,
-          #1e5639 50%,
-          #2ecc71 100%
-        );
-        --text-main: #ffffff;
-        --badge-bg: rgba(0, 0, 0, 0.2);
-        --badge-border: rgba(255, 255, 255, 0.4);
-        --title-border: rgba(255, 255, 255, 0.3);
-      }
-      .bg-ruby {
-        background: linear-gradient(
-          135deg,
-          #640d14 0%,
-          #ad2831 50%,
-          #e5383b 100%
-        );
-        --text-main: #ffffff;
-        --badge-bg: rgba(0, 0, 0, 0.2);
-        --badge-border: rgba(255, 255, 255, 0.4);
-        --title-border: rgba(255, 255, 255, 0.3);
-      }
-      .bg-ocean {
-        background: linear-gradient(135deg, #021b79 0%, #0575e6 100%);
-        --text-main: #ffffff;
-        --badge-bg: rgba(0, 0, 0, 0.2);
-        --badge-border: rgba(255, 255, 255, 0.4);
-        --title-border: rgba(255, 255, 255, 0.3);
-      }
-      .bg-pearl {
-        background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
-        --text-main: #1a1a1a;
-        --badge-bg: rgba(0, 0, 0, 0.05);
-        --badge-border: rgba(0, 0, 0, 0.1);
-        --title-border: rgba(0, 0, 0, 0.1);
-      }
-      .bg-copper {
-        background: linear-gradient(
-          135deg,
-          #a43931 0%,
-          #d47e4c 50%,
-          #e6a06f 100%
-        );
-        --text-main: #ffffff;
-        --badge-bg: rgba(0, 0, 0, 0.2);
-        --badge-border: rgba(255, 255, 255, 0.4);
-        --title-border: rgba(255, 255, 255, 0.3);
-      }
-      .bg-purple {
-        background: linear-gradient(
-          135deg,
-          #30142b 0%,
-          #8a2387 50%,
-          #e94057 100%
-        );
-        --text-main: #ffffff;
-        --badge-bg: rgba(0, 0, 0, 0.2);
-        --badge-border: rgba(255, 255, 255, 0.4);
-        --title-border: rgba(255, 255, 255, 0.3);
-      }
+        .footer { font-size: 20pt; font-weight: 900; opacity: 0.95; white-space: nowrap; text-align: center; }
+        .card-date { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 5px; opacity: 0.8; }
+        .spacer { height: 35px; width: 100%; }
+        .hidden-element { display: none !important; }
+        
+        .solid-input { background-color: #2a2a2a; border: 1px solid #444; color: #ffffff; padding: 10px; border-radius: 8px; width: 100%; outline: none; transition: 0.3s; }
+        .solid-input:focus { border-color: #f59e0b; }
+        select option, datalist option { background-color: #1a1a1a; color: #ffffff; }
+        .inbox-item { background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .inbox-item:hover { background: #3a3a3a; border-color: #f59e0b; }
+        
+        /* تنسيق زر اختيار اللون */
+        input[type="color"] { -webkit-appearance: none; padding: 0; border: none; border-radius: 8px; cursor: pointer; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; border: 1px solid #444; }
     </style>
-  </head>
-  <body onload="generateDate()">
-    <div class="app-container">
-      <!-- الكارت (يمين) -->
-      <div class="card-wrapper">
-        <div class="card bg-gold" id="goldenCard">
-          <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
-          <div class="price-card-title hidden-element" id="price-card-title">
-            شركة الأهرام للاتصالات وتقنية المعلومات
-          </div>
-          <div class="client-name" id="display-name">سامي طرابلس</div>
-          <div class="label" id="status-label">
-            إجمالي الديون المستحقة عليك:
-          </div>
+</head>
+<body class="bg-[#121212] text-white min-h-screen font-sans p-4" onload="initDashboard()">
 
-          <div class="amount-box" id="amount-box-container">
-            <div class="amount-text" id="amount-container">
-              <span id="display-amount">144,500</span>
-              <span class="currency" id="currency-label">د.ل</span>
-            </div>
-          </div>
+    <!-- 1. شريط الأقسام العلوي -->
+    <div class="flex gap-4 mb-6 overflow-x-auto pb-2 scrollbar-hide" id="tiles-container"></div>
 
-          <!-- الإضافة الجراحية: جدول الكشف النهائي -->
-          <div
-            class="final-statement-box hidden-element"
-            id="final-statement-box"
-          >
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-              <div class="stmt-header" id="stmt-header-title">الكشف النهائي للمنظومة الماسيه الملكيه</div>
-              <div class="stmt-date" id="stmt-date-display">2026-06-29</div>
-            </div>
-            <div class="stmt-row">
-              <div class="stmt-label">القيمة السابقة:</div>
-              <div class="stmt-value" id="val-previous">0</div>
-            </div>
-            <div class="stmt-row">
-              <div class="stmt-label">المستلمة اليوم:</div>
-              <div class="stmt-value" id="val-received">1,250,000</div>
-            </div>
-            <div class="stmt-row">
-              <div class="stmt-label">إجمالي الشغل:</div>
-              <div class="stmt-value" id="val-total">655,226</div>
-            </div>
-            <div class="stmt-row final-row">
-              <div class="stmt-label">الباقي النهائي:</div>
-              <div class="stmt-value" id="val-remaining">594,774</div>
-            </div>
-          </div>
+    <div class="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)]">
 
-          <div
-            class="final-statement-box hidden-element"
-            id="purchasing-statement-box"
-          >
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-              <div class="stmt-header" id="purch-header-title">إجمالي المشتريات</div>
-              <div class="stmt-date" id="purch-date-display">2026-06-29</div>
-            </div>
-            <div
-              class="stmt-row"
-              style="
-                background: white;
-                border-radius: 15px;
-                border: 2px solid #bdc3c7;
-                padding: 10px 20px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-              "
-            >
-              <div class="stmt-label" style="font-size: 26pt; color: #34495e">
-                1. القيمة السابقة:
-              </div>
-              <div
-                class="stmt-value"
-                id="val-purch-prev"
-                style="
-                  font-size: 38pt;
-                  font-family: &quot;Arial Black&quot;, Impact, sans-serif;
-                  background: transparent;
-                  border: none;
-                  padding: 0;
-                "
-              >
-                0 <span style="font-size: 18pt; color: #7f8c8d">د.ل</span>
-              </div>
-            </div>
-            <div
-              class="stmt-row"
-              style="
-                background: white;
-                border-radius: 15px;
-                border: 2px solid #2ecc71;
-                padding: 10px 20px;
-                box-shadow: 0 4px 6px rgba(46, 204, 113, 0.1);
-              "
-            >
-              <div class="stmt-label" style="font-size: 26pt; color: #27ae60">
-                2. إجمالي شغل اليوم ⚡:
-              </div>
-              <div
-                class="stmt-value"
-                id="val-purch-work"
-                style="
-                  font-size: 38pt;
-                  font-family: &quot;Arial Black&quot;, Impact, sans-serif;
-                  color: #27ae60;
-                  background: transparent;
-                  border: none;
-                  padding: 0;
-                "
-              >
-                0 <span style="font-size: 18pt; color: #2ecc71">د.ل</span>
-              </div>
-            </div>
-            <div
-              class="stmt-row"
-              style="
-                background: white;
-                border-radius: 15px;
-                border: 2px solid #e74c3c;
-                padding: 10px 20px;
-                box-shadow: 0 4px 6px rgba(231, 76, 60, 0.1);
-              "
-            >
-              <div class="stmt-label" style="font-size: 26pt; color: #c0392b">
-                3. إجمالي المسددة 🔴:
-              </div>
-              <div
-                class="stmt-value"
-                id="val-purch-paid"
-                style="
-                  font-size: 38pt;
-                  font-family: &quot;Arial Black&quot;, Impact, sans-serif;
-                  color: #c0392b;
-                  background: transparent;
-                  border: none;
-                  padding: 0;
-                "
-              >
-                0 <span style="font-size: 18pt; color: #e74c3c">د.ل</span>
-              </div>
-            </div>
-            <div
-              class="stmt-row"
-              style="
-                background: white;
-                border-radius: 15px;
-                border: 2px solid #c0392b;
-                padding: 10px 20px;
-                box-shadow: 0 4px 6px rgba(192, 57, 43, 0.1);
-              "
-            >
-              <div class="stmt-label" style="font-size: 26pt; color: #96281b">
-                4. إجمالي الديون 🩸:
-              </div>
-              <div
-                class="stmt-value"
-                id="val-purch-debt"
-                style="
-                  font-size: 38pt;
-                  font-family: &quot;Arial Black&quot;, Impact, sans-serif;
-                  color: #96281b;
-                  background: transparent;
-                  border: none;
-                  padding: 0;
-                "
-              >
-                0 <span style="font-size: 18pt; color: #e74c3c">د.ل</span>
-              </div>
-            </div>
-            <div
-              class="stmt-row final-row"
-              style="
-                background: white;
-                border-radius: 15px;
-                border: 2px solid #16a085;
-                padding: 10px 20px;
-                box-shadow: 0 4px 6px rgba(22, 160, 133, 0.1);
-              "
-            >
-              <div class="stmt-label" style="font-size: 26pt; color: #1abc9c">
-                5. الباقي المصري:
-              </div>
-              <div
-                class="stmt-value"
-                id="val-purch-egp"
-                style="
-                  font-size: 38pt;
-                  font-family: &quot;Arial Black&quot;, Impact, sans-serif;
-                  color: #16a085;
-                  background: transparent;
-                  border: none;
-                  padding: 0;
-                "
-              >
-                0 <span style="font-size: 18pt; color: #1abc9c">EGP</span>
-              </div>
-            </div>
-          </div>
-          <!-- نهاية الجدول -->
+        <!-- 2. الشريط الأيمن (الاستقبال والرسائل) -->
+        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-5 flex flex-col gap-4 overflow-y-auto">
+            <h3 class="text-xl font-bold text-amber-500 mb-2 border-b border-white/10 pb-2">📥 صندوق الاستقبال</h3>
+            <div id="inbox-container" class="flex flex-col gap-2 mb-4 overflow-y-auto max-h-[250px]"></div>
 
-          <div
-            class="exchange-transfer-box hidden-element"
-            id="exchange-transfer-box"
-          >
-            <div class="transfer-column">
-              <span class="transfer-col-label">المبلغ المستلم</span>
-              <span class="transfer-col-value" id="display-received"
-                >0 د.ل</span
-              >
-            </div>
-            <div class="transfer-column">
-              <span class="transfer-col-label">سعر الصرف</span>
-              <span class="transfer-col-value" id="display-rate">0.00</span>
-            </div>
-            <div class="transfer-column">
-              <span class="transfer-col-label">المبلغ المحول</span>
-              <span
-                class="transfer-col-value"
-                id="display-converted"
-                style="
-                  color: #000000;
-                  background: #f1c40f;
-                  padding: 2px 10px;
-                  border-radius: 8px;
-                "
-                >0 ج.م</span
-              >
-            </div>
-          </div>
-
-          <div class="price-badge hidden-element" id="price-badge">
-            السعر: <span id="display-price">0</span>
-          </div>
-
-          <div
-            class="custom-note-box hidden-element"
-            id="custom-note-box"
-          ></div>
-
-          <div class="footer" id="card-footer">
-            شركة الأهرام للاتصالات وتقنية المعلومات
-          </div>
-          <div class="spacer" id="card-spacer"></div>
-        </div>
-      </div>
-
-      <!-- لوحة التحكم (يسار) -->
-      <div class="controls-sidebar">
-        <h3>⚙️ لوحة التحكم الشاملة</h3>
-
-        <div
-          class="input-group"
-          style="
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-          "
-        >
-          <label style="color: #c0392b; margin-bottom: 5px"
-            >🔍 حجم الخط (الاسم والمبلغ):</label
-          >
-          <div style="display: flex; gap: 5px">
-            <button
-              type="button"
-              onclick="changeFontSize('increase')"
-              style="
-                flex: 1;
-                padding: 8px;
-                font-size: 12pt;
-                font-weight: bold;
-                cursor: pointer;
-                border-radius: 6px;
-                border: 1px solid #bdc3c7;
-                background: #fff;
-              "
-            >
-              ➕ تكبير
-            </button>
-            <button
-              type="button"
-              onclick="changeFontSize('decrease')"
-              style="
-                flex: 1;
-                padding: 8px;
-                font-size: 12pt;
-                font-weight: bold;
-                cursor: pointer;
-                border-radius: 6px;
-                border: 1px solid #bdc3c7;
-                background: #fff;
-              "
-            >
-              ➖ تصغير
-            </button>
-            <button
-              type="button"
-              onclick="changeFontSize('reset')"
-              style="
-                flex: 1;
-                padding: 8px;
-                font-size: 11pt;
-                cursor: pointer;
-                border-radius: 6px;
-                border: 1px solid #bdc3c7;
-                background: #ecf0f1;
-                color: #333;
-              "
-            >
-              🔄 الافتراضي
-            </button>
-          </div>
+            <h3 class="text-xl font-bold text-amber-500 mb-2 border-b border-white/10 pb-2 mt-auto">الرسائل الجاهزة</h3>
+            <select id="templateSelect" onchange="loadTemplate()" class="solid-input mb-2">
+                <option value="">-- اختر رسالة جاهزة --</option>
+                <optgroup label="رسائل صلب الشغل">
+                    <option value="matabaqa">مطابقة كشف حساب (للتجار)</option>
+                    <option value="fix_rate">تثبيت سعر الصرف</option>
+                    <option value="deduct_trust">خصم/سحب من الأمانة</option>
+                    <option value="hold_transfer">تعليق حوالة لنقص البيانات</option>
+                    <option value="cover_alert">تنبيه تغطية حساب (للتجار)</option>
+                    <option value="received_abroad">تأكيد استلام من الخارج</option>
+                </optgroup>
+                <optgroup label="عمليات الإيداع والتسليم">
+                    <option value="houta">توجيه إيداع (مكتب الحوتة)</option>
+                    <option value="receipt">تأكيد استلام (عام)</option>
+                    <option value="delivery">تأكيد تسليم (عام)</option>
+                </optgroup>
+                <optgroup label="المديونيات والحسابات">
+                    <option value="debt_reminder">تذكير بسداد مديونية</option>
+                    <option value="trust_deposit">إيداع أمانة في الحساب</option>
+                    <option value="clearance_note">مخالصة مالية نهائية</option>
+                </optgroup>
+            </select>
+            <textarea id="customNote" placeholder="اكتب ملاحظة حرة لتضاف للكارت..." class="w-full p-3 solid-input min-h-[100px] resize-none" oninput="updateCard()"></textarea>
         </div>
 
-        <div class="input-group">
-          <label>لون وخلفية الكارت:</label>
-          <select id="themeSelect" onchange="updateCard()">
-            <optgroup label="✨ الألوان الأساسية">
-              <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>
-              <option value="bg-silver">الفضي اللامع</option>
-              <option value="bg-navy">الكحلي المؤسسي</option>
-              <option value="bg-dark">الأسود الفاخر</option>
-            </optgroup>
-            <optgroup label="🌟 الألوان الإضافية">
-              <option value="bg-emerald">الأخضر الزمردي</option>
-              <option value="bg-ruby">الأحمر الياقوتي</option>
-              <option value="bg-ocean">الأزرق المحيطي</option>
-              <option value="bg-pearl">الأبيض اللؤلؤي</option>
-              <option value="bg-copper">النحاسي الكلاسيكي</option>
-              <option value="bg-purple">البنفسجي الملكي</option>
-            </optgroup>
-          </select>
+        <!-- 3. الكارت المركزي -->
+        <div class="w-full lg:w-[60%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 flex justify-center items-start overflow-y-auto">
+            <div class="card bg-gold" id="goldenCard">
+                <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
+                <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                <div class="client-name" id="display-name">اسم العميل</div>
+                <div class="label" id="status-label">إجمالي الديون المستحقة عليك:</div>
+                
+                <div class="amount-box-wrapper" id="amount-box-container">
+                    <div class="amount-box">
+                        <div class="amount-text" id="amount-container">
+                            <span id="display-amount">0</span> <span class="currency" id="currency-label">د.ل</span>
+                        </div>
+                    </div>
+                    <div id="tafqeet-display" class="tafqeet-text hidden-element"></div>
+                </div>
+
+                <!-- الكشف الماسي / المصراويه -->
+                <div class="final-statement-box hidden-element" id="final-statement-box">
+                    <div class="stmt-header" id="stmt-header-title">الكشف النهائي</div>
+                    <div class="stmt-date" id="stmt-date-display"></div>
+                    <div class="stmt-row"><div class="stmt-label">القيمة السابقة:</div><div class="stmt-value" id="val-previous">0</div></div>
+                    <div class="stmt-row"><div class="stmt-label">المستلمة اليوم:</div><div class="stmt-value" id="val-received">0</div></div>
+                    <div class="stmt-row"><div class="stmt-label">إجمالي الشغل:</div><div class="stmt-value" id="val-total">0</div></div>
+                    <div class="stmt-row final-row"><div class="stmt-label">الباقي النهائي:</div><div class="stmt-value" id="val-remaining">0</div></div>
+                </div>
+
+                <!-- كارت المشتريات -->
+                <div class="purchases-box hidden-element" id="purchases-box">
+                    <div class="purchases-top-bar" id="purchases-top-bar">
+                        <span id="purchases-date-display">2026-07-03</span>
+                        <span id="purchases-merchant-name" class="purchases-merchant-name">التاجر: ...</span>
+                    </div>
+                    <div class="purchases-row row-1"><div class="p-label">1. القيمة السابقة:</div><div class="p-value"><span id="p-val-1">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-2"><div class="p-label">2. إجمالي شغل اليوم ⚡:</div><div class="p-value"><span id="p-val-2">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-3"><div class="p-label">3. إجمالي المسددة 🔴:</div><div class="p-value"><span id="p-val-3">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-4"><div class="p-label">4. إجمالي الديون 🩸:</div><div class="p-value"><span id="p-val-4">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-5"><div class="p-label">5. الباقي المصري:</div><div class="p-value"><span id="p-val-5">0</span> <span class="p-currency">EGP</span></div></div>
+                </div>
+
+                <div class="price-badge hidden-element" id="price-badge">السعر: <span id="display-price">0</span></div>
+                <div class="custom-note-box hidden-element" id="custom-note-box"></div>
+                
+                <div class="card-date hidden-element" id="card-date-display"></div>
+                <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                <div class="spacer" id="card-spacer"></div>
+            </div>
         </div>
 
-        <div class="input-group">
-          <label>نوع الكارت:</label>
-          <select id="typeSelect" onchange="updateCard()">
-            <option value="debt">ديون (عليه فلوس)</option>
-            <option value="trust">أمانة (ليه فلوس)</option>
-            <option value="clearance">مخالصة مالية</option>
-            <option value="zero">تصفير حساب</option>
-            <option value="transfer">إشعار تحويل عملة (حوالة مزدوجة) 🔄</option>
-            <option value="instruction">رسالة تعليمات (بدون أرقام)</option>
-            <option value="exchange_rate">إعلان سعر صرف (دولار)</option>
-            <option value="total_purchasing">كارت المشتريات 🛍️</option>
-            <!-- الخيار الجديد للجدول -->
-            <option value="final_statement">
-              كشف حساب نهائي (المنظومة الماسية) 📊
-            </option>
-          </select>
+        <!-- 4. الشريط الأيسر (التحكم) -->
+        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-5 flex flex-col overflow-y-auto">
+            <h3 class="text-xl font-bold text-amber-500 mb-4 border-b border-white/10 pb-2">البيانات والتحكم</h3>
+
+            <!-- زر التحكم في لون العنوان -->
+            <div class="bg-black/40 p-3 rounded-lg border border-amber-500/30 mb-4">
+                <label class="block text-sm text-amber-500 mb-2 font-bold">🎨 لون العنوان / الأسماء:</label>
+                <input type="color" id="titleColorPicker" value="#110c00" class="w-full h-10" oninput="updateCard()">
+            </div>
+
+            <!-- الأدوات الاحترافية -->
+            <div class="bg-black/40 p-3 rounded-lg border border-white/10 mb-4">
+                <label class="block text-sm text-gray-400 mb-2">⚙️ أدوات احترافية:</label>
+                <div class="flex flex-col gap-2">
+                    <button type="button" onclick="toggleCurrency()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded font-bold transition text-sm">🔄 تبديل العملة سريعا</button>
+                    <button type="button" onclick="togglePrivacy()" id="privacy-btn" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded font-bold transition text-sm">👁️ السرية (إخفاء الأسماء)</button>
+                    <button type="button" onclick="generateTafqeet()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded font-bold transition text-sm">🔠 تفقيط المبلغ (حروف)</button>
+                </div>
+            </div>
+
+            <div class="bg-black/40 p-3 rounded-lg border border-white/10 mb-4">
+                <label class="block text-sm text-gray-400 mb-2">🔍 حجم الخط:</label>
+                <div class="flex gap-2">
+                    <button type="button" onclick="changeFontSize('increase')" class="flex-1 py-1 bg-white/10 hover:bg-white/20 rounded font-bold transition">➕</button>
+                    <button type="button" onclick="changeFontSize('decrease')" class="flex-1 py-1 bg-white/10 hover:bg-white/20 rounded font-bold transition">➖</button>
+                    <button type="button" onclick="changeFontSize('reset')" class="flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">🔄</button>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4 mb-6">
+                <!-- الألوان -->
+                <div>
+                    <label class="block text-sm text-amber-500 font-bold mb-1">خلفية الكارت:</label>
+                    <select id="themeSelect" class="solid-input" onchange="updateCard()">
+                        <optgroup label="✨ الألوان الأساسية">
+                            <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>
+                            <option value="bg-silver">الفضي اللامع</option>
+                            <option value="bg-navy">الكحلي المؤسسي</option>
+                            <option value="bg-dark">الأسود الفاخر</option>
+                        </optgroup>
+                        <optgroup label="🌟 الألوان الإضافية">
+                            <option value="bg-emerald">الأخضر الزمردي</option>
+                            <option value="bg-ruby">الأحمر الياقوتي</option>
+                            <option value="bg-ocean">الأزرق المحيطي</option>
+                            <option value="bg-pearl">الأبيض اللؤلؤي</option>
+                            <option value="bg-copper">النحاسي الكلاسيكي</option>
+                            <option value="bg-purple">البنفسجي الملكي</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="flex justify-between text-sm text-gray-400 mb-1">
+                        <span id="name-input-label">الاسم / التاجر:</span>
+                        <span class="text-xs text-amber-500 cursor-pointer underline" onclick="clearClientMemory()">مسح 🗑️</span>
+                    </label>
+                    <input type="text" id="nameInput" class="solid-input" placeholder="الاسم..." list="clientNames" autocomplete="off" oninput="updateCard()">
+                    <datalist id="clientNames"></datalist>
+                </div>
+
+                <div id="main-amount-group">
+                    <label class="block text-sm text-gray-400 mb-1" id="amount-input-label">المبلغ الأساسي / السعر:</label>
+                    <input type="text" id="amountInput" class="solid-input" placeholder="أدخل الرقم..." value="0" oninput="updateCard()">
+                </div>
+
+                <div id="secondary-price-group">
+                    <label class="block text-sm text-gray-400 mb-1">السعر الإضافي (اختياري):</label>
+                    <input type="text" id="priceInput" class="solid-input" placeholder="مثال: 6.25..." value="" oninput="updateCard()">
+                </div>
+
+                <!-- إعدادات الشركات -->
+                <div id="companies-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
+                    <div>
+                        <label class="text-sm text-amber-500">نوع الحساب:</label>
+                        <select id="companyOrMerchant" class="solid-input" onchange="updateCard()">
+                            <option value="company">شركة</option>
+                            <option value="merchant">تاجر</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- مدخلات المشتريات -->
+                <div id="purchases-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
+                    <div>
+                        <label class="text-sm text-amber-500">نوع البيان:</label>
+                        <select id="purchasesMerchantType" class="solid-input" onchange="updateCard()">
+                            <option value="البيان">البيان</option>
+                            <option value="سمسم">سمسم</option>
+                        </select>
+                    </div>
+                    <div><label class="text-sm text-amber-500">القيمة السابقة:</label><input type="text" id="p-in-1" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي شغل اليوم:</label><input type="text" id="p-in-2" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي المسددة:</label><input type="text" id="p-in-3" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي الديون:</label><input type="text" id="p-in-4" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">الباقي المصري:</label><input type="text" id="p-in-5" class="solid-input" value="0" oninput="updateCard()"></div>
+                </div>
+
+                <!-- مدخلات المصراويه -->
+                <div id="statement-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
+                    <div><label class="text-sm text-amber-500">القيمة السابقة:</label><input type="text" id="input-prev" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">المستلمة اليوم:</label><input type="text" id="input-recv" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي الشغل:</label><input type="text" id="input-total" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">الباقي النهائي:</label><input type="text" id="input-remain" class="solid-input" value="0" oninput="updateCard()"></div>
+                </div>
+            </div>
+
+            <div class="mt-auto border-t border-white/10 pt-4 flex flex-col gap-3">
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" id="dateToggle" onchange="updateCard()" class="w-4 h-4 accent-amber-500"> إظهار التاريخ
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" id="companyToggle" checked onchange="updateCard()" class="w-4 h-4 accent-amber-500"> إظهار إسم الشركة بالأسفل
+                </label>
+                <button id="mainCopyBtn" onclick="copyCard(this)" class="w-full bg-amber-500 text-black font-bold py-3 rounded-lg hover:bg-amber-400 transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                    📋 تصدير ونسخ الكارت
+                </button>
+            </div>
         </div>
-
-        <div class="input-group">
-          <label style="display: flex; justify-content: space-between">
-            <span id="name-input-label">اسم العميل / الشركة:</span>
-            <span
-              style="
-                font-size: 9pt;
-                color: #7f8c8d;
-                cursor: pointer;
-                text-decoration: underline;
-              "
-              onclick="clearClientMemory()"
-              title="مسح الأسماء المحفوظة"
-              >مسح الذاكرة 🗑️</span
-            >
-          </label>
-          <input
-            type="text"
-            id="nameInput"
-            placeholder="الاسم أو عنوان الكشف..."
-            value="الكشف النهائي للمنظومة الماسيه الملكيه"
-            list="clientNames"
-            autocomplete="off"
-            oninput="updateCard()"
-          />
-          <datalist id="clientNames"></datalist>
-        </div>
-
-        <!-- جروب المدخلات العادية -->
-        <div class="input-group" id="main-amount-group">
-          <label id="amount-input-label">المبلغ / السعر الأساسي:</label>
-          <input
-            type="text"
-            id="amountInput"
-            placeholder="أدخل الرقم..."
-            value="144500"
-            oninput="updateCard()"
-          />
-        </div>
-
-        <!-- جروب مدخلات الجدول الجديد (بإيدك) -->
-        <div
-          id="statement-inputs-group"
-          class="hidden-element"
-          style="
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #fdfdfd;
-            padding: 15px;
-            border-radius: 10px;
-            border: 2px solid #342875;
-          "
-        >
-          <label
-            style="
-              color: #342875;
-              font-weight: bold;
-              border-bottom: 1px solid #ccc;
-              padding-bottom: 5px;
-            "
-            >إدخال أرقام الكشف النهائي:</label
-          >
-          <div class="input-group">
-            <label>القيمة السابقة:</label>
-            <input
-              type="text"
-              id="input-prev"
-              value="0"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>المستلمة اليوم:</label>
-            <input
-              type="text"
-              id="input-recv"
-              value="1250000"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>إجمالي الشغل:</label>
-            <input
-              type="text"
-              id="input-total"
-              value="655226"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>الباقي النهائي:</label>
-            <input
-              type="text"
-              id="input-remain"
-              value="594774"
-              oninput="updateCard()"
-            />
-          </div>
-        </div>
-
-        <!-- جروب مدخلات كارت المشتريات -->
-        <div
-          id="purchasing-inputs-group"
-          class="hidden-element"
-          style="
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: #fdfdfd;
-            padding: 15px;
-            border-radius: 10px;
-            border: 2px solid #b38728;
-          "
-        >
-          <label
-            style="
-              color: #b38728;
-              font-weight: bold;
-              border-bottom: 1px solid #ccc;
-              padding-bottom: 5px;
-            "
-            >إدخال أرقام كارت المشتريات:</label
-          >
-          <div class="input-group">
-            <label>1. القيمة السابقة (د.ل):</label>
-            <input
-              type="text"
-              id="input-purch-prev"
-              value="0"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>2. إجمالي شغل اليوم (د.ل):</label>
-            <input
-              type="text"
-              id="input-purch-work"
-              value="0"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>3. إجمالي المسددة (د.ل):</label>
-            <input
-              type="text"
-              id="input-purch-paid"
-              value="0"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>4. إجمالي الديون (د.ل):</label>
-            <input
-              type="text"
-              id="input-purch-debt"
-              value="0"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>5. الباقي المصري (EGP):</label>
-            <input
-              type="text"
-              id="input-purch-egp"
-              value="0"
-              oninput="updateCard()"
-            />
-          </div>
-        </div>
-
-        <div
-          id="transfer-inputs-group"
-          class="hidden-element"
-          style="display: flex; flex-direction: column; gap: 10px"
-        >
-          <div class="input-group">
-            <label>سعر الصرف (مثال: 1.25):</label>
-            <input
-              type="text"
-              id="exchangeRateInput"
-              placeholder="0.00"
-              value="1.25"
-              oninput="updateCard()"
-            />
-          </div>
-          <div class="input-group">
-            <label>رمز العملة المحول إليها (مثال: ج.م):</label>
-            <input
-              type="text"
-              id="targetCurrencyInput"
-              placeholder="ج.م"
-              value="ج.م"
-              oninput="updateCard()"
-            />
-          </div>
-        </div>
-
-        <div class="input-group" id="secondary-price-group">
-          <label>السعر الإضافي (اختياري):</label>
-          <input
-            type="text"
-            id="priceInput"
-            placeholder="أدخل السعر الفرعي..."
-            value=""
-            oninput="updateCard()"
-          />
-        </div>
-
-        <div class="input-group">
-          <label>ملاحظات جاهزة وإضافية:</label>
-          <select
-            id="templateSelect"
-            onchange="loadTemplate()"
-            style="font-size: 11pt; padding: 6px"
-          >
-            <option value="">-- اختر رسالة جاهزة --</option>
-            <optgroup label="عمليات الإيداع والتسليم">
-              <option value="houta">توجيه إيداع (مكتب الحوتة)</option>
-              <option value="receipt">تأكيد استلام (عام)</option>
-              <option value="delivery">تأكيد تسليم (عام)</option>
-            </optgroup>
-            <optgroup label="عمليات التحويلات">
-              <option value="vodafone">تأكيد تحويل (فودافون كاش)</option>
-              <option value="kafr_elsheikh">تسليم يدوي (كفر الشيخ)</option>
-              <option value="post_office">تحويل (بريد مصري)</option>
-            </optgroup>
-            <optgroup label="المديونيات والحسابات">
-              <option value="debt_reminder">تذكير بسداد مديونية</option>
-              <option value="trust_deposit">إيداع أمانة في الحساب</option>
-              <option value="clearance_note">مخالصة مالية نهائية</option>
-            </optgroup>
-            <optgroup label="أخرى">
-              <option value="exchange_update">تنبيه بتغيير أسعار الصرف</option>
-            </optgroup>
-          </select>
-          <textarea
-            id="customNote"
-            rows="2"
-            placeholder="اكتب ملاحظتك هنا..."
-            oninput="updateCard()"
-          ></textarea>
-        </div>
-
-        <label class="toggle-group">
-          <input
-            type="checkbox"
-            id="companyToggle"
-            checked
-            onchange="updateCard()"
-          />
-          إظهار اسم "شركة الأهرام"
-        </label>
-
-        <button class="copy-btn" id="mainCopyBtn" onclick="copyCard(this)">
-          📋 تأكيد ونسخ الكارت
-        </button>
-      </div>
     </div>
 
     <script>
-      function generateDate() {
-        let now = new Date();
-        let day = ("0" + now.getDate()).slice(-2);
-        let month = ("0" + (now.getMonth() + 1)).slice(-2);
-        let year = now.getFullYear();
-        document.getElementById("stmt-date-display").innerText =
-          `${year}-${month}-${day}`;
-      }
+        let currentType = 'debt'; 
 
-      function loadClientNames() {
-        let clients = JSON.parse(localStorage.getItem("ahram_clients"));
-        if (!clients) {
-          clients = [
-            "شنينه",
-            "ايمن خضار",
-            "ابراهيم الزاويه",
-            "عبدالمجيد علام",
-            "كاريكا",
-            "محمد اسماعيل",
-            "هانى الخياط",
-            "سميح حجازي",
-            "أحمد حمادة",
-            "خالد الزواوي",
-            "القايد",
-            "سامي طرابلس",
-            "الكشف النهائي للمنظومة الماسيه الملكيه",
-          ];
-          localStorage.setItem("ahram_clients", JSON.stringify(clients));
+        // الأقسام المحدثة بكلمة "قسم" وتصغير سمك الأزرار
+        const sections = [
+            { id: 'debt', label: 'قسم ديون العملاء' },
+            { id: 'companies', label: 'قسم الشركات والتجار' },
+            { id: 'trust', label: 'قسم الامانات' },
+            { id: 'masraweya', label: 'قسم المصراويه' },
+            { id: 'purchases', label: 'قسم المشتريات' },
+            { id: 'alert', label: 'إشعار تنبيه 📢' },
+            { id: 'exchange_rate', label: 'أسعار صرف' }
+        ];
+
+        const mockInboxData = {
+            'debt': [{ name: 'أحمد حمادة', amount: '15000', note: 'متبقي من حساب سابق' }],
+            'companies': [{ name: 'شركة الأهرام', amount: '150000', note: 'دفعة تحت الحساب' }],
+            'trust': [{ name: 'خالد الزواوي', amount: '8000', note: 'أمانة مستلمة' }],
+            'masraweya': [{ name: 'حساب مصراويه', amount: '0', note: '' }],
+            'purchases': [{ name: 'شراء بضاعة', amount: '0', note: '' }],
+            'alert': [],
+            'exchange_rate': []
+        };
+
+        function initDashboard() { generateDate(); loadClientNames(); renderTiles(); renderInbox(); applyIncomingParams(); updateCard(); }
+
+        // استقبال البيانات القادمة من المنظومة عبر رابط الصفحة (Prefill)
+        function setStudioCurrency(value) {
+            if (!value) return;
+            const idx = currArray.indexOf(value);
+            if (idx >= 0) currIndex = idx;
+            const currLabel = document.getElementById('currency-label');
+            if (currLabel) currLabel.innerText = value;
+            document.querySelectorAll('.p-currency').forEach(el => {
+                if (el.parentElement.parentElement.classList.contains('row-5')) return;
+                el.innerText = value;
+            });
         }
-        let dataList = document.getElementById("clientNames");
-        dataList.innerHTML = "";
-        clients.forEach((client) => {
-          let option = document.createElement("option");
-          option.value = client;
-          dataList.appendChild(option);
-        });
-      }
 
-      function saveClientName(name) {
-        if (!name || name === "..." || name.trim() === "") return;
-        name = name.trim();
-        let clients = JSON.parse(localStorage.getItem("ahram_clients")) || [];
-        if (!clients.includes(name)) {
-          clients.push(name);
-          localStorage.setItem("ahram_clients", JSON.stringify(clients));
-          loadClientNames();
-        }
-      }
+        function applyIncomingParams() {
+            const params = new URLSearchParams(window.location.search);
+            if (![...params.keys()].length) return;
 
-      function clearClientMemory() {
-        if (confirm("هل أنت متأكد أنك تريد مسح جميع أسماء العملاء المحفوظة؟")) {
-          localStorage.removeItem("ahram_clients");
-          loadClientNames();
-          alert("تم تنظيف الذاكرة بنجاح!");
-        }
-      }
-
-      window.onload = function () {
-        loadClientNames();
-        generateDate();
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const typeParam = urlParams.get("type");
-        if (typeParam) {
-          const typeSelect = document.getElementById("typeSelect");
-          for (let i = 0; i < typeSelect.options.length; i++) {
-            if (typeSelect.options[i].value === typeParam) {
-              typeSelect.value = typeParam;
-              break;
+            let type = params.get('type') || '';
+            if (type === 'total_purchasing') type = 'purchases';
+            const validTypes = sections.map(s => s.id);
+            if (type && validTypes.includes(type)) {
+                currentType = type;
+                renderTiles();
+                renderInbox();
             }
-          }
-        }
-        if (typeParam === "total_purchasing") {
-          document.getElementById("input-purch-prev").value =
-            urlParams.get("prev") || "0";
-          document.getElementById("input-purch-work").value =
-            urlParams.get("work") || "0";
-          document.getElementById("input-purch-paid").value =
-            urlParams.get("paid") || "0";
-          document.getElementById("input-purch-debt").value =
-            urlParams.get("debt") || "0";
-          document.getElementById("input-purch-egp").value =
-            urlParams.get("egp") || "0";
-          document.getElementById("nameInput").value =
-            urlParams.get("name") || "إجمالي المشتريات";
-        }
-        if (typeParam === "final_statement") {
-          document.getElementById("input-prev").value =
-            urlParams.get("prev") || "0";
-          document.getElementById("input-recv").value =
-            urlParams.get("recv") || "0";
-          document.getElementById("input-total").value =
-            urlParams.get("total") || "0";
-          document.getElementById("input-remain").value =
-            urlParams.get("remain") || "0";
-          document.getElementById("nameInput").value =
-            urlParams.get("name") || "الكشف النهائي للمنظومة الماسيه الملكيه";
-        }
-        updateCard();
-      };
 
-      let zoomLevel = 0;
-      function changeFontSize(action) {
-        if (action === "increase") {
-          zoomLevel += 1;
-        } else if (action === "decrease") {
-          zoomLevel -= 1;
-        } else {
-          zoomLevel = 0;
+            const setVal = (id, key) => {
+                const v = params.get(key);
+                const el = document.getElementById(id);
+                if (v !== null && el) el.value = v;
+            };
+
+            setVal('nameInput', 'name');
+            setVal('customNote', 'note');
+            setVal('themeSelect', 'theme');
+
+            if (currentType === 'masraweya') {
+                setVal('input-prev', 'prev');
+                setVal('input-recv', 'recv');
+                setVal('input-total', 'total');
+                setVal('input-remain', 'remain');
+            } else if (currentType === 'purchases') {
+                setVal('purchasesMerchantType', 'merchant');
+                document.getElementById('p-in-1').value = params.get('p1') ?? params.get('prev') ?? '0';
+                document.getElementById('p-in-2').value = params.get('p2') ?? params.get('work') ?? '0';
+                document.getElementById('p-in-3').value = params.get('p3') ?? params.get('paid') ?? '0';
+                document.getElementById('p-in-4').value = params.get('p4') ?? params.get('debt') ?? '0';
+                document.getElementById('p-in-5').value = params.get('p5') ?? params.get('egp') ?? '0';
+            } else {
+                if (currentType === 'companies') setVal('companyOrMerchant', 'acctype');
+                setVal('amountInput', 'amount');
+                setVal('priceInput', 'price');
+            }
+
+            setStudioCurrency(params.get('currency'));
         }
 
-        let nameSize = 55 + zoomLevel * 4;
-        let amountSize = 120 + zoomLevel * 8;
-        let currencySize = 35 + zoomLevel * 2;
-        let pLabelSize = 26 + zoomLevel * 2;
-        let pValueSize = 38 + zoomLevel * 3;
-
-        document.getElementById("display-name").style.fontSize =
-          nameSize + "pt";
-
-        let amountTextDiv = document.getElementById("amount-container");
-        if (amountTextDiv) amountTextDiv.style.fontSize = amountSize + "pt";
-
-        let currencySpan = document.getElementById("currency-label");
-        if (currencySpan) currencySpan.style.fontSize = currencySize + "pt";
-
-        // Also update the purchasing card sizes
-        let pLabels = document.querySelectorAll(
-          "#purchasing-statement-box .stmt-label",
-        );
-        pLabels.forEach((el) => (el.style.fontSize = pLabelSize + "pt"));
-        let pValues = document.querySelectorAll(
-          "#purchasing-statement-box .stmt-value",
-        );
-        pValues.forEach((el) => (el.style.fontSize = pValueSize + "pt"));
-        
-        let pHeaderSize = 38 + zoomLevel * 3;
-        let pDateSize = 22 + zoomLevel * 2;
-        let pHeader = document.getElementById("purch-header-title");
-        if (pHeader) pHeader.style.fontSize = pHeaderSize + "pt";
-        let pDate = document.getElementById("purch-date-display");
-        if (pDate) pDate.style.fontSize = pDateSize + "pt";
-
-        // Update final statement card sizes
-        let fLabelSize = 26 + zoomLevel * 2;
-        let fValueSize = 36 + zoomLevel * 3;
-        let fHeaderSize = 34 + zoomLevel * 3;
-        let fDateSize = 22 + zoomLevel * 2;
-
-        let fLabels = document.querySelectorAll(
-          "#final-statement-box .stmt-label",
-        );
-        fLabels.forEach((el) => (el.style.fontSize = fLabelSize + "pt"));
-        let fValues = document.querySelectorAll(
-          "#final-statement-box .stmt-value",
-        );
-        fValues.forEach((el) => (el.style.fontSize = fValueSize + "pt"));
-        
-        let fHeader = document.getElementById("stmt-header-title");
-        if (fHeader) fHeader.style.fontSize = fHeaderSize + "pt";
-        
-        let fDate = document.getElementById("stmt-date-display");
-        if (fDate) fDate.style.fontSize = fDateSize + "pt";
-      }
-
-      function loadTemplate() {
-        let val = document.getElementById("templateSelect").value;
-        let noteBox = document.getElementById("customNote");
-
-        if (val === "houta") {
-          noteBox.value =
-            "يرجى التوجه إلى مكتب «الحوتة» لإيداع القيمة المستحقة عليكم.\nوعند إتمام عملية الإيداع، نرجو إبلاغنا لتأكيد الحساب.\nشاكرين ومقدرين حسن تعاونكم معنا.";
-        } else if (val === "receipt") {
-          noteBox.value =
-            "نُعلمكم بأنه قد تم استلام القيمة الموضحة أعلاه بنجاح.\nشاكرين لكم ثقتكم وحسن تعاملكم معنا.";
-        } else if (val === "delivery") {
-          noteBox.value =
-            "نُعلمكم بأنه قد تم تسليم القيمة الموضحة أعلاه بنجاح.\nيرجى مراجعة الحساب وتأكيد الاستلام من طرفكم.\nنسعد دائماً بخدمتكم.";
-        } else if (val === "vodafone") {
-          noteBox.value =
-            "نُعلمكم بأنه تم تحويل المبلغ المطلوب عبر محفظة (فودافون كاش) بنجاح.\nيرجى التأكد من وصول الرسالة للمستفيد.\nنسعد بخدمتكم دائماً.";
-        } else if (val === "kafr_elsheikh") {
-          noteBox.value =
-            "تم تجهيز المبلغ للتسليم اليدوي في محافظة (كفر الشيخ).\nيرجى التواصل مع المندوب للتنسيق والاستلام.\nشكراً لثقتكم بشركة الأهرام.";
-        } else if (val === "post_office") {
-          noteBox.value =
-            "تم تحويل المبلغ عبر (البريد المصري) بنجاح.\nيمكن للمستفيد التوجه لأقرب فرع بريد للاستلام بالبطاقة الشخصية.\nشاكرين تعاملكم معنا.";
-        } else if (val === "debt_reminder") {
-          noteBox.value =
-            "نود تذكيركم بضرورة تسوية المديونية الموضحة أعلاه في أقرب وقت ممكن.\nنرجو سرعة الاستجابة لتحديث رصيدكم.\nمقدرين تفهمكم وحسن تعاونكم.";
-        } else if (val === "trust_deposit") {
-          noteBox.value =
-            "تم إيداع القيمة الموضحة كأمانة في حسابكم لدينا بنجاح.\nرصيدكم الآن محدث ومتاح للاستخدام في أي وقت.\nنسعد دائماً بخدمتكم.";
-        } else if (val === "clearance_note") {
-          noteBox.value =
-            "تم تصفية الحساب وعمل مخالصة مالية نهائية.\nرصيدكم الحالي (صفر) ولا توجد أي التزامات مالية بين الطرفين.\nنتطلع لاستمرار التعامل معكم.";
-        } else if (val === "exchange_update") {
-          noteBox.value =
-            "نظراً للتقلبات المستمرة في أسعار الدولار، نُعلمكم بأن أسعار الصرف تخضع للتحديث الفوري وفقاً لمتغيرات السوق.\nيرجى التكرم بمراجعة وتأكيد الأسعار الجديدة قبل تنفيذ أي عملية تحويل.\nشاكرين ومقدرين تفهمكم وثقتكم بنا.";
-        } else {
-          noteBox.value = "";
-        }
-        updateCard();
-      }
-
-      function formatNumberWithDecimals(numStr) {
-        let clean = numStr.replace(/,/g, "").replace(/-/g, "").trim();
-        if (clean === "") return "0";
-        let parts = clean.split(".");
-        let integerPart = parseInt(parts[0], 10);
-        if (isNaN(integerPart)) return clean;
-        let formattedInt = integerPart.toLocaleString("en-US");
-        if (parts.length > 1) {
-          return formattedInt + "." + parts[1];
-        }
-        return formattedInt;
-      }
-
-      function updateCard() {
-        let themeValue = document.getElementById("themeSelect").value;
-        let typeValue = document.getElementById("typeSelect").value;
-        let nameValue = document.getElementById("nameInput").value || "...";
-        let rawAmount = document.getElementById("amountInput").value || "0";
-        let priceValue = document.getElementById("priceInput").value.trim();
-        let customNoteText = document.getElementById("customNote").value.trim();
-        let showCompany = document.getElementById("companyToggle").checked;
-
-        let exchangeRate =
-          parseFloat(document.getElementById("exchangeRateInput").value) || 0;
-        let targetCurrency =
-          document.getElementById("targetCurrencyInput").value || "ج.م";
-
-        let cardContainer = document.getElementById("goldenCard");
-        let statusLabel = document.getElementById("status-label");
-        let cardHeader = document.getElementById("card-header");
-        let priceCardTitle = document.getElementById("price-card-title");
-        let amountBoxContainer = document.getElementById(
-          "amount-box-container",
-        );
-        let displayAmount = document.getElementById("display-amount");
-        let currencyLabel = document.getElementById("currency-label");
-        let priceBadge = document.getElementById("price-badge");
-        let displayPrice = document.getElementById("display-price");
-        let customNoteBox = document.getElementById("custom-note-box");
-        let footer = document.getElementById("card-footer");
-        let spacer = document.getElementById("card-spacer");
-        let clientName = document.getElementById("display-name");
-
-        let exchangeTransferBox = document.getElementById(
-          "exchange-transfer-box",
-        );
-        let transferInputsGroup = document.getElementById(
-          "transfer-inputs-group",
-        );
-        let mainAmountGroup = document.getElementById("main-amount-group");
-        let secondaryPriceGroup = document.getElementById(
-          "secondary-price-group",
-        );
-
-        let statementBox = document.getElementById("final-statement-box");
-        let statementInputs = document.getElementById("statement-inputs-group");
-
-        let purchasingBox = document.getElementById("purchasing-statement-box");
-        let purchasingInputs = document.getElementById(
-          "purchasing-inputs-group",
-        );
-
-        cardContainer.className = "card " + themeValue;
-        let formattedAmount = formatNumberWithDecimals(rawAmount);
-
-        if (customNoteText !== "") {
-          customNoteBox.innerText = customNoteText;
-          customNoteBox.classList.remove("hidden-element");
-        } else {
-          customNoteBox.classList.add("hidden-element");
+        function renderTiles() {
+            const container = document.getElementById('tiles-container');
+            container.innerHTML = '';
+            sections.forEach(sec => {
+                const btn = document.createElement('button');
+                // تم تغيير py-3 إلى py-1.5 وتصغير الخط قليلاً لتكون الأزرار رفيعة وشيك
+                btn.className = `px-4 py-1.5 text-sm rounded-xl backdrop-blur-md transition-all duration-300 font-bold whitespace-nowrap ${
+                    currentType === sec.id ? 'bg-amber-500 text-black border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-[#2a2a2a] border border-white/10 hover:bg-white/10 text-white'
+                }`;
+                btn.innerText = sec.label;
+                btn.onclick = () => { 
+                    currentType = sec.id; 
+                    renderTiles(); 
+                    renderInbox(); 
+                    document.getElementById('tafqeet-display').classList.add('hidden-element'); 
+                    updateCard(); 
+                };
+                container.appendChild(btn);
+            });
         }
 
-        priceCardTitle.classList.add("hidden-element");
-        footer.classList.add("hidden-element");
-        spacer.classList.add("hidden-element");
-        statementBox.classList.add("hidden-element");
-        statementInputs.classList.add("hidden-element");
-        purchasingBox.classList.add("hidden-element");
-        purchasingInputs.classList.add("hidden-element");
-
-        if (showCompany) {
-          if (typeValue === "exchange_rate") {
-            priceCardTitle.classList.remove("hidden-element");
-          } else {
-            footer.classList.remove("hidden-element");
-            spacer.classList.remove("hidden-element");
-          }
+        function renderInbox() {
+            const container = document.getElementById('inbox-container');
+            container.innerHTML = '';
+            const items = mockInboxData[currentType];
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="text-sm text-gray-500 text-center py-4">لا توجد حركات</div>';
+                return;
+            }
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'inbox-item';
+                div.innerHTML = `<div class="font-bold text-amber-500">${item.name}</div><div class="text-sm flex justify-between mt-1"><span>${item.amount}</span></div>`;
+                div.onclick = () => { document.getElementById('nameInput').value = item.name; updateCard(); };
+                container.appendChild(div);
+            });
         }
 
-        exchangeTransferBox.classList.add("hidden-element");
-        transferInputsGroup.classList.add("hidden-element");
-        mainAmountGroup.classList.remove("hidden-element");
-        secondaryPriceGroup.classList.remove("hidden-element");
-        cardContainer.classList.remove("center-content");
-        cardHeader.classList.remove("hidden-element");
-        clientName.classList.remove("hidden-element");
-        currencyLabel.classList.remove("hidden-element");
-        amountBoxContainer.classList.remove("hidden-element");
-        statusLabel.classList.remove("hidden-element");
-        customNoteBox.classList.remove("large-note");
-        document.getElementById("nameInput").disabled = false;
-        document.getElementById("amountInput").disabled = false;
-        document.getElementById("name-input-label").innerText =
-          "اسم العميل / الشركة:";
-
-        if (typeValue === "final_statement") {
-          // إخفاء العناصر العادية وإظهار الجدول
-          cardHeader.classList.add("hidden-element");
-          clientName.classList.add("hidden-element");
-          currencyLabel.classList.add("hidden-element");
-          amountBoxContainer.classList.add("hidden-element");
-          statusLabel.classList.add("hidden-element");
-          customNoteBox.classList.add("hidden-element");
-          secondaryPriceGroup.classList.add("hidden-element");
-          mainAmountGroup.classList.add("hidden-element");
-
-          statementBox.classList.remove("hidden-element");
-          statementInputs.classList.remove("hidden-element");
-
-          document.getElementById("name-input-label").innerText =
-            "عنوان الكشف (أو اسم العميل):";
-          document.getElementById("stmt-header-title").innerText = nameValue;
-
-          // تحديث أرقام الجدول من المدخلات اليدوية
-          document.getElementById("val-previous").innerText =
-            formatNumberWithDecimals(
-              document.getElementById("input-prev").value,
-            );
-          document.getElementById("val-received").innerText =
-            formatNumberWithDecimals(
-              document.getElementById("input-recv").value,
-            );
-          document.getElementById("val-total").innerText =
-            formatNumberWithDecimals(
-              document.getElementById("input-total").value,
-            );
-          document.getElementById("val-remaining").innerText =
-            formatNumberWithDecimals(
-              document.getElementById("input-remain").value,
-            );
-        } else if (typeValue === "total_purchasing") {
-          cardHeader.classList.add("hidden-element");
-          clientName.classList.add("hidden-element");
-          currencyLabel.classList.add("hidden-element");
-          amountBoxContainer.classList.add("hidden-element");
-          statusLabel.classList.add("hidden-element");
-          customNoteBox.classList.add("hidden-element");
-          secondaryPriceGroup.classList.add("hidden-element");
-          mainAmountGroup.classList.add("hidden-element");
-
-          purchasingBox.classList.remove("hidden-element");
-          purchasingInputs.classList.remove("hidden-element");
-
-          document.getElementById("name-input-label").innerText =
-            "عنوان الكشف:";
-          document.getElementById("purch-header-title").innerText = nameValue;
-          document.getElementById("purch-date-display").innerText =
-            document.getElementById("stmt-date-display").innerText;
-
-          document.getElementById("val-purch-prev").innerHTML =
-            formatNumberWithDecimals(
-              document.getElementById("input-purch-prev").value,
-            ) + ' <span style="font-size: 18pt; color: #7f8c8d;">د.ل</span>';
-          document.getElementById("val-purch-work").innerHTML =
-            formatNumberWithDecimals(
-              document.getElementById("input-purch-work").value,
-            ) + ' <span style="font-size: 18pt; color: #2ecc71;">د.ل</span>';
-          document.getElementById("val-purch-paid").innerHTML =
-            formatNumberWithDecimals(
-              document.getElementById("input-purch-paid").value,
-            ) + ' <span style="font-size: 18pt; color: #e74c3c;">د.ل</span>';
-          document.getElementById("val-purch-debt").innerHTML =
-            formatNumberWithDecimals(
-              document.getElementById("input-purch-debt").value,
-            ) + ' <span style="font-size: 18pt; color: #e74c3c;">د.ل</span>';
-          document.getElementById("val-purch-egp").innerHTML =
-            formatNumberWithDecimals(
-              document.getElementById("input-purch-egp").value,
-            ) + ' <span style="font-size: 18pt; color: #1abc9c;">EGP</span>';
-        } else if (typeValue === "transfer") {
-          amountBoxContainer.classList.add("hidden-element");
-          secondaryPriceGroup.classList.add("hidden-element");
-          exchangeTransferBox.classList.remove("hidden-element");
-          transferInputsGroup.classList.remove("hidden-element");
-
-          cardHeader.innerText = "❖ إشعار تحويل مالي ❖";
-          statusLabel.innerText = "تفاصيل حوالة الصرف المستلمة والمحولة:";
-          clientName.innerText = nameValue;
-
-          let numericAmount = parseFloat(rawAmount.replace(/,/g, "")) || 0;
-          let convertedResult = numericAmount * exchangeRate;
-
-          document.getElementById("display-received").innerText =
-            formattedAmount + " د.ل";
-          document.getElementById("display-rate").innerText =
-            exchangeRate.toFixed(2);
-          document.getElementById("display-converted").innerText =
-            convertedResult.toLocaleString("en-US", {
-              maximumFractionDigits: 2,
-            }) +
-            " " +
-            targetCurrency;
-
-          document.getElementById("amount-input-label").innerText =
-            "المبلغ المستلم (بالدينار):";
-        } else if (typeValue === "exchange_rate") {
-          cardHeader.classList.add("hidden-element");
-          clientName.classList.add("hidden-element");
-          currencyLabel.classList.add("hidden-element");
-          priceBadge.classList.add("hidden-element");
-
-          cardContainer.classList.add("center-content");
-
-          statusLabel.innerText = "نعلمكم أن الأسعار متغيرة بتغيير سعر الدولار";
-          displayAmount.innerText = formattedAmount;
-          document.getElementById("nameInput").disabled = true;
-          secondaryPriceGroup.classList.add("hidden-element");
-          document.getElementById("amount-input-label").innerText =
-            "سعر الدولار اليوم:";
-        } else if (typeValue === "instruction") {
-          amountBoxContainer.classList.add("hidden-element");
-          priceBadge.classList.add("hidden-element");
-          statusLabel.classList.add("hidden-element");
-          customNoteBox.classList.add("large-note");
-
-          cardHeader.innerText = "❖ تنويه هام ❖";
-          clientName.innerText = nameValue;
-
-          secondaryPriceGroup.classList.add("hidden-element");
-          document.getElementById("amountInput").disabled = true;
-        } else {
-          document.getElementById("amount-input-label").innerText =
-            "المبلغ / السعر الأساسي:";
-          clientName.innerText = nameValue;
-
-          if (priceValue !== "") {
-            displayPrice.innerText = priceValue;
-            priceBadge.classList.remove("hidden-element");
-          } else {
-            priceBadge.classList.add("hidden-element");
-          }
-
-          if (typeValue === "debt") {
-            statusLabel.innerText = "إجمالي الديون المستحقة عليك:";
-            cardHeader.innerText = "❖ إشعار مديونية ❖";
-            displayAmount.innerText = formattedAmount;
-          } else if (typeValue === "trust") {
-            statusLabel.innerText = "صافي لك عندنا أمانة:";
-            cardHeader.innerText = "❖ إشعار أمانة ❖";
-            displayAmount.innerText = formattedAmount;
-          } else if (typeValue === "clearance") {
-            statusLabel.innerText = "تمت المخالصة المالية بالكامل";
-            cardHeader.innerText = "❖ إشعار مخالصة ❖";
-            displayAmount.innerText = formattedAmount;
-          } else if (typeValue === "zero") {
-            statusLabel.innerText = "تم تصفير رصيد الحساب بنجاح";
-            cardHeader.innerText = "❖ تصفير حساب ❖";
-            displayAmount.innerText = "0";
-          }
+        function generateDate() {
+            let now = new Date();
+            let formattedDate = `${now.getFullYear()}-${("0" + (now.getMonth() + 1)).slice(-2)}-${("0" + now.getDate()).slice(-2)}`;
+            document.getElementById('stmt-date-display').innerText = formattedDate;
+            document.getElementById('card-date-display').innerText = "التاريخ: " + formattedDate;
+            document.getElementById('purchases-date-display').innerText = formattedDate;
         }
-      }
 
-      async function copyCard(btnElement) {
-        saveClientName(document.getElementById("nameInput").value);
+        function loadClientNames() {
+            let clients = JSON.parse(localStorage.getItem('ahram_clients')) || ["سامي طرابلس", "أحمد حمادة", "سامح حجازي", "خالد الزواوي"];
+            let dataList = document.getElementById('clientNames');
+            dataList.innerHTML = '';
+            clients.forEach(c => { let opt = document.createElement('option'); opt.value = c; dataList.appendChild(opt); });
+        }
 
-        const card = document.getElementById("goldenCard");
-        const originalText = btnElement.innerHTML;
-        btnElement.innerHTML = "⚡ جاري الحفظ والنسخ للحافظة...";
-        btnElement.style.pointerEvents = "none";
+        function saveClientName(name) {
+            if (!name || name === '...' || name.trim() === '') return;
+            name = name.trim();
+            let clients = JSON.parse(localStorage.getItem('ahram_clients')) || [];
+            if (!clients.includes(name)) { clients.push(name); localStorage.setItem('ahram_clients', JSON.stringify(clients)); loadClientNames(); }
+        }
 
-        try {
-          const canvas = await html2canvas(card, {
-            scale: 2.5,
-            useCORS: true,
-            backgroundColor: null,
-            dir: "rtl",
-            logging: false,
-          });
+        function clearClientMemory() {
+            if (confirm("هل أنت متأكد أنك تريد مسح الذاكرة؟")) { localStorage.removeItem('ahram_clients'); loadClientNames(); alert("تم التنظيف!"); }
+        }
 
-          canvas.toBlob(async (blob) => {
+        let currArray = ["د.ل", "ج.م", "EGP"];
+        let currIndex = 0;
+        function toggleCurrency() {
+            currIndex = (currIndex + 1) % currArray.length;
+            let newCurr = currArray[currIndex];
+            document.getElementById('currency-label').innerText = newCurr;
+            document.querySelectorAll('.p-currency').forEach(el => {
+                if(el.parentElement.parentElement.classList.contains('row-5')) return;
+                el.innerText = newCurr;
+            });
+        }
+
+        let isPrivacyMode = false;
+        function togglePrivacy() {
+            isPrivacyMode = !isPrivacyMode;
+            const nameEl = document.getElementById('display-name');
+            const merchantEl = document.getElementById('purchases-merchant-name');
+            const btn = document.getElementById('privacy-btn');
+
+            if(isPrivacyMode) {
+                nameEl.style.filter = "blur(8px)";
+                merchantEl.style.filter = "blur(8px)";
+                btn.innerHTML = "👁️ إظهار الأطراف (إلغاء السرية)";
+                btn.classList.add('bg-amber-500', 'text-black');
+                btn.classList.remove('bg-white/10', 'text-white');
+            } else {
+                nameEl.style.filter = "none";
+                merchantEl.style.filter = "none";
+                btn.innerHTML = "👁️ السرية (إخفاء الأسماء)";
+                btn.classList.remove('bg-amber-500', 'text-black');
+                btn.classList.add('bg-white/10', 'text-white');
+            }
+        }
+
+        function generateTafqeet() {
+            let val = document.getElementById('amountInput').value.replace(/,/g, '');
+            let num = parseInt(val);
+            let display = document.getElementById('tafqeet-display');
+            
+            if(isNaN(num) || num === 0) {
+                display.innerText = '';
+                display.classList.add('hidden-element');
+                return;
+            }
+
+            const a1 = ["", "واحد", "اثنان", "ثلاثة", "أربعة", "خمسة", "ستة", "سبعة", "ثمانية", "تسعة"];
+            const a2 = ["عشرة", "أحد عشر", "اثنا عشر", "ثلاثة عشر", "أربعة عشر", "خمسة عشر", "ستة عشر", "سبعة عشر", "ثمانية عشر", "تسعة عشر"];
+            const a = a1.concat(a2);
+            const b = ["", "", "عشرون", "ثلاثون", "أربعون", "خمسون", "ستون", "سبعون", "ثمانون", "تسعون"];
+            const c = ["", "مائة", "مائتان", "ثلاثمائة", "أربعمائة", "خمسمائة", "ستمائة", "سبعمائة", "ثمانمائة", "تسعمائة"];
+
+            function convertGroups(n) {
+                let res = "";
+                let h = Math.floor(n / 100);
+                let rem = n % 100;
+                if (h > 0) res += c[h];
+                if (rem > 0) {
+                    if (res !== "") res += " و ";
+                    if (rem < 20) res += a[rem];
+                    else {
+                        let tens = Math.floor(rem / 10);
+                        let ones = rem % 10;
+                        if (ones > 0) res += a[ones] + " و " + b[tens];
+                        else res += b[tens];
+                    }
+                }
+                return res;
+            }
+
+            let result = "";
+            let millions = Math.floor(num / 1000000);
+            let thousands = Math.floor((num % 1000000) / 1000);
+            let units = num % 1000;
+
+            if (millions > 0) {
+                if (millions === 1) result += "مليون";
+                else if (millions === 2) result += "مليونان";
+                else if (millions >= 3 && millions <= 10) result += convertGroups(millions) + " ملايين";
+                else result += convertGroups(millions) + " مليون";
+            }
+            if (thousands > 0) {
+                if (result !== "") result += " و ";
+                if (thousands === 1) result += "ألف";
+                else if (thousands === 2) result += "ألفان";
+                else if (thousands >= 3 && thousands <= 10) result += convertGroups(thousands) + " آلاف";
+                else result += convertGroups(thousands) + " ألف";
+            }
+            if (units > 0) {
+                if (result !== "") result += " و ";
+                result += convertGroups(units);
+            }
+
+            let curr = document.getElementById('currency-label').innerText;
+            let currencyName = (curr === 'د.ل') ? 'دينار ليبي' : (curr === 'ج.م' || curr === 'EGP') ? 'جنيه مصري' : '';
+
+            display.innerText = "فقط " + result + " " + currencyName + " لا غير.";
+            display.classList.remove('hidden-element');
+        }
+
+        let zoomLevel = 0;
+        function changeFontSize(action) {
+            if (action === 'increase') zoomLevel += 1;
+            else if (action === 'decrease') zoomLevel -= 1;
+            else zoomLevel = 0;
+
+            document.getElementById('display-name').style.fontSize = (55 + (zoomLevel * 4)) + 'pt';
+            let amountTextDiv = document.getElementById('amount-container');
+            if(amountTextDiv) amountTextDiv.style.fontSize = (120 + (zoomLevel * 8)) + 'pt';
+            let currencySpan = document.getElementById('currency-label');
+            if(currencySpan) currencySpan.style.fontSize = (35 + (zoomLevel * 2)) + 'pt';
+
+            document.querySelectorAll('.stmt-label').forEach(el => el.style.fontSize = (24 + (zoomLevel * 2)) + 'pt');
+            document.querySelectorAll('.stmt-value').forEach(el => el.style.fontSize = (32 + (zoomLevel * 3)) + 'pt');
+            document.querySelectorAll('.final-row .stmt-label, .final-row .stmt-value').forEach(el => el.style.fontSize = (38 + (zoomLevel * 3)) + 'pt');
+            document.getElementById('stmt-header-title').style.fontSize = (34 + (zoomLevel * 3)) + 'pt';
+
+            document.querySelectorAll('.p-label').forEach(el => el.style.fontSize = (26 + (zoomLevel * 2)) + 'pt');
+            document.querySelectorAll('.p-value').forEach(el => el.style.fontSize = (40 + (zoomLevel * 3)) + 'pt');
+            document.querySelectorAll('.p-currency').forEach(el => el.style.fontSize = (18 + (zoomLevel * 2)) + 'pt');
+            document.getElementById('purchases-top-bar').style.fontSize = (22 + (zoomLevel * 2)) + 'pt';
+            
+            let tafqeetDisplay = document.getElementById('tafqeet-display');
+            if(tafqeetDisplay) tafqeetDisplay.style.fontSize = (24 + (zoomLevel * 2)) + 'pt';
+        }
+
+        function loadTemplate() {
+            let val = document.getElementById('templateSelect').value;
+            let noteBox = document.getElementById('customNote');
+            
+            if (val === 'matabaqa') noteBox.value = "تمت مطابقة الكشف مع حساباتنا، والرصيد النهائي المعتمد هو الموضح أعلاه. يرجى المراجعة والاعتماد من طرفكم.";
+            else if (val === 'fix_rate') noteBox.value = "تم تنفيذ التحويل وإقفال المعاملة بناءً على سعر الصرف المتفق عليه اليوم. ولا نقبل أي تعديل أو مراجعة للسعر بعد التنفيذ.";
+            else if (val === 'deduct_trust') noteBox.value = "تم خصم المبلغ الموضح من رصيد الأمانات الخاص بكم بناءً على طلبكم. رصيدكم المتبقي لدينا محدث في الكشف.";
+            else if (val === 'hold_transfer') noteBox.value = "تم استلام المبلغ، ولكن تم تعليق تنفيذ الحوالة لحين استكمال بيانات المستفيد (الاسم الرباعي ورقم الهاتف). يرجى التواصل لتأكيد البيانات.";
+            else if (val === 'cover_alert') noteBox.value = "نرجو التكرم بمراجعة الكشف وتغطية الرصيد المكشوف في أقرب فرصة، لضمان استمرار سرعة تنفيذ معاملاتكم القادمة.";
+            else if (val === 'received_abroad') noteBox.value = "تم تأكيد استلام الحوالة من طرفنا، وجاري تنفيذ المعاملة وتسليمها للمستفيد النهائي في أسرع وقت.";
+            else if (val === 'houta') noteBox.value = "يرجى التوجه إلى مكتب «الحوتة» لإيداع القيمة المستحقة عليكم.\nوعند إتمام عملية الإيداع، نرجو إبلاغنا لتأكيد الحساب.";
+            else if (val === 'receipt') noteBox.value = "نُعلمكم بأنه قد تم استلام القيمة الموضحة أعلاه بنجاح.\nشاكرين لكم ثقتكم وحسن تعاملكم معنا.";
+            else if (val === 'delivery') noteBox.value = "نُعلمكم بأنه قد تم تسليم القيمة الموضحة أعلاه بنجاح.\nيرجى مراجعة الحساب وتأكيد الاستلام من طرفكم.";
+            else if (val === 'debt_reminder') noteBox.value = "نود تذكيركم بضرورة تسوية المديونية الموضحة أعلاه في أقرب وقت ممكن.\nنرجو سرعة الاستجابة لتحديث رصيدكم.";
+            else if (val === 'trust_deposit') noteBox.value = "تم إيداع القيمة الموضحة كأمانة في حسابكم لدينا بنجاح.\nرصيدكم الآن محدث ومتاح للاستخدام في أي وقت.";
+            else if (val === 'clearance_note') noteBox.value = "تم تصفية الحساب وعمل مخالصة مالية نهائية.\nرصيدكم الحالي (صفر) ولا توجد أي التزامات مالية بين الطرفين.";
+            else noteBox.value = ""; 
+            
+            updateCard();
+        }
+
+        function formatInteger(numStr) {
+            if (!numStr) return "0";
+            let clean = String(numStr).replace(/,/g, '').replace(/-/g, '').trim();
+            if (clean === "") return "0";
+            let integerPart = parseInt(clean.split('.')[0], 10);
+            if (isNaN(integerPart)) return "0";
+            return integerPart.toLocaleString('en-US'); 
+        }
+
+        function formatDecimal(numStr) {
+            if (!numStr) return "0";
+            let clean = String(numStr).replace(/,/g, '').replace(/-/g, '').trim();
+            if (clean === "") return "0";
+            let parts = clean.split('.');
+            let integerPart = parseInt(parts[0], 10);
+            if (isNaN(integerPart)) return clean;
+            let formattedInt = integerPart.toLocaleString('en-US');
+            if (parts.length > 1) return formattedInt + '.' + parts[1];
+            return formattedInt;
+        }
+
+        function updateCard() {
+            let themeValue = document.getElementById('themeSelect').value;
+            let cardContainer = document.getElementById('goldenCard');
+            cardContainer.className = "card " + themeValue;
+
+            let titleColor = document.getElementById('titleColorPicker').value;
+            document.getElementById('card-header').style.color = titleColor;
+            document.getElementById('display-name').style.color = titleColor;
+            document.getElementById('stmt-header-title').style.color = titleColor;
+            document.getElementById('purchases-top-bar').style.color = titleColor;
+
+            let nameValue = document.getElementById('nameInput').value || '...';
+            let rawAmount = document.getElementById('amountInput').value || '0';
+            let priceValue = document.getElementById('priceInput').value.trim(); 
+            let customNoteText = document.getElementById('customNote').value.trim();
+            let showCompany = document.getElementById('companyToggle').checked;
+            let showDate = document.getElementById('dateToggle').checked;
+
+            let formattedAmountInteger = formatInteger(rawAmount);
+            let formattedAmountDecimal = formatDecimal(rawAmount);
+
+            let customNoteBox = document.getElementById('custom-note-box');
+            customNoteBox.classList.remove('large-note'); 
+            
+            if (customNoteText !== "") { customNoteBox.innerText = customNoteText; customNoteBox.classList.remove('hidden-element'); } 
+            else { customNoteBox.classList.add('hidden-element'); }
+
+            let priceBadge = document.getElementById('price-badge');
+            let displayPrice = document.getElementById('display-price');
+            if (priceValue !== "") { displayPrice.innerText = priceValue; priceBadge.classList.remove('hidden-element'); }
+            else { priceBadge.classList.add('hidden-element'); }
+
+            let footer = document.getElementById('card-footer');
+            let spacer = document.getElementById('card-spacer');
+            if (showCompany) { footer.classList.remove('hidden-element'); spacer.classList.remove('hidden-element'); } 
+            else { footer.classList.add('hidden-element'); spacer.classList.add('hidden-element'); }
+
+            let dateDisplay = document.getElementById('card-date-display');
+            if (showDate) { dateDisplay.classList.remove('hidden-element'); } 
+            else { dateDisplay.classList.add('hidden-element'); }
+
+            document.getElementById('card-header').classList.add('hidden-element');
+            document.getElementById('display-name').classList.add('hidden-element');
+            document.getElementById('amount-box-container').classList.add('hidden-element');
+            document.getElementById('status-label').classList.add('hidden-element');
+            document.getElementById('final-statement-box').classList.add('hidden-element');
+            document.getElementById('purchases-box').classList.add('hidden-element');
+            
+            document.getElementById('statement-inputs-group').classList.add('hidden-element');
+            document.getElementById('purchases-inputs-group').classList.add('hidden-element');
+            document.getElementById('main-amount-group').classList.add('hidden-element');
+            document.getElementById('secondary-price-group').classList.add('hidden-element');
+            document.getElementById('companies-inputs-group').classList.add('hidden-element'); 
+
+            if (currentType === 'masraweya' || currentType === 'final_statement') {
+                document.getElementById('final-statement-box').classList.remove('hidden-element');
+                document.getElementById('statement-inputs-group').classList.remove('hidden-element');
+                document.getElementById('name-input-label').innerText = "عنوان الكشف / التاجر:";
+                document.getElementById('stmt-header-title').innerText = nameValue !== '...' ? nameValue : (currentType === 'masraweya' ? 'كشف المصراويه' : 'الكشف النهائي');
+                document.getElementById('val-previous').innerText = formatInteger(document.getElementById('input-prev').value);
+                document.getElementById('val-received').innerText = formatInteger(document.getElementById('input-recv').value);
+                document.getElementById('val-total').innerText = formatInteger(document.getElementById('input-total').value);
+                document.getElementById('val-remaining').innerText = formatInteger(document.getElementById('input-remain').value);
+            }
+            else if (currentType === 'purchases') {
+                document.getElementById('purchases-box').classList.remove('hidden-element');
+                document.getElementById('purchases-inputs-group').classList.remove('hidden-element');
+                document.getElementById('name-input-label').innerText = "اسم التاجر:";
+                
+                let merchantType = document.getElementById('purchasesMerchantType').value;
+                document.getElementById('purchases-merchant-name').innerText = nameValue !== '...' ? (nameValue + " - " + merchantType) : ("التاجر " + merchantType);
+                
+                document.getElementById('p-val-1').innerText = formatInteger(document.getElementById('p-in-1').value);
+                document.getElementById('p-val-2').innerText = formatInteger(document.getElementById('p-in-2').value);
+                document.getElementById('p-val-3').innerText = formatInteger(document.getElementById('p-in-3').value);
+                document.getElementById('p-val-4').innerText = formatInteger(document.getElementById('p-in-4').value);
+                document.getElementById('p-val-5').innerText = formatInteger(document.getElementById('p-in-5').value);
+            }
+            else if (currentType === 'alert') {
+                document.getElementById('card-header').innerText = "❖ إشعار تنبيه ❖";
+                document.getElementById('display-name').innerText = nameValue;
+                document.getElementById('card-header').classList.remove('hidden-element');
+                document.getElementById('display-name').classList.remove('hidden-element');
+                priceBadge.classList.add('hidden-element');
+                customNoteBox.classList.add('large-note');
+            }
+            else if (currentType === 'exchange_rate') {
+                document.getElementById('status-label').innerText = "أسعار الصرف اليوم:";
+                document.getElementById('display-amount').innerText = formattedAmountDecimal;
+                document.getElementById('amount-input-label').innerText = "السعر (يقبل الكسور):";
+                document.getElementById('status-label').classList.remove('hidden-element');
+                document.getElementById('amount-box-container').classList.remove('hidden-element');
+                document.getElementById('main-amount-group').classList.remove('hidden-element');
+            } 
+            else {
+                document.getElementById('card-header').classList.remove('hidden-element');
+                document.getElementById('display-name').classList.remove('hidden-element');
+                document.getElementById('status-label').classList.remove('hidden-element');
+                document.getElementById('amount-box-container').classList.remove('hidden-element');
+                document.getElementById('main-amount-group').classList.remove('hidden-element');
+                document.getElementById('secondary-price-group').classList.remove('hidden-element');
+                
+                document.getElementById('display-name').innerText = nameValue;
+                document.getElementById('display-amount').innerText = formattedAmountInteger;
+                document.getElementById('name-input-label').innerText = "اسم العميل / الشركة:";
+
+                if (currentType === 'debt') {
+                    document.getElementById('status-label').innerText = "إجمالي الديون المستحقة عليك:";
+                    document.getElementById('card-header').innerText = "❖ إشعار مديونية ❖";
+                } 
+                else if (currentType === 'companies') {
+                    document.getElementById('companies-inputs-group').classList.remove('hidden-element');
+                    let accType = document.getElementById('companyOrMerchant').value;
+                    if (accType === 'merchant') {
+                        document.getElementById('status-label').innerText = "حساب التاجر:";
+                        document.getElementById('card-header').innerText = "❖ إشعار تاجر ❖";
+                        document.getElementById('name-input-label').innerText = "اسم التاجر:";
+                    } else {
+                        document.getElementById('status-label').innerText = "حساب الشركة:";
+                        document.getElementById('card-header').innerText = "❖ إشعار شركة ❖";
+                        document.getElementById('name-input-label').innerText = "اسم الشركة:";
+                    }
+                }
+                else if (currentType === 'trust') {
+                    document.getElementById('status-label').innerText = "صافي لك عندنا أمانة:";
+                    document.getElementById('card-header').innerText = "❖ إشعار أمانة ❖";
+                }
+            }
+        }
+
+        async function copyCard(btnElement) {
+            saveClientName(document.getElementById('nameInput').value);
+            const card = document.getElementById('goldenCard');
+            const originalText = btnElement.innerHTML;
+            btnElement.innerHTML = "⚡ جاري النسخ...";
+            btnElement.style.pointerEvents = "none";
             try {
-              await navigator.clipboard.write([
-                new ClipboardItem({ "image/png": blob }),
-              ]);
-              btnElement.innerHTML = "✅ تم النسخ! جاهز للصق";
-              btnElement.classList.add("success");
-              setTimeout(() => {
+                const canvas = await html2canvas(card, { scale: 2.5, backgroundColor: null, dir: 'rtl', logging: false });
+                canvas.toBlob(async (blob) => {
+                    try {
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        btnElement.innerHTML = "✅ تم النسخ بنجاح!";
+                        setTimeout(() => { btnElement.innerHTML = originalText; btnElement.style.pointerEvents = "auto"; }, 2000);
+                    } catch (err) {
+                        alert("فشل النسخ! تأكد من إعطاء الصلاحيات.");
+                        btnElement.innerHTML = originalText;
+                        btnElement.style.pointerEvents = "auto";
+                    }
+                });
+            } catch (error) {
+                alert("حدث خطأ.");
                 btnElement.innerHTML = originalText;
-                btnElement.classList.remove("success");
                 btnElement.style.pointerEvents = "auto";
-              }, 2000);
-            } catch (err) {
-              console.error(err);
-              alert("فشل النسخ التلقائي! يرجى إعطاء صلاحية للمتصفح.");
-              btnElement.innerHTML = originalText;
-              btnElement.style.pointerEvents = "auto";
             }
-          });
-        } catch (error) {
-          alert("حدث خطأ أثناء التصوير.");
-          btnElement.innerHTML = originalText;
-          btnElement.style.pointerEvents = "auto";
         }
-      }
-
-      updateCard();
     </script>
-  </body>
+</body>
 </html>

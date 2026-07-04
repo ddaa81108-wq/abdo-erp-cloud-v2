@@ -173,6 +173,47 @@ export const generateUnifiedSmartCard = async (
   });
 };
 
+export type SmartCardStudioType =
+  | "debt"
+  | "trust"
+  | "companies"
+  | "masraweya"
+  | "purchases"
+  | "alert"
+  | "exchange_rate";
+
+export interface SmartCardStudioParams {
+  type: SmartCardStudioType;
+  name?: string;
+  amount?: number | string;
+  price?: string;
+  note?: string;
+  currency?: string;
+  theme?: string;
+  acctype?: "company" | "merchant";
+  prev?: number | string;
+  recv?: number | string;
+  total?: number | string;
+  remain?: number | string;
+  merchant?: string;
+  p1?: number | string;
+  p2?: number | string;
+  p3?: number | string;
+  p4?: number | string;
+  p5?: number | string;
+}
+
+// يفتح منظومة الكروت الذكية (card-generator.html) متملّية ببيانات القسم
+export const openSmartCardStudio = (params: SmartCardStudioParams): void => {
+  const url = new URL("/card-generator.html", window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  window.open(url.toString(), "_blank");
+};
+
 export const copySettledImage = async (name: string, titleText: string = "كارت مخالصة وتصفير حساب"): Promise<boolean> => {
   return generateUnifiedSmartCard(name, 0, "clearance");
 };
