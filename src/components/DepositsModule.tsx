@@ -883,11 +883,8 @@ export default function DepositsModule({
                     setExpandedCardId(isExpanded ? null : d.id);
                     if (!isExpanded) resetActionForm();
                   }}
-                  className={`relative overflow-hidden bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-sm hover:shadow-lg group min-h-[90px] text-center ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'border-r-emerald-500 bg-gradient-to-b from-emerald-50/30 to-white' : (customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500 bg-gradient-to-b from-rose-50/30 to-white' : 'border-r-indigo-500 bg-gradient-to-b from-indigo-50/30 to-white'}`}
+                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'border-r-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300' : (customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
                 >
-                  {/* Modern gradient top bar */}
-                  <div className={`absolute top-0 left-0 right-0 h-1 rounded-t-xl ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : (customerLyd < 0 || customerEgp < 0) ? 'bg-gradient-to-r from-rose-500 to-pink-600' : 'bg-gradient-to-r from-indigo-500 to-blue-600'}`}></div>
-
                   {/* CARD TILE BODY */}
                   <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1">{d.customerName}</h4>
                   <div className="flex flex-col items-center">
