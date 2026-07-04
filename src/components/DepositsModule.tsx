@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Landmark, ArrowRightLeft, Shield, AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy, Calculator, Minus, CheckCircle2 } from 'lucide-react';
+import { Landmark, ArrowRightLeft, Shield, CircleAlert as AlertCircle, Plus, Trash2, Search, Coins, RefreshCw, FileText, ChevronDown, ChevronUp, CircleCheck as CheckCircle, UserCheck, Receipt, DollarSign, Image, X, Copy, Calculator, Minus, CircleCheck as CheckCircle2 } from 'lucide-react';
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
 import { copySettledImage, generateUnifiedSmartCard, openSmartCardStudio } from "../utils/imageExporterUtils";
 import { VoiceInputButton } from "./VoiceInputButton";
@@ -8,9 +8,25 @@ interface DepositsModuleProps {
   state: ERPState;
   onUpdateState: (newState: ERPState) => void;
   onOpenExporter: (section: string, metrics: any, headers: string[], rows: any[][]) => void;
+  // Global undo deletion system
+  pendingDeletions?: string[];
+  onScheduleDeletion?: (
+    type: 'customer' | 'company' | 'merchant' | 'deposit' | 'transaction',
+    itemId: string,
+    displayName: string,
+    executeDeletion: () => void
+  ) => void;
+  onCancelDeletion?: (itemId: string) => void;
 }
 
-export default function DepositsModule({ state, onUpdateState, onOpenExporter }: DepositsModuleProps) {
+export default function DepositsModule({
+  state,
+  onUpdateState,
+  onOpenExporter,
+  pendingDeletions = [],
+  onScheduleDeletion,
+  onCancelDeletion,
+}: DepositsModuleProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const [showArchive, setShowArchive] = useState(false);
 
@@ -606,7 +622,16 @@ export default function DepositsModule({ state, onUpdateState, onOpenExporter }:
 
   // Direct complete delete - upgraded to soft delete to trash can without confirm trigger
   const handleDeleteDeposit = (id: string) => {
-    executeDeleteDeposit(id);
+    const deposit = state.trustDeposits.find(d => d.id === id);
+    const displayName = deposit ? deposit.name : "أمانة";
+
+    if (onScheduleDeletion) {
+      onScheduleDeletion('deposit', id, displayName, () => {
+        executeDeleteDeposit(id);
+      });
+    } else {
+      executeDeleteDeposit(id);
+    }
   };
 
   const executeDeleteDeposit = (id: string) => {

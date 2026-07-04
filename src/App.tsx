@@ -1,26 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import * as XLSX from "xlsx";
-import {
-  Landmark,
-  UserCheck,
-  Inbox,
-  FolderArchive,
-  ShoppingBag,
-  ShieldCheck,
-  Database,
-  Search,
-  FileDown,
-  AlertCircle,
-  FileSpreadsheet,
-  Bell,
-  Info,
-  LogOut,
-  Settings,
-  Shield,
-  X,
-  Menu,
-} from "lucide-react";
+import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 import {
@@ -151,6 +132,81 @@ export default function App() {
   const [showSeedBannerConfirm, setShowSeedBannerConfirm] = useState(false);
   const [showCustomToast, setShowCustomToast] = useState("");
   const [showWelcomeToast, setShowWelcomeToast] = useState(false);
+
+  // 🔄 Global Undo Deletion System - 10 second timeout
+  type PendingDeletion = {
+    id: string;
+    type: 'customer' | 'company' | 'merchant' | 'deposit' | 'transaction';
+    displayName: string;
+    timestamp: number;
+    timerId: ReturnType<typeof setTimeout>;
+  };
+  const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
+  const [undoToast, setUndoToast] = useState<{id: string; name: string; countdown: number} | null>(null);
+
+  // Schedule a deletion with 10-second undo window
+  const scheduleDeletion = (
+    type: PendingDeletion['type'],
+    itemId: string,
+    displayName: string,
+    executeDeletion: () => void
+  ) => {
+    const timerId = setTimeout(() => {
+      // Time's up - execute the deletion
+      executeDeletion();
+      setPendingDeletions(prev => prev.filter(p => p.id !== itemId));
+      setUndoToast(null);
+    }, 10000);
+
+    const pending: PendingDeletion = {
+      id: itemId,
+      type,
+      displayName,
+      timestamp: Date.now(),
+      timerId
+    };
+
+    setPendingDeletions(prev => [...prev, pending]);
+    setUndoToast({ id: itemId, name: displayName, countdown: 10 });
+
+    // Start countdown
+    const countdownInterval = setInterval(() => {
+      setUndoToast(prev => {
+        if (!prev || prev.id !== itemId) {
+          clearInterval(countdownInterval);
+          return null;
+        }
+        if (prev.countdown <= 1) {
+          clearInterval(countdownInterval);
+          return null;
+        }
+        return { ...prev, countdown: prev.countdown - 1 };
+      });
+    }, 1000);
+
+    // Store the interval cleanup
+    return () => {
+      clearInterval(countdownInterval);
+      clearTimeout(timerId);
+    };
+  };
+
+  // Cancel a pending deletion (undo)
+  const cancelDeletion = (itemId: string) => {
+    setPendingDeletions(prev => {
+      const pending = prev.find(p => p.id === itemId);
+      if (pending) {
+        clearTimeout(pending.timerId);
+      }
+      return prev.filter(p => p.id !== itemId);
+    });
+    setUndoToast(null);
+  };
+
+  // Check if an item is pending deletion
+  const isPendingDeletion = (itemId: string) => {
+    return pendingDeletions.some(p => p.id === itemId);
+  };
 
   // Global Keyboard Navigation (ArrowUp / ArrowDown / ArrowLeft / ArrowRight / Enter)
   useEffect(() => {
@@ -1103,6 +1159,9 @@ export default function App() {
                       onUpdateState={updateStateAndSync}
                       onOpenExporter={handleOpenExporter}
                       searchQuery={globalSearchQuery}
+                      pendingDeletions={pendingDeletions.map(p => p.id)}
+                      onScheduleDeletion={scheduleDeletion}
+                      onCancelDeletion={cancelDeletion}
                     />
                   )}
 
@@ -1112,6 +1171,9 @@ export default function App() {
                       onUpdateState={updateStateAndSync}
                       onOpenExporter={handleOpenExporter}
                       searchQuery={globalSearchQuery}
+                      pendingDeletions={pendingDeletions.map(p => p.id)}
+                      onScheduleDeletion={scheduleDeletion}
+                      onCancelDeletion={cancelDeletion}
                     />
                   )}
 
@@ -1121,6 +1183,9 @@ export default function App() {
                       onUpdateState={updateStateAndSync}
                       onOpenExporter={handleOpenExporter}
                       searchQuery={globalSearchQuery}
+                      pendingDeletions={pendingDeletions.map(p => p.id)}
+                      onScheduleDeletion={scheduleDeletion}
+                      onCancelDeletion={cancelDeletion}
                     />
                   )}
 
@@ -1159,6 +1224,9 @@ export default function App() {
                       state={state}
                       onUpdateState={updateStateAndSync}
                       onOpenExporter={handleOpenExporter}
+                      pendingDeletions={pendingDeletions.map(p => p.id)}
+                      onScheduleDeletion={scheduleDeletion}
+                      onCancelDeletion={cancelDeletion}
                     />
                   )}
 
@@ -1588,6 +1656,38 @@ export default function App() {
           </span>
         </div>
       )}
+
+      {/* Undo Deletion Toast - 10 second countdown */}
+      <AnimatePresence>
+        {undoToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: 50, x: "-50%" }}
+            transition={{ duration: 0.3 }}
+            className="fixed bottom-6 left-1/2 z-[99999] pointer-events-auto"
+            dir="rtl"
+          >
+            <div className="bg-gradient-to-r from-rose-950 to-slate-900 border border-rose-800/50 rounded-2xl px-5 py-4 shadow-2xl flex items-center gap-4 min-w-[320px]">
+              <div className="flex-1">
+                <p className="text-rose-300 text-xs font-bold mb-1">تتمة الحذف...</p>
+                <p className="text-white text-sm font-black truncate">{undoToast.name}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-rose-900/50 border-2 border-rose-600 flex items-center justify-center">
+                  <span className="text-rose-300 font-black text-lg">{undoToast.countdown}</span>
+                </div>
+                <button
+                  onClick={() => cancelDeletion(undoToast.id)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 px-4 rounded-xl cursor-pointer transition-all active:scale-95 shadow-lg"
+                >
+                  تراجع
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 5. Theme Selection Settings Modal */}
       {isThemeModalOpen && (

@@ -1,21 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Users,
-  Trash2,
-  Plus,
-  Search,
-  Calendar,
-  Clock,
-  ArrowDownLeft,
-  ShieldAlert,
-  AlertCircle,
-  X,
-  Check,
-  FileText,
-  Camera,
-  Copy,
-  Calculator,
-} from "lucide-react";
+import { Users, Trash2, Plus, Search, Calendar, Clock, ArrowDownLeft, ShieldAlert, CircleAlert as AlertCircle, X, Check, FileText, Camera, Copy, Calculator } from "lucide-react";
 import { ERPState, Merchant, MerchantTransaction } from "../types";
 import DebtBird from "./DebtBird";
 import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUtils";
@@ -33,6 +17,15 @@ interface MerchantsModuleProps {
     footerMetrics?: any[],
   ) => void;
   searchQuery?: string;
+  // Global undo deletion system
+  pendingDeletions?: string[];
+  onScheduleDeletion?: (
+    type: 'customer' | 'company' | 'merchant' | 'deposit' | 'transaction',
+    itemId: string,
+    displayName: string,
+    executeDeletion: () => void
+  ) => void;
+  onCancelDeletion?: (itemId: string) => void;
 }
 
 export default function MerchantsModule({
@@ -40,6 +33,9 @@ export default function MerchantsModule({
   onUpdateState,
   onOpenExporter,
   searchQuery = "",
+  pendingDeletions = [],
+  onScheduleDeletion,
+  onCancelDeletion,
 }: MerchantsModuleProps) {
   // Create Merchant state
   const [showAddMerchantModal, setShowAddMerchantModal] = useState(false);
@@ -365,7 +361,16 @@ export default function MerchantsModule({
   };
 
   const handleDeleteTransaction = (txId: string) => {
-    setMerchantDeleteTxId(txId);
+    const tx = (state.merchantTransactions || []).find((t) => t.id === txId);
+    const displayName = tx ? `حركة حساب التاجر` : `حركة حساب`;
+
+    if (onScheduleDeletion) {
+      onScheduleDeletion('transaction', txId, displayName, () => {
+        executeDeleteTransaction(txId);
+      });
+    } else {
+      setMerchantDeleteTxId(txId);
+    }
   };
 
   const executeDeleteTransaction = (txId: string) => {
@@ -406,7 +411,16 @@ export default function MerchantsModule({
   };
 
   const handleSoftDeleteMerchant = (merchId: string) => {
-    setMerchantSoftDeleteId(merchId);
+    const merch = (state.merchants || []).find((m) => m.id === merchId);
+    const displayName = merch ? merch.name : "تاجر";
+
+    if (onScheduleDeletion) {
+      onScheduleDeletion('merchant', merchId, displayName, () => {
+        executeSoftDeleteMerchant(merchId);
+      });
+    } else {
+      setMerchantSoftDeleteId(merchId);
+    }
   };
 
   const executeSoftDeleteMerchant = (merchId: string) => {

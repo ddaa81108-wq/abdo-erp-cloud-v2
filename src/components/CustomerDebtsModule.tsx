@@ -1,26 +1,5 @@
 import React, { useState } from "react";
-import {
-  UserPlus,
-  Calendar,
-  Trash2,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Camera,
-  Search,
-  X,
-  Check,
-  Landmark,
-  CheckSquare,
-  Send,
-  FileText,
-  CheckCircle2,
-  MessageCircle,
-  Copy,
-  Calculator,
-  Plus,
-  Minus,
-} from "lucide-react";
+import { UserPlus, Calendar, Trash2, CircleCheck as CheckCircle, Clock, CircleAlert as AlertCircle, Camera, Search, X, Check, Landmark, SquareCheck as CheckSquare, Send, FileText, CircleCheck as CheckCircle2, Copy, Calculator, Plus, Minus } from "lucide-react";
 import {
   ERPState,
   Customer,
@@ -44,6 +23,15 @@ interface CustomerDebtsModuleProps {
     footerMetrics?: any[],
   ) => void;
   searchQuery?: string;
+  // Global undo deletion system
+  pendingDeletions?: string[];
+  onScheduleDeletion?: (
+    type: 'customer' | 'company' | 'merchant' | 'deposit' | 'transaction',
+    itemId: string,
+    displayName: string,
+    executeDeletion: () => void
+  ) => void;
+  onCancelDeletion?: (itemId: string) => void;
 }
 
 const DisintegrationParticles = () => {
@@ -88,6 +76,9 @@ export default function CustomerDebtsModule({
   onUpdateState,
   onOpenExporter,
   searchQuery = "",
+  pendingDeletions = [],
+  onScheduleDeletion,
+  onCancelDeletion,
 }: CustomerDebtsModuleProps) {
   // 1. حالات وإضافة زبون جديد
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
@@ -587,94 +578,102 @@ export default function CustomerDebtsModule({
   // ----------------------------------------------------
   // حذف الزبون الكلي مع الخيارات
   // ----------------------------------------------------
+  const executeCustomerDeletion = (custId: string) => {
+    const currentState = stateRef.current;
+    const custToDel = currentState.customers.find((c) => c.id === custId);
+    if (!custToDel || custToDel.isDeleted) {
+      setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
+      return;
+    }
+
+    const activeCycle = currentState.cycles.find(
+      (cy) => cy.customerId === custId && cy.status === "active"
+    );
+
+    const transactions = currentState.debtTransactions.filter(
+      (t) => t.cycleId === activeCycle?.id
+    );
+    const totalPurchases = transactions
+      .filter((t) => t.type === "purchase")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalPayments = transactions
+      .filter((t) => t.type === "payment")
+      .reduce((sum, t) => sum + t.amount, 0);
+    const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
+
+    const timestamp = new Date().toISOString();
+    const docNum = generateDocNumber();
+
+    let updatedDebtTransactions = [...currentState.debtTransactions];
+
+    const updatedCycles = currentState.cycles.map((cy) => {
+      if (cy.customerId === custId && cy.status === "active") {
+        return {
+          ...cy,
+          status: "closed" as const,
+          currentBalance: 0,
+          endDate: timestamp,
+        };
+      }
+      return cy;
+    });
+
+    if (outstanding > 0) {
+      updatedDebtTransactions.push({
+        id: `tx_wipe_${Date.now()}`,
+        customerId: custId,
+        cycleId: activeCycle?.id || "",
+        type: "payment",
+        amount: outstanding,
+        currency: "د.ل",
+        conversionRate: 1.0,
+        date: timestamp,
+        referenceNo: docNum,
+        note: `مسح الحساب وإلغاء الدين بالكامل`,
+        postedToTreasury: false,
+        createdAt: timestamp,
+      });
+    }
+
+    const updatedCustomers = currentState.customers.map((c) => {
+      if (c.id === custId) {
+        return { ...c, isDeleted: true };
+      }
+      return c;
+    });
+
+    onUpdateState({
+      ...currentState,
+      customers: updatedCustomers,
+      cycles: updatedCycles,
+      debtTransactions: updatedDebtTransactions,
+    });
+
+    setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
+  };
+
   const handleQuickDelete = (targetCustId?: string) => {
     const custId = targetCustId || selectedCustomerId;
     if (!custId) return;
 
-    // إغلاق النافذة إذا كان الحذف من الداخل
     if (!targetCustId) {
       setSelectedCustomerId(null);
     }
 
-    // بدء تأثير التبخر
-    setVaporizingCustomers((prev) => [...prev, custId]);
+    const custToDel = state.customers.find((c) => c.id === custId);
+    const displayName = custToDel?.name || "زبون";
 
-    setTimeout(() => {
-      const currentState = stateRef.current;
-      const custToDel = currentState.customers.find((c) => c.id === custId);
-      if (!custToDel || custToDel.isDeleted) {
-        setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
-        return;
-      }
-
-      const activeCycle = currentState.cycles.find(
-        (cy) => cy.customerId === custId && cy.status === "active"
-      );
-
-      // Compute debt balance manually from transactions to avoid relying on stale closures out of scope
-      const transactions = currentState.debtTransactions.filter(
-        (t) => t.cycleId === activeCycle?.id
-      );
-      const totalPurchases = transactions
-        .filter((t) => t.type === "purchase")
-        .reduce((sum, t) => sum + t.amount, 0);
-      const totalPayments = transactions
-        .filter((t) => t.type === "payment")
-        .reduce((sum, t) => sum + t.amount, 0);
-      const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
-
-      const timestamp = new Date().toISOString();
-      const docNum = generateDocNumber();
-
-      let updatedDebtTransactions = [...currentState.debtTransactions];
-
-      // تصفير وإغلاق الدورة النشطة
-      const updatedCycles = currentState.cycles.map((cy) => {
-        if (cy.customerId === custId && cy.status === "active") {
-          return {
-            ...cy,
-            status: "closed" as const,
-            currentBalance: 0,
-            endDate: timestamp,
-          };
-        }
-        return cy;
+    if (onScheduleDeletion) {
+      setVaporizingCustomers((prev) => [...prev, custId]);
+      onScheduleDeletion('customer', custId, displayName, () => {
+        executeCustomerDeletion(custId);
       });
-
-      if (outstanding > 0) {
-        updatedDebtTransactions.push({
-          id: `tx_wipe_${Date.now()}`,
-          customerId: custId,
-          cycleId: activeCycle?.id || "",
-          type: "payment",
-          amount: outstanding,
-          currency: "د.ل",
-          conversionRate: 1.0,
-          date: timestamp,
-          referenceNo: docNum,
-          note: `مسح الحساب وإلغاء الدين بالكامل`,
-          postedToTreasury: false,
-          createdAt: timestamp,
-        });
-      }
-
-      // وضع علامة الحذف المؤقت للزبون لحفظ الأرشيف واسترجاعه في أي وقت
-      const updatedCustomers = currentState.customers.map((c) => {
-        if (c.id === custId) {
-          return { ...c, isDeleted: true };
-        }
-        return c;
-      });
-
-      onUpdateState({
-        ...currentState,
-        customers: updatedCustomers,
-        cycles: updatedCycles,
-        debtTransactions: updatedDebtTransactions,
-      });
-
-      setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
-    }, 500);
+    } else {
+      setVaporizingCustomers((prev) => [...prev, custId]);
+      setTimeout(() => {
+        executeCustomerDeletion(custId);
+      }, 500);
+    }
   };
 
   // ----------------------------------------------------
@@ -929,19 +928,7 @@ export default function CustomerDebtsModule({
               className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] lg:text-xs py-2 px-3 rounded-lg cursor-pointer flex justify-center items-center gap-1 shadow-sm transition-colors"
             >
               <Send className="w-4 h-4" />
-              <span>طباعة</span>
-            </button>
-            <button
-              onClick={handleShareWhatsApp}
-              className="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] lg:text-xs py-2 px-3 lg:px-4 rounded-lg cursor-pointer flex justify-center items-center gap-1 shadow-sm transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span className="hidden lg:inline">
-                إرسال للواتساب ({selectedForRep.length})
-              </span>
-              <span className="lg:hidden">
-                واتساب ({selectedForRep.length})
-              </span>
+              <span>تصدير التقرير ({selectedForRep.length})</span>
             </button>
           </div>
         </div>

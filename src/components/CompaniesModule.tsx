@@ -1,21 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Landmark,
-  Trash2,
-  Plus,
-  Search,
-  Calendar,
-  Clock,
-  ArrowDownLeft,
-  ShieldAlert,
-  AlertCircle,
-  X,
-  Check,
-  FileText,
-  Camera,
-  Calculator,
-  Copy,
-} from "lucide-react";
+import { Landmark, Trash2, Plus, Search, Calendar, Clock, ArrowDownLeft, ShieldAlert, CircleAlert as AlertCircle, X, Check, FileText, Camera, Calculator, Copy } from "lucide-react";
 import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUtils";
 import { ERPState, Company, CompanyTransaction } from "../types";
 import { VoiceInputButton } from "./VoiceInputButton";
@@ -32,6 +16,15 @@ interface CompaniesModuleProps {
     footerMetrics?: any[],
   ) => void;
   searchQuery?: string;
+  // Global undo deletion system
+  pendingDeletions?: string[];
+  onScheduleDeletion?: (
+    type: 'customer' | 'company' | 'merchant' | 'deposit' | 'transaction',
+    itemId: string,
+    displayName: string,
+    executeDeletion: () => void
+  ) => void;
+  onCancelDeletion?: (itemId: string) => void;
 }
 
 export default function CompaniesModule({
@@ -39,6 +32,9 @@ export default function CompaniesModule({
   onUpdateState,
   onOpenExporter,
   searchQuery = "",
+  pendingDeletions = [],
+  onScheduleDeletion,
+  onCancelDeletion,
 }: CompaniesModuleProps) {
   // Create Company state
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
@@ -371,7 +367,16 @@ export default function CompaniesModule({
   };
 
   const handleDeleteTransaction = (txId: string) => {
-    setCompanyDeleteTxId(txId);
+    const tx = state.companyTransactions.find((t) => t.id === txId);
+    const displayName = tx ? `حركة حساب الشركة` : `حركة حساب`;
+
+    if (onScheduleDeletion) {
+      onScheduleDeletion('transaction', txId, displayName, () => {
+        executeDeleteTransaction(txId);
+      });
+    } else {
+      setCompanyDeleteTxId(txId);
+    }
   };
 
   const executeDeleteTransaction = (txId: string) => {
@@ -412,7 +417,16 @@ export default function CompaniesModule({
   };
 
   const handleSoftDeleteCompany = (compId: string) => {
-    setCompanySoftDeleteId(compId);
+    const comp = state.companies.find((c) => c.id === compId);
+    const displayName = comp ? comp.name : "شركة";
+
+    if (onScheduleDeletion) {
+      onScheduleDeletion('company', compId, displayName, () => {
+        executeSoftDeleteCompany(compId);
+      });
+    } else {
+      setCompanySoftDeleteId(compId);
+    }
   };
 
   const executeSoftDeleteCompany = (compId: string) => {
