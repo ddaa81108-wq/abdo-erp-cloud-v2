@@ -1528,6 +1528,15 @@ export default function App() {
                   مرحباً بك في المنظومة الملكية
                 </motion.p>
 
+                <motion.p
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.9, duration: 0.35 }}
+                  className="mb-4 text-lg font-black text-[#fceabb] md:text-xl"
+                >
+                  اهلا عبده
+                </motion.p>
+
                 <div className="relative flex flex-wrap items-center justify-center gap-x-2 overflow-hidden">
                   <motion.span
                     className="text-base font-black leading-relaxed text-slate-100 md:text-xl"
