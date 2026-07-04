@@ -28,7 +28,7 @@ import {
   DebtTransaction,
   TreasuryTransaction,
 } from "../types";
-import { copySettledImage, generateUnifiedSmartCard } from "../utils/imageExporterUtils";
+import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUtils";
 
 import { VoiceInputButton } from "./VoiceInputButton";
 
@@ -152,20 +152,16 @@ export default function CustomerDebtsModule({
     }
   }, [showSuccessToast]);
 
-  const handleCopyDebtImage = async (customerName: string, debtBalance: number) => {
-    try {
-      const type = debtBalance < 0 ? "trust" : "debt";
-      const success = await generateUnifiedSmartCard(customerName, debtBalance, type, undefined, "د.ل");
-      if (success) {
-        setShowSuccessToast("تم نسخ صورة كارت الدين بنجاح 📋");
-        setTimeout(() => setShowSuccessToast(null), 3000);
-      } else {
-        alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
-      }
-    } catch (err) {
-      console.error("Failed to copy image", err);
-      alert("حدث خطأ أثناء حفظ الصورة في الحافظة.");
-    }
+  const handleCopyDebtImage = (customerName: string, debtBalance: number) => {
+    const type = debtBalance < 0 ? "trust" : "debt";
+    openSmartCardStudio({
+      type,
+      name: customerName,
+      amount: Math.abs(debtBalance),
+      currency: "د.ل",
+    });
+    setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");
+    setTimeout(() => setShowSuccessToast(null), 3000);
   };
 
   // حالة للتأكد إذا كان الزبون مسجل سابقاً ومحذوف

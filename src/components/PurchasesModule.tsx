@@ -16,6 +16,7 @@ import { toPng } from "html-to-image";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 import { ERPState } from "../types";
+import { openSmartCardStudio } from "../utils/imageExporterUtils";
 
 interface PurchasesModuleProps {
   state: ERPState;
@@ -1020,15 +1021,15 @@ export default function PurchasesModule({
           <button
             type="button"
             onClick={() => {
-              const url = new URL("/card-generator.html", window.location.origin);
-              url.searchParams.set("type", "total_purchasing");
-              url.searchParams.set("prev", prevBalance.toString());
-              url.searchParams.set("work", totalTodayWork.toString());
-              url.searchParams.set("paid", totalPaidToday.toString());
-              url.searchParams.set("debt", remainingTotalOwed.toString());
-              url.searchParams.set("egp", remainingEgyptianValue.toString());
-              url.searchParams.set("name", activeMerch === "baqy" ? "البيان" : "سمسم");
-              window.open(url.toString(), "_blank");
+              openSmartCardStudio({
+                type: "purchases",
+                merchant: activeMerch === "baqy" ? "البيان" : "سمسم",
+                p1: prevBalance,
+                p2: totalTodayWork,
+                p3: totalPaidToday,
+                p4: remainingTotalOwed,
+                p5: remainingEgyptianValue,
+              });
             }}
             className="group relative bg-gradient-to-l from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2 transition overflow-hidden shadow-sm"
           >
