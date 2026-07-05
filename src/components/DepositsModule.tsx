@@ -883,16 +883,19 @@ export default function DepositsModule({
                     setExpandedCardId(isExpanded ? null : d.id);
                     if (!isExpanded) resetActionForm();
                   }}
-                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'border-r-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300' : (customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
+                  className={`${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1 text-white' : 'bg-indigo-600 border-indigo-500 text-white'} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center`}
                 >
                   {/* CARD TILE BODY */}
-                  <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1">{d.customerName}</h4>
+                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Landmark className="w-12 h-12 text-white" />
+                  </div>
+                  <h4 className="font-extrabold text-white text-[11px] mb-1 w-full truncate px-1 drop-shadow-sm">{d.customerName}</h4>
                   <div className="flex flex-col items-center">
-                    <span className={`font-mono text-lg font-black ${customerLyd < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                    <span className={`font-mono text-sm font-black ${customerLyd < 0 ? 'text-rose-100' : 'text-white'}`}>
                       {Math.round(customerLyd).toLocaleString('en-US')} د.ل
                     </span>
                     {customerEgp !== 0 && (
-                      <span className={`font-mono text-base font-black mt-1 ${customerEgp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <span className={`font-mono text-xs font-black mt-1 ${customerEgp < 0 ? 'text-rose-100' : 'text-white'}`}>
                         {Math.round(customerEgp).toLocaleString('en-US')} ج.م
                       </span>
                     )}
