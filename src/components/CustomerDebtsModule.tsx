@@ -941,12 +941,12 @@ export default function CustomerDebtsModule({
             const isSelected = selectedForRep.includes(acc.cust.id);
 
             const colors = [
-              { bg: "bg-indigo-600", border: "border-indigo-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-rose-600", border: "border-rose-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-amber-600", border: "border-amber-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-emerald-600", border: "border-emerald-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-purple-600", border: "border-purple-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-teal-600", border: "border-teal-500", text: "text-white", icon: "text-white" },
+              { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
+              { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
+              { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
+              { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
+              { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
+              { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
             ];
             const clr = colors[i % colors.length];
 
@@ -967,7 +967,7 @@ export default function CustomerDebtsModule({
                     setSelectedCustomerId(acc.cust.id);
                   }
                 }}
-                className={`${Number(acc.debtBalance) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1" : clr.bg + " " + clr.border} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[64px] relative overflow-hidden flex flex-col items-center justify-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : ""} ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
+                className={`bg-white border-x border-b border-t-4 border-slate-200 ${Number(acc.debtBalance) === 0 ? "border-t-emerald-400 bg-emerald-50/30" : clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
               >
                 {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
                 {selectionMode && isSelected && (
@@ -985,7 +985,7 @@ export default function CustomerDebtsModule({
                         e.preventDefault();
                         handleQuickDelete(acc.cust.id);
                       }}
-                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-white/80 hover:bg-white text-rose-600 p-1 rounded-full transition-all cursor-pointer z-10 border border-slate-200 shadow-sm"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
                       title="أرشفة ❌"
                     >
                       <X className="w-3 h-3" />
@@ -1006,7 +1006,7 @@ export default function CustomerDebtsModule({
                           handleCopyDebtImage(acc.cust.name, acc.debtBalance);
                         }
                       }}
-                      className={`absolute top-1 left-6 opacity-0 group-hover:opacity-100 p-1 rounded-full transition-all cursor-pointer z-10 border border-white/20 bg-white/10 text-white shadow-sm ${Number(acc.debtBalance) === 0 ? 'bg-emerald-100/90 text-emerald-700 border-emerald-200' : ''}`}
+                      className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`}
                       title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
                     >
                       <Copy className="w-3 h-3" />
@@ -1014,24 +1014,20 @@ export default function CustomerDebtsModule({
                   </>
                 )}
 
-                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Landmark className="w-12 h-12 text-white" />
-                </div>
-
-                <h4 className={`font-extrabold ${Number(acc.debtBalance) === 0 ? 'text-white' : 'text-white'} text-[11px] w-full px-2 truncate mb-1.5 drop-shadow-sm`}>
+                <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>
                   {acc.cust.name}
                 </h4>
 
                 {acc.debtBalance > 0 ? (
-                  <span className={`font-mono font-black ${Number(acc.debtBalance) > 9999 ? 'text-[10px]' : 'text-xs'} text-white px-2 py-0.5 rounded-2xl border-white/20 shadow-sm`}>
+                  <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : acc.debtBalance < 0 ? (
-                  <span className={`font-mono font-black text-white text-xs px-2 py-0.5 rounded-2xl border-white/20 shadow-sm`} title="رصيد دائن لصالحه (أمانة)">
+                  <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : (
-                  <span className={`font-sans font-black text-white text-[10px] px-2 py-0.5 rounded-2xl border-white/20 shadow-sm`}>
+                  <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>
                     مسدد ✓
                   </span>
                 )}
