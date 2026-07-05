@@ -941,12 +941,12 @@ export default function CustomerDebtsModule({
             const isSelected = selectedForRep.includes(acc.cust.id);
 
             const colors = [
-              { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
-              { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
-              { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
-              { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
-              { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
-              { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
+              { borderT: "border-t-indigo-500", text: "text-indigo-700", bg: "bg-indigo-50/90", bgBadge: "bg-indigo-100/80", accent: "border-indigo-100" },
+              { borderT: "border-t-rose-500", text: "text-rose-700", bg: "bg-rose-50/90", bgBadge: "bg-rose-100/80", accent: "border-rose-100" },
+              { borderT: "border-t-amber-500", text: "text-amber-700", bg: "bg-amber-50/90", bgBadge: "bg-amber-100/80", accent: "border-amber-100" },
+              { borderT: "border-t-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50/90", bgBadge: "bg-emerald-100/80", accent: "border-emerald-100" },
+              { borderT: "border-t-purple-500", text: "text-purple-700", bg: "bg-purple-50/90", bgBadge: "bg-purple-100/80", accent: "border-purple-100" },
+              { borderT: "border-t-cyan-500", text: "text-cyan-700", bg: "bg-cyan-50/90", bgBadge: "bg-cyan-100/80", accent: "border-cyan-100" },
             ];
             const clr = colors[i % colors.length];
 
@@ -967,7 +967,7 @@ export default function CustomerDebtsModule({
                     setSelectedCustomerId(acc.cust.id);
                   }
                 }}
-                className={`bg-white border-x border-b border-t-4 border-slate-200 ${Number(acc.debtBalance) === 0 ? "border-t-emerald-400 bg-emerald-50/30" : clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
+                className={`border ${clr.accent} ${Number(acc.debtBalance) === 0 ? "border-emerald-200 bg-emerald-50/90" : clr.bg} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-3xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-sm shadow-slate-900/5 group min-h-[70px] relative overflow-hidden ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
               >
                 {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
                 {selectionMode && isSelected && (
@@ -985,7 +985,7 @@ export default function CustomerDebtsModule({
                         e.preventDefault();
                         handleQuickDelete(acc.cust.id);
                       }}
-                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-white/80 hover:bg-white text-rose-600 p-1 rounded-full transition-all cursor-pointer z-10 border border-slate-200 shadow-sm"
                       title="أرشفة ❌"
                     >
                       <X className="w-3 h-3" />
@@ -1006,7 +1006,7 @@ export default function CustomerDebtsModule({
                           handleCopyDebtImage(acc.cust.name, acc.debtBalance);
                         }
                       }}
-                      className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`}
+                      className={`absolute top-1 left-6 opacity-0 group-hover:opacity-100 p-1 rounded-full transition-all cursor-pointer z-10 border shadow-sm ${Number(acc.debtBalance) === 0 ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border-emerald-200' : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700 border-indigo-200'}`}
                       title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
                     >
                       <Copy className="w-3 h-3" />
@@ -1014,20 +1014,20 @@ export default function CustomerDebtsModule({
                   </>
                 )}
 
-                <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>
+                <h4 className={`font-semibold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>
                   {acc.cust.name}
                 </h4>
 
                 {acc.debtBalance > 0 ? (
-                  <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>
+                  <span className={`font-mono font-black ${Number(acc.debtBalance) > 9999 ? 'text-[10px]' : 'text-xs'} ${clr.text} ${clr.bgBadge} px-2 py-0.5 rounded-2xl border ${clr.accent} shadow-sm`}>
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : acc.debtBalance < 0 ? (
-                  <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">
+                  <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded-2xl border border-emerald-200 shadow-sm ring-1 ring-emerald-200`} title="رصيد دائن لصالحه (أمانة)">
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : (
-                  <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>
+                  <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded-2xl border border-emerald-100 shadow-sm`}>
                     مسدد ✓
                   </span>
                 )}
