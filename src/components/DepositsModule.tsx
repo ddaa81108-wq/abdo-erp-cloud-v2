@@ -39,15 +39,15 @@ export default function DepositsModule({
 
   // Floating Calculator Logic
   const handleAddCalcRow = () => {
-    setCalcRows([...calcRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
+    setCalcRows(prevRows => [...prevRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
   };
 
   const handleUpdateCalcRow = (id: string, field: string, val: string) => {
-    setCalcRows(calcRows.map(r => r.id === id ? { ...r, [field]: val } : r));
+    setCalcRows(prevRows => prevRows.map(r => r.id === id ? { ...r, [field]: val } : r));
   };
 
   const handleRemoveCalcRow = (id: string) => {
-    setCalcRows(calcRows.filter(r => r.id !== id));
+    setCalcRows(prevRows => prevRows.filter(r => r.id !== id));
   };
 
   const calculateRowResult = (row: typeof calcRows[0]) => {
@@ -657,6 +657,26 @@ export default function DepositsModule({
     setActionTargetId('');
   };
 
+  const handleCloseExpandedCard = () => {
+    setExpandedCardId(null);
+    resetActionForm();
+  };
+
+  const handleToggleExpandedCard = (cardId: string, isExpanded: boolean) => {
+    if (isExpanded) {
+      handleCloseExpandedCard();
+      return;
+    }
+
+    setExpandedCardId(cardId);
+    resetActionForm();
+  };
+
+  const handleModalBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    handleCloseExpandedCard();
+  };
+
   // Generate Image-Report inside the card for WhatsApp sharing
   const handleExportSingleDepositDraft = (d: TrustDeposit) => {
     const headers = ['تاريخ الحركة', 'نوع الحركة والمجال', 'تأثير ليبي د.ل', 'تأثير مصري جنيه', 'البيان والتفاصيل'];
@@ -879,10 +899,7 @@ export default function DepositsModule({
               return (
                 <div
                   key={d.id}
-                  onClick={() => {
-                    setExpandedCardId(isExpanded ? null : d.id);
-                    if (!isExpanded) resetActionForm();
-                  }}
+                  onClick={() => handleToggleExpandedCard(d.id, isExpanded)}
                   className={`${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1 text-white' : 'bg-indigo-600 border-indigo-500 text-white'} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center`}
                 >
                   {/* CARD TILE BODY */}
@@ -903,7 +920,10 @@ export default function DepositsModule({
 
                   {/* EXPANDABLE WORKSPACE DRAWER AS MODAL */}
                   {isExpanded && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto cursor-default">
+                    <div
+                      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto cursor-default"
+                      onClick={handleModalBackdropClick}
+                    >
                       <div 
                         className="relative w-full max-w-4xl bg-white border border-slate-200 shadow-2xl rounded-2xl flex flex-col max-h-[95vh] my-auto"
                         onClick={(e) => e.stopPropagation()}
@@ -1000,9 +1020,9 @@ export default function DepositsModule({
                             </div>
 
                             <button
-                              onClick={() => {
-                                setExpandedCardId(null);
-                                resetActionForm();
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCloseExpandedCard();
                               }}
                               className="text-xs font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors"
                             >
@@ -1019,49 +1039,49 @@ export default function DepositsModule({
                       <div className="grid grid-cols-3 sm:grid-cols-7 gap-1 text-center bg-slate-200/50 p-1 rounded-lg">
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('deposit'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'deposit' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           ➕ إيداع ليبي
                         </button>
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('withdraw'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'withdraw' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           💸 سحب ليبي
                         </button>
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('deposit_egp'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'deposit_egp' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           🇪🇬 إيداع مصري
                         </button>
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('withdraw_egp'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw_egp'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'withdraw_egp' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           🇪🇬 سحب مصري
                         </button>
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('convert'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('convert'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'convert' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           🔄 تحويل مصري
                         </button>
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('transfer_egypt'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('transfer_egypt'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'transfer_egypt' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           ✈️ حوالة لمصر
                         </button>
                         <button
                           type="button"
-                          onClick={() => { resetActionForm(); setActionType('settlement'); }}
+                          onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('settlement'); }}
                           className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'settlement' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
                         >
                           🤝 مقاصة ديون
@@ -1081,7 +1101,7 @@ export default function DepositsModule({
                               {actionType === 'transfer_egypt' && 'إرسال حوالة مباشرة لمصر (خصماً من الأمانة)'}
                               {actionType === 'settlement' && 'مقاصة وتحويل الأمانة لتسديد ديون الدورة النشطة'}
                             </span>
-                            <button onClick={() => setActionType(null)} className="text-[10px] text-rose-500 font-bold hover:underline">إغلاق</button>
+                            <button onClick={(e) => { e.stopPropagation(); setActionType(null); }} className="text-[10px] text-rose-500 font-bold hover:underline">إغلاق</button>
                           </h5>
 
                           <div className="space-y-3">
@@ -1326,7 +1346,8 @@ export default function DepositsModule({
                             <div className="flex justify-end gap-1.5 pt-2 border-t text-xs">
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   if (actionType === 'deposit') handleAddLydCustody(d.id);
                                   if (actionType === 'withdraw') handleWithdrawLydCustody(d.id);
                                   if (actionType === 'deposit_egp') handleDepositEgpCustody(d.id);
