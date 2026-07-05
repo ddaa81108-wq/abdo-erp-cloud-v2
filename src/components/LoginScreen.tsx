@@ -181,7 +181,7 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
             />
           </div>
 
-          <button type="submit" className="login-btn">دخول المنظومة</button>
+          <button type="submit" className="login-btn">دخول المنظومة — لا اله الا الله</button>
         </form>
       </div>
     </>
