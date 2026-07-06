@@ -7,6 +7,7 @@ export interface Customer {
   id: string;
   name: string;
   createdAt: string;
+  updatedAt?: string;
   lastUpdated?: string;
   phone?: string;
   collector?: 'abdullah' | 'ali'; // To divide debts into two sections

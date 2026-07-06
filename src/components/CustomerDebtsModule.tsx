@@ -213,15 +213,17 @@ export default function CustomerDebtsModule({
   // 4. حالات حذف الزبون الكلي
   const [quickXCustomer, setQuickXCustomer] = useState<any | null>(null);
 
-  const updateCustomerLastUpdated = (customers: Customer[], customerId: string, timestamp: string | number) => {
+  const updateCustomerTimestamp = (customers: Customer[], customerId: string, timestamp: string | number) => {
     const normalizedTimestamp = typeof timestamp === "number" ? new Date(timestamp).toISOString() : timestamp;
     return customers.map((cust) =>
-      cust.id === customerId ? { ...cust, lastUpdated: normalizedTimestamp } : cust,
+      cust.id === customerId
+        ? { ...cust, updatedAt: normalizedTimestamp, lastUpdated: normalizedTimestamp }
+        : cust,
     );
   };
 
   const getCustomerLastUpdatedTime = (cust: Customer) => {
-    const raw = cust.lastUpdated || cust.createdAt || "";
+    const raw = cust.updatedAt || "";
     const parsed = new Date(raw).getTime();
     return Number.isNaN(parsed) ? 0 : parsed;
   };
@@ -305,6 +307,7 @@ export default function CustomerDebtsModule({
       phone,
       collector,
       createdAt: timestamp,
+      updatedAt: timestamp,
       lastUpdated: timestamp,
       isDeleted: false,
       type: "customer", // دائماً زبون عادي
@@ -397,7 +400,7 @@ export default function CustomerDebtsModule({
 
     onUpdateState({
       ...state,
-      customers: updateCustomerLastUpdated(updatedCustomers, restorableCustomer.id, Date.now()),
+      customers: updateCustomerTimestamp(updatedCustomers, restorableCustomer.id, Date.now()),
       cycles: [...state.cycles, newCycle],
       debtTransactions: updatedTransactions,
     });
@@ -520,7 +523,7 @@ export default function CustomerDebtsModule({
       createdAt: timestamp,
     };
 
-    const updatedCustomers = updateCustomerLastUpdated(state.customers, currentAcc.cust.id, Date.now());
+    const updatedCustomers = updateCustomerTimestamp(state.customers, currentAcc.cust.id, Date.now());
 
     onUpdateState({
       ...state,
@@ -600,7 +603,7 @@ export default function CustomerDebtsModule({
       return cy;
     });
 
-    const updatedCustomers = updateCustomerLastUpdated(state.customers, selectedCustomerId, Date.now());
+    const updatedCustomers = updateCustomerTimestamp(state.customers, selectedCustomerId, Date.now());
 
     onUpdateState({
       ...state,
@@ -683,7 +686,7 @@ export default function CustomerDebtsModule({
 
     const updatedCustomers = currentState.customers.map((c) => {
       if (c.id === custId) {
-        return { ...c, isDeleted: true, lastUpdated: timestamp };
+        return { ...c, isDeleted: true, updatedAt: timestamp, lastUpdated: timestamp };
       }
       return c;
     });
