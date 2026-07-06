@@ -1274,89 +1274,54 @@ export default function CustomerDebtsModule({
               </button>
             </div>
 
-            {/* أرقام تجميع ديون هذا الزبون مع تصدير الصورة */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              {selectedAccDetails.debtBalance > 0 ? (
-                <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl">
-                  <span className="text-rose-800 text-[10px] font-bold block mb-0.5">
-                    الرصيد القائم حالياً عليه
-                  </span>
-                  <span className="text-base font-mono font-black text-rose-600">
-                    {Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل
-                  </span>
-                </div>
-              ) : selectedAccDetails.debtBalance < 0 ? (
-                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl ring-1 ring-emerald-500" title="أمانة">
-                  <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">
-                    رصيد دائن لصالحه (له أمانة)
-                  </span>
-                  <span className="text-base font-mono font-black text-emerald-700">
-                    {Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل
-                  </span>
-                </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl">
-                  <span className="text-slate-800 text-[10px] font-bold block mb-0.5">
-                    الرصيد القائم حالياً
-                  </span>
-                  <span className="text-base font-mono font-black text-slate-500">
-                    مسدد و خالص ✓
-                  </span>
-                </div>
-              )}
-
-              <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">
-                  مجموع الدفوعات المسددة من قبل
-                </span>
-                <span className="text-base font-mono font-black text-emerald-700">
-                  {Math.round(selectedAccDetails.historicalTxs
-                    .filter((t) => t.type === "payment")
-                    .reduce((sum, t) => sum + t.amount, 0)
-                  ).toLocaleString("en-US")}{" "}
-                  د.ل
-                </span>
+            {/* بيانات الزبون الأساسية (موجزة) */}
+            <div className="mb-4">
+              <div className="text-sm text-slate-700 font-medium">بيانات الزبون</div>
+              <div className="mt-2 flex flex-col gap-1 text-slate-600 text-sm">
+                <div>الاسم: <span className="font-bold text-slate-900">{selectedAccDetails.cust.name}</span></div>
+                {selectedAccDetails.cust.phone && (
+                  <div>الهاتف: <span className="font-mono">{selectedAccDetails.cust.phone}</span></div>
+                )}
+                {selectedAccDetails.cust.collector && (
+                  <div>محصل: <span className="font-bold">{selectedAccDetails.cust.collector}</span></div>
+                )}
               </div>
+            </div>
 
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-slate-500 font-bold text-[10px] block mb-0.5">
-                      إرسال كشف للزبون
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      اضغط لتصدير نسخة مخصصة للواتساب
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {selectedAccDetails.debtBalance === 0 ? (
-                      <button
-                        onClick={async () => {
-                          const success = await copySettledImage(selectedAccDetails.cust.name);
-                          if (success) {
-                            setShowSuccessToast("تم مشاركة كارت المخالصة بنجاح 📋");
-                            setTimeout(() => setShowSuccessToast(null), 3000);
-                          }
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center shadow-md border border-emerald-500"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        نسخ كارت المخالصة 📋
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() =>
-                          handleCopyDebtImage(selectedAccDetails.cust.name, selectedAccDetails.debtBalance)
-                        }
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        نسخ كارت الدين السريع 📋
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
+            {/* أزرار العمليات في منتصف النافذة (إضافة دين، دفع جزئي، سداد كامل) */}
+            <div className="mb-4 flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setInnerDebtAmount("");
+                  setInnerDebtNote("");
+                  setShowAddDebtInnerModal(true);
+                }}
+                className="bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
+              >
+                🔴 إضافة دين جديد
+              </button>
+
+              <button
+                onClick={() => {
+                  setPaymentType("partial");
+                  setPaymentAmount("");
+                  setShowPaymentModal(true);
+                }}
+                className="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs px-4 py-2 rounded-lg"
+              >
+                🟢 دفع جزء من الدين
+              </button>
+
+              <button
+                onClick={() => {
+                  setPaymentType("full");
+                  setPaymentAmount(selectedAccDetails.debtBalance.toString());
+                  setShowPaymentModal(true);
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-lg"
+              >
+                ✅ سداد كامل وتصفير
+              </button>
             </div>
 
             {/* الأرشيف وحركات الدفوعات التاريخية */}
@@ -1434,53 +1399,7 @@ export default function CustomerDebtsModule({
               )}
             </div>
 
-            {/* شريط الإجراءات السفلي (سداد كامل/جزء ومسح الحساب) */}
-            <div className="border-t pt-3 flex flex-wrap gap-2 justify-between items-center">
-              {/* تصفير وحذف الزبون بالأول */}
-              <button
-                onClick={() => handleQuickDelete()}
-                className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>مسح وإلغاء الزبون بالكامل 🗑️</span>
-              </button>
-
-              {/* تحصيل بالبوابة */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setInnerDebtAmount("");
-                    setInnerDebtNote("");
-                    setShowAddDebtInnerModal(true);
-                  }}
-                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer"
-                >
-                  🔴 إضافة دين جديد
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPaymentType("partial");
-                    setPaymentAmount("");
-                    setShowPaymentModal(true);
-                  }}
-                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer"
-                >
-                  🟢 دفع جزء من الدين
-                </button>
-
-                <button
-                  onClick={() => {
-                    setPaymentType("full");
-                    setPaymentAmount(selectedAccDetails.debtBalance.toString());
-                    setShowPaymentModal(true);
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs p-2.5 px-4 rounded-xl shadow-xs transition cursor-pointer"
-                >
-                  ✅ سداد كامل وتصفير
-                </button>
-              </div>
-            </div>
+            {/* الأزرار تم نقلها إلى منتصف النافذة؛ لا توجد أي أزرار خطرة هنا */}
           </div>
         </div>
       )}
