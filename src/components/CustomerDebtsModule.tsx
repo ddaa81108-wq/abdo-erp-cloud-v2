@@ -181,6 +181,30 @@ export default function CustomerDebtsModule({
   const delegatesList = state.delegates || [];
   const [paymentNote, setPaymentNote] = useState("");
 
+  const customerNameSuggestions = React.useMemo(() => {
+    const query = newCustName.trim().toLowerCase();
+    if (!query) return [];
+
+    const matches = state.customers
+      .filter((customer) => customer.name.trim().toLowerCase().includes(query))
+      .slice(0, 8)
+      .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+
+    return matches.filter((customer, index, arr) => arr.findIndex((item) => item.id === customer.id) === index);
+  }, [newCustName, state.customers]);
+
+  const handleSelectSuggestedCustomer = (customer: Customer) => {
+    setNewCustName(customer.name);
+    setNewCustPhone(customer.phone || "");
+    setNewCustCollector((customer.collector as "abdullah" | "ali") || "abdullah");
+    setSelectedCustomerId(customer.id);
+    setShowAddCustomerModal(false);
+    setNewCustName("");
+    setNewCustDebt("");
+    setShowRestorePrompt(false);
+    setRestorableCustomer(null);
+  };
+
   // 3.5 حالة إضافة دين جديد داخل النافذة الكبيرة
   const [showAddDebtInnerModal, setShowAddDebtInnerModal] = useState(false);
   const [innerDebtAmount, setInnerDebtAmount] = useState("");
@@ -1067,6 +1091,26 @@ export default function CustomerDebtsModule({
                   <div className="absolute right-1.5 top-1.5">
                     <VoiceInputButton onResult={(text) => setNewCustName(prev => (prev ? prev + ' ' + text : text))} />
                   </div>
+
+                  {customerNameSuggestions.length > 0 && (
+                    <ul className="absolute top-full mt-2 right-0 left-0 z-[60] max-h-52 overflow-y-auto rounded-2xl border border-white/20 bg-slate-950/80 backdrop-blur-xl shadow-2xl shadow-slate-950/40">
+                      {customerNameSuggestions.map((customer) => (
+                        <li key={customer.id}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => handleSelectSuggestedCustomer(customer)}
+                            className="flex w-full items-center justify-between px-3 py-2.5 text-right text-[11px] text-slate-100 transition hover:bg-white/10"
+                          >
+                            <span className="font-semibold">{customer.name}</span>
+                            <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
+                              {customer.isDeleted ? "أرشيف" : "موجود"}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
 
