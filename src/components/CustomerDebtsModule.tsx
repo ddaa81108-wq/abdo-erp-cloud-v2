@@ -411,10 +411,14 @@ export default function CustomerDebtsModule({
   // تصفية الزبائن وتصنيفهم
   // ----------------------------------------------------
   // تحتوي هذه القائمة على كافة الحسابات غير المحذوفة للبحث والوصول وتسجيل العمليات حتى لو كان رصيدها صفراً
-  const allActiveAndSettledCustomers = state.customers
+  const sortedCustomers = [...state.customers]
     .filter((cust) => !cust.isDeleted)
-    .sort((a, b) => getCustomerLastUpdatedTime(b) - getCustomerLastUpdatedTime(a))
-    .map((cust) => {
+    .sort((a, b) => {
+      const timeDiff = getCustomerLastUpdatedTime(b) - getCustomerLastUpdatedTime(a);
+      return timeDiff !== 0 ? timeDiff : a.name.localeCompare(b.name, "ar");
+    });
+
+  const allActiveAndSettledCustomers = sortedCustomers.map((cust) => {
       // الحصول على الدورة النشطة للديون الخاصة به حالياً
       const activeCycle = state.cycles.find(
         (cy) => cy.customerId === cust.id && cy.status === "active",
