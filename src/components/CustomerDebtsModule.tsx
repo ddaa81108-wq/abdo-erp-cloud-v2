@@ -986,8 +986,14 @@ export default function CustomerDebtsModule({
       {/* 3. شبكة كروت الزبائن */}
       <div className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 content-start">
-          {[...activeCustomersList].reverse().map((acc, i) => {
-            const isSelected = selectedForRep.includes(acc.cust.id);
+          {(() => {
+            const sortedActiveCustomers = [...activeCustomersList].sort((a, b) => {
+              const dateA = new Date(a.cust.updatedAt || a.cust.createdAt || 0).getTime();
+              const dateB = new Date(b.cust.updatedAt || b.cust.createdAt || 0).getTime();
+              return dateB - dateA;
+            });
+            return sortedActiveCustomers.map((acc, i) => {
+              const isSelected = selectedForRep.includes(acc.cust.id);
 
             const colors = [
               { bg: "bg-indigo-600", border: "border-indigo-500", text: "text-white", icon: "text-white" },
