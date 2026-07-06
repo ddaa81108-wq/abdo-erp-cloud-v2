@@ -223,7 +223,7 @@ export default function CustomerDebtsModule({
   };
 
   const getCustomerLastUpdatedTime = (cust: Customer) => {
-    const raw = cust.updatedAt || "";
+    const raw = cust.updatedAt || cust.createdAt || "";
     const parsed = new Date(raw).getTime();
     return Number.isNaN(parsed) ? 0 : parsed;
   };
