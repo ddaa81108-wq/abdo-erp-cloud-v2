@@ -7,6 +7,7 @@ export interface Customer {
   id: string;
   name: string;
   createdAt: string;
+  lastUpdated?: string;
   phone?: string;
   collector?: 'abdullah' | 'ali'; // To divide debts into two sections
   isDeleted?: boolean; // track soft deleted accounts for archive discovery

@@ -213,6 +213,15 @@ export default function CustomerDebtsModule({
   // 4. حالات حذف الزبون الكلي
   const [quickXCustomer, setQuickXCustomer] = useState<any | null>(null);
 
+  const updateCustomerLastUpdated = (customers: Customer[], customerId: string, timestamp: string) =>
+    customers.map((cust) => (cust.id === customerId ? { ...cust, lastUpdated: timestamp } : cust));
+
+  const getCustomerLastUpdatedTime = (cust: Customer) => {
+    const raw = cust.lastUpdated || cust.createdAt || "";
+    const parsed = new Date(raw).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
   // دالة لتوليد رقم مستند تلقائي وبسيط للحركات
   const generateDocNumber = () => {
     const totalCount = state.debtTransactions.length + 101;
@@ -285,12 +294,14 @@ export default function CustomerDebtsModule({
     collector: 'abdullah' | 'ali'
   ) => {
     const id = `cust_${Date.now()}`;
+    const timestamp = new Date().toISOString();
     const newCust: Customer = {
       id,
       name,
       phone,
       collector,
-      createdAt: new Date().toISOString(),
+      createdAt: timestamp,
+      lastUpdated: timestamp,
       isDeleted: false,
       type: "customer", // دائماً زبون عادي
     };
@@ -382,7 +393,7 @@ export default function CustomerDebtsModule({
 
     onUpdateState({
       ...state,
-      customers: updatedCustomers,
+      customers: updateCustomerLastUpdated(updatedCustomers, restorableCustomer.id, new Date().toISOString()),
       cycles: [...state.cycles, newCycle],
       debtTransactions: updatedTransactions,
     });
@@ -401,9 +412,9 @@ export default function CustomerDebtsModule({
   // ----------------------------------------------------
   // تحتوي هذه القائمة على كافة الحسابات غير المحذوفة للبحث والوصول وتسجيل العمليات حتى لو كان رصيدها صفراً
   const allActiveAndSettledCustomers = state.customers
+    .filter((cust) => !cust.isDeleted)
+    .sort((a, b) => getCustomerLastUpdatedTime(b) - getCustomerLastUpdatedTime(a))
     .map((cust) => {
-      if (cust.isDeleted) return null;
-
       // الحصول على الدورة النشطة للديون الخاصة به حالياً
       const activeCycle = state.cycles.find(
         (cy) => cy.customerId === cust.id && cy.status === "active",
@@ -504,8 +515,11 @@ export default function CustomerDebtsModule({
       createdAt: timestamp,
     };
 
+    const updatedCustomers = updateCustomerLastUpdated(state.customers, currentAcc.cust.id, timestamp);
+
     onUpdateState({
       ...state,
+      customers: updatedCustomers,
       cycles: updatedCycles,
       debtTransactions: [...state.debtTransactions, newTx],
     });
@@ -581,8 +595,11 @@ export default function CustomerDebtsModule({
       return cy;
     });
 
+    const updatedCustomers = updateCustomerLastUpdated(state.customers, selectedCustomerId, timestamp);
+
     onUpdateState({
       ...state,
+      customers: updatedCustomers,
       cycles: updatedCycles,
       debtTransactions: [...state.debtTransactions, paymentTx],
     });
@@ -661,7 +678,7 @@ export default function CustomerDebtsModule({
 
     const updatedCustomers = currentState.customers.map((c) => {
       if (c.id === custId) {
-        return { ...c, isDeleted: true };
+        return { ...c, isDeleted: true, lastUpdated: timestamp };
       }
       return c;
     });
