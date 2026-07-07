@@ -80,6 +80,15 @@
         input[type="color"] { -webkit-appearance: none; padding: 0; border: none; border-radius: 8px; cursor: pointer; }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; border: 1px solid #444; }
+        /* تحسين الطباعة: حافظ على ألوان الخلفيات، إزالة الظلال، وزيادة وضوح العناصر */
+        @media print {
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+            .card { box-shadow: none !important; border-radius: 12px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .card * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .spacer, .hidden-element { display: none !important; }
+            /* تضييق الحواف لطباعة أنظف */
+            html, body { background: #fff !important; }
+        }
     </style>
 </head>
 <body class="bg-[#121212] text-white min-h-screen font-sans p-4" onload="initDashboard()">
@@ -732,6 +741,27 @@
                     document.getElementById('amount-input-label').innerText = "القيمة:";
                     document.getElementById('amountInput').value = "0";
                     document.getElementById('secondary-price-group').classList.add('hidden-element');
+                    // Remove decorative dot-only elements (three dots) if present
+                    try {
+                        const cardEl = document.getElementById('goldenCard');
+                        Array.from(cardEl.children).forEach(ch => {
+                            const txt = (ch.innerText || '').trim();
+                            if (/^[\.\u2022\u25CF\u00B7\*\s]{1,6}$/.test(txt)) {
+                                ch.classList.add('hidden-element');
+                            }
+                        });
+                    } catch (e) {}
+                    // Raise the status line a bit for better balance when printing
+                    const statusEl = document.getElementById('status-label');
+                    statusEl.style.transform = 'translateY(-10px)';
+                    statusEl.style.marginBottom = '6px';
+                    // Align currency and number on same baseline and raise the number slightly
+                    const amountText = document.getElementById('amount-container');
+                    const displayAmount = document.getElementById('display-amount');
+                    const currencyLabel = document.getElementById('currency-label');
+                    if (amountText) amountText.style.alignItems = 'baseline';
+                    if (displayAmount) { displayAmount.style.position = 'relative'; displayAmount.style.top = '-8px'; }
+                    if (currencyLabel) currencyLabel.style.alignSelf = 'flex-end';
                 }
                 else if (currentType === 'companies') {
                     document.getElementById('companies-inputs-group').classList.remove('hidden-element');
@@ -758,6 +788,14 @@
                 document.getElementById('card-footer').style.fontWeight = '';
                 document.getElementById('exchange-note').classList.add('hidden-element');
                 document.getElementById('amount-box-container').style.marginTop = '';
+                // Reset any zero-specific inline styles
+                try {
+                    const statusEl = document.getElementById('status-label'); if (statusEl) { statusEl.style.transform = ''; statusEl.style.marginBottom = ''; }
+                    const amountText = document.getElementById('amount-container'); if (amountText) amountText.style.alignItems = '';
+                    const displayAmount = document.getElementById('display-amount'); if (displayAmount) { displayAmount.style.position=''; displayAmount.style.top=''; }
+                    const currencyLabel = document.getElementById('currency-label'); if (currencyLabel) currencyLabel.style.alignSelf = '';
+                    // ensure decorative elements are visible again if needed (do not force-show)
+                } catch (e) {}
             }
         }
 
