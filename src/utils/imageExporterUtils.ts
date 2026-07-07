@@ -202,6 +202,7 @@ export interface SmartCardStudioParams {
   p3?: number | string;
   p4?: number | string;
   p5?: number | string;
+  date?: string;
 }
 
 // يفتح منظومة الكروت الذكية (card-generator.html) متملّية ببيانات القسم

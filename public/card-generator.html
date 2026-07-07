@@ -41,14 +41,18 @@
         .large-note { font-size: 38pt !important; line-height: 1.8; padding: 40px !important; background: transparent !important; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
 
         /* الكشف الماسي */
-        .final-statement-box { width: 95%; display: flex; flex-direction: column; margin: 10px 0; background: transparent; border: none; gap: 15px; }
-        .stmt-header { text-align: center; font-size: 34pt; font-weight: 900; margin-bottom: 5px; color: var(--text-main); transition: color 0.3s ease; }
-        .stmt-date { text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 20px; color: var(--text-main); opacity: 0.8; }
-        .stmt-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: var(--badge-bg); border-radius: 15px; border: none; }
-        .stmt-label { font-size: 24pt; font-weight: bold; color: var(--text-main); }
-        .stmt-value { font-size: 32pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; }
-        .stmt-row.final-row { background: transparent; border: 3px dashed var(--badge-border); margin-top: 10px; }
+        .final-statement-box { width: 95%; display: flex; flex-direction: column; margin: 0; background: transparent; border: none; gap: 14px; }
+        .stmt-header { text-align: center; font-size: 34pt; font-weight: 900; margin: 0; color: var(--text-main); transition: color 0.3s ease; line-height: 1.2; }
+        .stmt-date { text-align: center; font-size: 18pt; font-weight: bold; margin: 0 0 8px; color: var(--text-main); opacity: 0.8; }
+        .stmt-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 16px 28px; background: var(--badge-bg); border-radius: 18px; border: 2px solid var(--badge-border); min-height: 82px; }
+        .stmt-label { font-size: 24pt; font-weight: 900; color: var(--text-main); line-height: 1.25; overflow-wrap: anywhere; }
+        .stmt-value { font-size: 34pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; direction: ltr; min-width: 260px; line-height: 1; }
+        .stmt-row.final-row { background: rgba(255, 255, 255, 0.28); border: 4px solid var(--text-main); margin-top: 6px; box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
         .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 38pt; }
+        .masraweya-card { justify-content: flex-start; gap: 16px; padding-top: 34px; padding-bottom: 28px; }
+        .masraweya-card .final-statement-box { width: 96%; gap: 13px; }
+        .masraweya-card .stmt-header { font-size: 38pt; }
+        .masraweya-card .stmt-date { font-size: 20pt; }
 
         /* كارت المشتريات */
         .purchases-box { width: 95%; display: flex; flex-direction: column; gap: 15px; margin: 10px 0; background: transparent; border: none; }
@@ -367,6 +371,11 @@
                 setVal('input-recv', 'recv');
                 setVal('input-total', 'total');
                 setVal('input-remain', 'remain');
+                const incomingDate = params.get('date') || params.get('day');
+                if (incomingDate) {
+                    document.getElementById('stmt-date-display').innerText = incomingDate;
+                    document.getElementById('card-date-display').innerText = "التاريخ: " + incomingDate;
+                }
             } else if (currentType === 'purchases') {
                 setVal('purchasesMerchantType', 'merchant');
                 document.getElementById('p-in-1').value = params.get('p1') ?? params.get('prev') ?? '0';
@@ -619,6 +628,9 @@
             let themeValue = document.getElementById('themeSelect').value;
             let cardContainer = document.getElementById('goldenCard');
             cardContainer.className = "card " + themeValue;
+            if (currentType === 'masraweya' || currentType === 'final_statement') {
+                cardContainer.classList.add('masraweya-card');
+            }
 
             let titleColor = document.getElementById('titleColorPicker').value;
             document.getElementById('card-header').style.color = titleColor;
