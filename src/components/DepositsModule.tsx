@@ -623,7 +623,7 @@ export default function DepositsModule({
   // Direct complete delete - upgraded to soft delete to trash can without confirm trigger
   const handleDeleteDeposit = (id: string) => {
     const deposit = state.trustDeposits.find(d => d.id === id);
-    const displayName = deposit ? deposit.name : "أمانة";
+    const displayName = deposit ? deposit.customerName : "أمانة";
 
     if (onScheduleDeletion) {
       onScheduleDeletion('deposit', id, displayName, () => {
