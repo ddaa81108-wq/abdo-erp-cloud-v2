@@ -294,6 +294,7 @@
             { id: 'debt', label: 'قسم ديون العملاء' },
             { id: 'companies', label: 'قسم الشركات والتجار' },
             { id: 'trust', label: 'قسم الامانات' },
+            { id: 'zero', label: 'تصفير الحساب' },
             { id: 'masraweya', label: 'قسم المصراويه' },
             { id: 'purchases', label: 'قسم المشتريات' },
             { id: 'alert', label: 'إشعار تنبيه 📢' },
@@ -304,6 +305,7 @@
             'debt': [{ name: 'أحمد حمادة', amount: '15000', note: 'متبقي من حساب سابق' }],
             'companies': [{ name: 'شركة الأهرام', amount: '150000', note: 'دفعة تحت الحساب' }],
             'trust': [{ name: 'خالد الزواوي', amount: '8000', note: 'أمانة مستلمة' }],
+            'zero': [{ name: 'حساب تم تصفيره', amount: '0', note: 'تم تصفير رصيد الحساب بنجاح' }],
             'masraweya': [{ name: 'حساب مصراويه', amount: '0', note: '' }],
             'purchases': [{ name: 'شراء بضاعة', amount: '0', note: '' }],
             'alert': [],
@@ -710,6 +712,14 @@
                     document.getElementById('status-label').innerText = "إجمالي الديون المستحقة عليك:";
                     document.getElementById('card-header').innerText = "❖ إشعار مديونية ❖";
                 } 
+                else if (currentType === 'zero') {
+                    document.getElementById('status-label').innerText = "تم تصفير رصيد الحساب بنجاح";
+                    document.getElementById('card-header').innerText = "❖ تصفير حساب ❖";
+                    document.getElementById('display-amount').innerText = "0";
+                    document.getElementById('amount-input-label').innerText = "القيمة:";
+                    document.getElementById('amountInput').value = "0";
+                    document.getElementById('secondary-price-group').classList.add('hidden-element');
+                }
                 else if (currentType === 'companies') {
                     document.getElementById('companies-inputs-group').classList.remove('hidden-element');
                     let accType = document.getElementById('companyOrMerchant').value;

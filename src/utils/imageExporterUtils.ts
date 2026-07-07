@@ -176,6 +176,7 @@ export const generateUnifiedSmartCard = async (
 export type SmartCardStudioType =
   | "debt"
   | "trust"
+  | "zero"
   | "companies"
   | "masraweya"
   | "purchases"
