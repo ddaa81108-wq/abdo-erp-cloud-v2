@@ -29,6 +29,8 @@
         .label { font-size: 24pt; font-weight: bold; text-align: center; line-height: 1.35; max-width: 92%; overflow-wrap: anywhere; margin: 0; }
 
         .amount-box-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 8px; margin-bottom: 8px; width: 100%; min-height: 260px; }
+
+        .exchange-note { font-size: 16pt; color: var(--text-main); opacity: 0.95; margin-top: 6px; text-align: center; }
         .amount-box { display: flex; justify-content: center; align-items: center; width: 100%; }
         .amount-text { font-size: 120pt; font-weight: 900; font-family: 'Arial Black', Impact, Arial, sans-serif; margin: 0; line-height: 0.95; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px; max-width: 100%; text-align: center; }
         .currency { font-size: 35pt; font-weight: bold; }
@@ -124,6 +126,7 @@
                 <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
                 <div class="client-name" id="display-name">اسم العميل</div>
                 <div class="label" id="status-label">إجمالي الديون المستحقة عليك:</div>
+                <div class="exchange-note hidden-element" id="exchange-note">الأسعار متغيرة بتغير سعر الصرف</div>
                 
                 <div class="amount-box-wrapper" id="amount-box-container">
                     <div class="amount-box">
@@ -380,12 +383,7 @@
                 btn.className = `px-4 py-1.5 text-sm rounded-xl backdrop-blur-md transition-all duration-300 font-bold whitespace-nowrap ${
                     currentType === sec.id ? 'bg-amber-500 text-black border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-[#2a2a2a] border border-white/10 hover:bg-white/10 text-white'
                 }`;
-                // Add a small explanatory line for the exchange_rate tile and use innerHTML so we can style it
-                if (sec.id === 'exchange_rate') {
-                    btn.innerHTML = `${sec.label}<br><span style="font-size:10px;display:block;margin-top:4px;opacity:0.9">الأسعار متغيرة بتغير سعر الصرف</span>`;
-                } else {
-                    btn.innerText = sec.label;
-                }
+                btn.innerText = sec.label;
                 btn.onclick = () => {
                     currentType = sec.id;
                     renderTiles();
@@ -707,6 +705,9 @@
                 document.getElementById('display-price').style.fontSize = '30pt';
                 document.getElementById('card-footer').style.fontSize = '28pt';
                 document.getElementById('card-footer').style.fontWeight = '900';
+                // show exchange explanatory line and add spacing so the price drops a bit
+                document.getElementById('exchange-note').classList.remove('hidden-element');
+                document.getElementById('amount-box-container').style.marginTop = '26px';
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -755,6 +756,8 @@
                 document.getElementById('display-price').style.fontSize = '';
                 document.getElementById('card-footer').style.fontSize = '';
                 document.getElementById('card-footer').style.fontWeight = '';
+                document.getElementById('exchange-note').classList.add('hidden-element');
+                document.getElementById('amount-box-container').style.marginTop = '';
             }
         }
 
