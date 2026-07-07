@@ -652,6 +652,10 @@ export default function PurchasesModule({
               border-radius: 12px;
               padding: 15px;
               background-color: #fbfbfb;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
+              min-height: 120px;
             }
             .card-title {
               font-size: 11px;

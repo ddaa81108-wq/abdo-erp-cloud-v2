@@ -380,13 +380,18 @@
                 btn.className = `px-4 py-1.5 text-sm rounded-xl backdrop-blur-md transition-all duration-300 font-bold whitespace-nowrap ${
                     currentType === sec.id ? 'bg-amber-500 text-black border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-[#2a2a2a] border border-white/10 hover:bg-white/10 text-white'
                 }`;
-                btn.innerText = sec.label;
-                btn.onclick = () => { 
-                    currentType = sec.id; 
-                    renderTiles(); 
-                    renderInbox(); 
-                    document.getElementById('tafqeet-display').classList.add('hidden-element'); 
-                    updateCard(); 
+                // Add a small explanatory line for the exchange_rate tile and use innerHTML so we can style it
+                if (sec.id === 'exchange_rate') {
+                    btn.innerHTML = `${sec.label}<br><span style="font-size:10px;display:block;margin-top:4px;opacity:0.9">الأسعار متغيرة بتغير سعر الصرف</span>`;
+                } else {
+                    btn.innerText = sec.label;
+                }
+                btn.onclick = () => {
+                    currentType = sec.id;
+                    renderTiles();
+                    renderInbox();
+                    document.getElementById('tafqeet-display').classList.add('hidden-element');
+                    updateCard();
                 };
                 container.appendChild(btn);
             });
@@ -696,6 +701,12 @@
                 document.getElementById('status-label').classList.remove('hidden-element');
                 document.getElementById('amount-box-container').classList.remove('hidden-element');
                 document.getElementById('main-amount-group').classList.remove('hidden-element');
+                // Emphasize price and company name for exchange rate card
+                document.getElementById('display-amount').style.fontSize = '160pt';
+                document.getElementById('currency-label').style.fontSize = '48pt';
+                document.getElementById('display-price').style.fontSize = '30pt';
+                document.getElementById('card-footer').style.fontSize = '28pt';
+                document.getElementById('card-footer').style.fontWeight = '900';
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -738,6 +749,12 @@
                     document.getElementById('status-label').innerText = "صافي لك عندنا أمانة:";
                     document.getElementById('card-header').innerText = "❖ إشعار أمانة ❖";
                 }
+                // Reset any exchange_rate specific sizing back to defaults
+                document.getElementById('display-amount').style.fontSize = '';
+                document.getElementById('currency-label').style.fontSize = '';
+                document.getElementById('display-price').style.fontSize = '';
+                document.getElementById('card-footer').style.fontSize = '';
+                document.getElementById('card-footer').style.fontWeight = '';
             }
         }
 
