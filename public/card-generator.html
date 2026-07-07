@@ -42,16 +42,18 @@
 
         /* الكشف الماسي */
         .final-statement-box { width: 95%; display: flex; flex-direction: column; margin: 0; background: transparent; border: none; gap: 14px; }
-        .stmt-header { text-align: center; font-size: 34pt; font-weight: 900; margin: 0; color: var(--text-main); transition: color 0.3s ease; line-height: 1.2; }
-        .stmt-date { text-align: center; font-size: 18pt; font-weight: bold; margin: 0 0 8px; color: var(--text-main); opacity: 0.8; }
-        .stmt-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 16px 28px; background: var(--badge-bg); border-radius: 18px; border: 2px solid var(--badge-border); min-height: 82px; }
-        .stmt-label { font-size: 24pt; font-weight: 900; color: var(--text-main); line-height: 1.25; overflow-wrap: anywhere; }
-        .stmt-value { font-size: 34pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; direction: ltr; min-width: 260px; line-height: 1; }
+        .stmt-header-row { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; width: 100%; flex-wrap: wrap; margin-bottom: 12px; }
+        .stmt-header { text-align: right; font-size: 34pt; font-weight: 900; margin: 0; color: var(--text-main); transition: color 0.3s ease; line-height: 1.05; white-space: normal; word-break: break-word; flex: 1 1 60%; min-width: 0; }
+        .stmt-date { text-align: left; font-size: 18pt; font-weight: bold; margin: 0; color: var(--text-main); opacity: 0.8; direction: ltr; white-space: normal; word-break: break-word; flex: 0 0 auto; }
+        .stmt-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; padding: 18px 28px; background: var(--badge-bg); border-radius: 18px; border: 2px solid var(--badge-border); min-height: 82px; flex-wrap: wrap; }
+        .stmt-row.final-row { background: rgba(255, 255, 255, 0.28); border: 4px solid var(--text-main); margin-top: 8px; box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+        .stmt-label { font-size: 24pt; font-weight: 900; color: var(--text-main); line-height: 1.25; overflow-wrap: anywhere; white-space: normal; word-break: break-word; flex: 1 1 45%; min-width: 0; }
+        .stmt-value { font-size: 34pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; direction: ltr; line-height: 1; white-space: normal; overflow-wrap: anywhere; word-break: break-word; flex: 1 1 45%; min-width: 0; }
         .stmt-row.final-row { background: rgba(255, 255, 255, 0.28); border: 4px solid var(--text-main); margin-top: 6px; box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
         .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 38pt; }
-        .masraweya-card { justify-content: flex-start; gap: 16px; padding-top: 34px; padding-bottom: 28px; }
-        .masraweya-card .final-statement-box { width: 96%; gap: 13px; }
-        .masraweya-card .stmt-header { font-size: 38pt; }
+        .masraweya-card { justify-content: flex-start; gap: 20px; padding: 22px 34px; }
+        .masraweya-card .final-statement-box { width: 96%; gap: 18px; }
+        .masraweya-card .stmt-header { font-size: 42pt; }
         .masraweya-card .stmt-date { font-size: 20pt; }
 
         /* كارت المشتريات */
@@ -152,8 +154,10 @@
 
                 <!-- الكشف الماسي / المصراويه -->
                 <div class="final-statement-box hidden-element" id="final-statement-box">
-                    <div class="stmt-header" id="stmt-header-title">الكشف النهائي</div>
-                    <div class="stmt-date" id="stmt-date-display"></div>
+                    <div class="stmt-header-row">
+                        <div class="stmt-header" id="stmt-header-title">التقرير النهائى</div>
+                        <div class="stmt-date" id="stmt-date-display"></div>
+                    </div>
                     <div class="stmt-row"><div class="stmt-label">القيمة السابقة:</div><div class="stmt-value" id="val-previous">0</div></div>
                     <div class="stmt-row"><div class="stmt-label">المستلمة اليوم:</div><div class="stmt-value" id="val-received">0</div></div>
                     <div class="stmt-row"><div class="stmt-label">إجمالي الشغل:</div><div class="stmt-value" id="val-total">0</div></div>
@@ -432,10 +436,10 @@
 
         function generateDate() {
             let now = new Date();
-            let formattedDate = `${now.getFullYear()}-${("0" + (now.getMonth() + 1)).slice(-2)}-${("0" + now.getDate()).slice(-2)}`;
-            document.getElementById('stmt-date-display').innerText = formattedDate;
-            document.getElementById('card-date-display').innerText = "التاريخ: " + formattedDate;
-            document.getElementById('purchases-date-display').innerText = formattedDate;
+            currentFormattedDate = `${now.getFullYear()}-${("0" + (now.getMonth() + 1)).slice(-2)}-${("0" + now.getDate()).slice(-2)}`;
+            document.getElementById('stmt-date-display').innerText = currentFormattedDate;
+            document.getElementById('card-date-display').innerText = "التاريخ: " + currentFormattedDate;
+            document.getElementById('purchases-date-display').innerText = currentFormattedDate;
         }
 
         function loadClientNames() {
@@ -456,6 +460,7 @@
             if (confirm("هل أنت متأكد أنك تريد مسح الذاكرة؟")) { localStorage.removeItem('ahram_clients'); loadClientNames(); alert("تم التنظيف!"); }
         }
 
+        let currentFormattedDate = "";
         let currArray = ["د.ل", "ج.م", "EGP"];
         let currIndex = 0;
         function toggleCurrency() {
@@ -685,7 +690,8 @@
                 document.getElementById('final-statement-box').classList.remove('hidden-element');
                 document.getElementById('statement-inputs-group').classList.remove('hidden-element');
                 document.getElementById('name-input-label').innerText = "عنوان الكشف / التاجر:";
-                document.getElementById('stmt-header-title').innerText = nameValue !== '...' ? nameValue : (currentType === 'masraweya' ? 'كشف المصراويه' : 'الكشف النهائي');
+                        document.getElementById('stmt-header-title').innerText = currentType === 'masraweya' ? 'التقرير النهائى' : (nameValue !== '...' ? nameValue : 'الكشف النهائي');
+                document.getElementById('stmt-date-display').innerText = 'التاريخ: ' + currentFormattedDate;
                 document.getElementById('val-previous').innerText = formatInteger(document.getElementById('input-prev').value);
                 document.getElementById('val-received').innerText = formatInteger(document.getElementById('input-recv').value);
                 document.getElementById('val-total').innerText = formatInteger(document.getElementById('input-total').value);
