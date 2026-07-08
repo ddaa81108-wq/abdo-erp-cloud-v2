@@ -1020,12 +1020,15 @@ export default function DepositsModule({
               {/* الصف الثاني: جميع الأزرار في صف واحد */}
               <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
                 <div className="flex flex-row-reverse items-center gap-1.5">
+                  {/* أقصى اليسار */}
                   <button
                     onClick={(e) => { e.stopPropagation(); handleCloseExpandedCard(); }}
                     className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition whitespace-nowrap"
                   >
                     ✕ إغلاق
                   </button>
+                  <span className="w-px h-6 bg-slate-200 mx-1" />
+                  {/* الوسط: إيداع ليبي + سحب ليبي + طباعة PDF */}
                   <button
                     onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
@@ -1038,6 +1041,14 @@ export default function DepositsModule({
                   >
                     💸 سحب ليبي
                   </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
+                    className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                  >
+                    🖨️ طباعة PDF
+                  </button>
+                  <span className="w-px h-6 bg-slate-200 mx-1" />
+                  {/* أقصى اليمين: إيداع مصري + سحب مصري + تحويل مصري */}
                   <button
                     onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
@@ -1055,12 +1066,6 @@ export default function DepositsModule({
                     className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   >
                     🔄 تحويل مصري
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
-                    className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    🖨️ طباعة PDF
                   </button>
                 </div>
                 <span className="text-[10px] text-slate-400 font-mono shrink-0">
