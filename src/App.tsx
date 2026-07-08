@@ -1573,11 +1573,49 @@ export default function App() {
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#d4af37]/80 to-transparent" />
                 <div className="absolute -top-16 left-1/2 h-32 w-32 -translate-x-1/2 rounded-full bg-[#d4af37]/10 blur-3xl" />
 
+                {/* 🌙 الشهادة - تظهر أولاً */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.3 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{
+                    delay: 0.45,
+                    type: "spring",
+                    damping: 14,
+                    stiffness: 160,
+                  }}
+                  className="mb-5"
+                >
+                  <motion.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55, duration: 0.5 }}
+                    className="text-2xl md:text-3xl font-black leading-relaxed text-[#fceabb] drop-shadow-[0_0_18px_rgba(212,175,55,0.5)]"
+                    style={{ fontFamily: "'Noto Naskh Arabic', 'Scheherazade New', serif" }}
+                  >
+                    لا إله إلا الله
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7, duration: 0.5 }}
+                    className="text-2xl md:text-3xl font-black leading-relaxed text-[#fceabb] drop-shadow-[0_0_18px_rgba(212,175,55,0.5)]"
+                    style={{ fontFamily: "'Noto Naskh Arabic', 'Scheherazade New', serif" }}
+                  >
+                    محمد رسول الله
+                  </motion.p>
+                  <motion.div
+                    className="mx-auto mt-3 h-px bg-gradient-to-r from-transparent via-[#d4af37] to-transparent"
+                    initial={{ width: 0, opacity: 0 }}
+                    animate={{ width: "60%", opacity: 1 }}
+                    transition={{ delay: 0.65, duration: 0.5, ease: "easeOut" }}
+                  />
+                </motion.div>
+
                 <motion.div
                   initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
                   animate={{ opacity: 1, scale: 1, rotate: 0 }}
                   transition={{
-                    delay: 0.75,
+                    delay: 1.05,
                     type: "spring",
                     damping: 12,
                     stiffness: 180,
@@ -1590,7 +1628,7 @@ export default function App() {
                 <motion.p
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.82, duration: 0.35 }}
+                  transition={{ delay: 1.12, duration: 0.35 }}
                   className="mb-4 text-[11px] font-extrabold tracking-[0.25em] text-[#d4af37]/85"
                 >
                   مرحباً بك في المنظومة الملكية
@@ -1599,7 +1637,7 @@ export default function App() {
                 <motion.p
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9, duration: 0.35 }}
+                  transition={{ delay: 1.2, duration: 0.35 }}
                   className="mb-4 text-lg font-black text-[#fceabb] md:text-xl"
                 >
                   اهلا عبده
