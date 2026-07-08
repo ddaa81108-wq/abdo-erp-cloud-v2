@@ -938,6 +938,8 @@ export default function DepositsModule({
               const customerLyd = getAmountLyd(d);
               const customerEgp = getAmountEgp(d);
               const isExpanded = expandedCardId === d.id;
+              const isCleared = Number(customerLyd) === 0 && Number(customerEgp) === 0;
+              const isEgpOnly = Number(customerLyd) === 0 && Number(customerEgp) !== 0;
 
               return (
                 <div
@@ -946,7 +948,7 @@ export default function DepositsModule({
                     if ((e.target as Element).closest("button")) return;
                     handleToggleExpandedCard(d.id, isExpanded);
                   }}
-                  className={`${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1 text-white' : 'bg-indigo-600 border-indigo-500 text-white'} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center overflow-visible`}
+                  className={`${isCleared ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1' : isEgpOnly ? 'bg-amber-600 border-amber-500' : 'bg-indigo-600 border-indigo-500'} text-white border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center overflow-visible`}
                 >
                   {/* CARD TILE BODY */}
                   <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
@@ -1001,7 +1003,7 @@ export default function DepositsModule({
             onClick={(e) => e.stopPropagation()}
           >
             {/* رأس البطاقة */}
-            <div className={`border-t-[6px] rounded-t-2xl px-5 pt-4 pb-3 ${(expandedDepositLyd > 0 || expandedDepositEgp > 0) ? 'border-amber-500' : 'border-emerald-500'}`}>
+            <div className={`border-t-[6px] rounded-t-2xl px-5 pt-4 pb-3 ${(expandedDepositLyd > 0 || expandedDepositEgp > 0) ? (expandedDepositLyd === 0 && expandedDepositEgp > 0 ? 'border-amber-500' : 'border-indigo-500') : 'border-emerald-500'}`}>
               {/* الصف الأول: جميع الأزرار - من اليمين لليسار */}
               <div className="flex items-center gap-1.5 border-b border-slate-100 pb-3 mb-2">
                 <button
