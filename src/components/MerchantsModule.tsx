@@ -381,7 +381,8 @@ export default function MerchantsModule({
 
     const updatedMerch = state.merchants.map((m) => {
       if (m.id === tx.merchantId) {
-        const merchTxs = updatedTxs.filter((t) => t.merchantId === m.id);
+        const merchTxs = updatedTxs.filter((t) => t.merchantId === m.id)
+          .filter((t) => !t.id.includes("tx_mer_init_") && !t.id.includes("tx_mer_restore_"));
 
         let calcNewDebt = 0;
         let calcPayToday = 0;

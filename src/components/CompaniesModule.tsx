@@ -387,7 +387,8 @@ export default function CompaniesModule({
 
     const updatedComps = state.companies.map((c) => {
       if (c.id === tx.companyId) {
-        const compTxs = updatedTxs.filter((t) => t.companyId === c.id);
+        const compTxs = updatedTxs.filter((t) => t.companyId === c.id)
+          .filter((t) => !t.id.includes("tx_comp_init_") && !t.id.includes("tx_comp_restore_"));
 
         let calcNewDebt = 0;
         let calcPayToday = 0;
