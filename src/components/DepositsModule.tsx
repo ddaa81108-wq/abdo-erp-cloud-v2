@@ -832,7 +832,7 @@ export default function DepositsModule({
     openSmartCardStudio({
       type: "trust",
       name: d.customerName,
-      amount: Math.abs(isEgp ? egp : lyd),
+      amount: isEgp ? egp : lyd,
       currency: isEgp ? "ج.م" : "د.ل",
     });
     setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");

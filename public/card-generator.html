@@ -795,8 +795,10 @@
                     }
                 }
                 else if (currentType === 'trust') {
-                    document.getElementById('status-label').innerText = "صافي لك عندنا أمانة:";
-                    document.getElementById('card-header').innerText = "❖ إشعار أمانة ❖";
+                    let trustRawAmount = document.getElementById('amountInput').value || '0';
+                    let isNegative = trustRawAmount.trim().startsWith('-');
+                    document.getElementById('status-label').innerText = isNegative ? "عليك أمانة:" : "لديك أمانة لدينا:";
+                    document.getElementById('card-header').innerText = isNegative ? "❖ إشعار أمانة (مطلوب منك) ❖" : "❖ إشعار أمانة ❖";
                 }
                 // Reset any exchange_rate specific sizing back to defaults
                 document.getElementById('display-amount').style.fontSize = '';
