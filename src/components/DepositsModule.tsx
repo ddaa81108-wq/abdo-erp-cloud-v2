@@ -942,7 +942,10 @@ export default function DepositsModule({
               return (
                 <div
                   key={d.id}
-                  onClick={() => handleToggleExpandedCard(d.id, isExpanded)}
+                  onClick={(e) => {
+                    if ((e.target as Element).closest("button")) return;
+                    handleToggleExpandedCard(d.id, isExpanded);
+                  }}
                   className={`${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1 text-white' : 'bg-indigo-600 border-indigo-500 text-white'} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center overflow-visible`}
                 >
                   {/* CARD TILE BODY */}
