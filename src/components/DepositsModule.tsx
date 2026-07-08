@@ -1002,80 +1002,67 @@ export default function DepositsModule({
           >
             {/* رأس البطاقة */}
             <div className={`border-t-[6px] rounded-t-2xl px-5 pt-4 pb-3 ${(expandedDepositLyd > 0 || expandedDepositEgp > 0) ? 'border-amber-500' : 'border-emerald-500'}`}>
-              {/* الصف الأول: الأرصدة + رقم المرجع */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-4">
-                  <div className="font-mono text-lg font-black text-slate-900">
-                    {Math.round(expandedDepositLyd).toLocaleString('en-US')} <span className="text-xs text-slate-400">د.ل</span>
+              {/* الصف الأول: جميع الأزرار - من اليمين لليسار */}
+              <div className="flex items-center gap-1.5 border-b border-slate-100 pb-3 mb-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  ➕ إيداع ليبي
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw'); }}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  💸 سحب ليبي
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
+                  className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  🖨️ طباعة PDF
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  🇪🇬 إيداع مصري
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw_egp'); }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  🇪🇬 سحب مصري
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('convert'); }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  🔄 تحويل مصري
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleCloseExpandedCard(); }}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition whitespace-nowrap shrink-0"
+                >
+                  ✕ إغلاق
+                </button>
+              </div>
+
+              {/* اسم العميل */}
+              <h4 className="font-extrabold text-slate-900 text-base text-right mb-1">{expandedDeposit.customerName}</h4>
+
+              {/* الرصيد */}
+              <div className="flex items-center gap-4 text-right">
+                <div className="font-mono text-lg font-black text-slate-900">
+                  {Math.round(expandedDepositLyd).toLocaleString('en-US')} <span className="text-xs text-slate-400">د.ل</span>
+                </div>
+                {expandedDepositEgp !== 0 && (
+                  <div className="font-mono text-base font-black text-emerald-600">
+                    {Math.round(expandedDepositEgp).toLocaleString('en-US')} <span className="text-[10px] text-emerald-500">ج.م</span>
                   </div>
-                  {expandedDepositEgp !== 0 && (
-                    <div className="font-mono text-base font-black text-emerald-600">
-                      {Math.round(expandedDepositEgp).toLocaleString('en-US')} <span className="text-[10px] text-emerald-500">ج.م</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono shrink-0">
-                  {expandedDeposit.referenceNo}
-                </span>
+                )}
               </div>
-
-              {/* الصف الثاني: الأزرار موزعة على عرض الكارت - 3 مجموعات */}
-              <div className="flex flex-row-reverse items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                {/* المجموعة الأولى: أقصى اليسار - إغلاق */}
-                <div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleCloseExpandedCard(); }}
-                    className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition whitespace-nowrap"
-                  >
-                    ✕ إغلاق
-                  </button>
-                </div>
-                {/* المجموعة الثانية: الوسط - طباعة PDF + إيداع ليبي + سحب ليبي */}
-                <div className="flex flex-row-reverse items-center gap-1.5">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw'); }}
-                    className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    💸 سحب ليبي
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    ➕ إيداع ليبي
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
-                    className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    🖨️ طباعة PDF
-                  </button>
-                </div>
-                {/* المجموعة الثالثة: أقصى اليمين - إيداع مصري + سحب مصري + تحويل مصري */}
-                <div className="flex flex-row-reverse items-center gap-1.5">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('convert'); }}
-                    className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    🔄 تحويل مصري
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw_egp'); }}
-                    className="bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    🇪🇬 سحب مصري
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                  >
-                    🇪🇬 إيداع مصري
-                  </button>
-                </div>
-              </div>
-
-              {/* الصف الثالث: اسم العميل */}
-              <h4 className="font-extrabold text-slate-900 text-base text-right">{expandedDeposit.customerName}</h4>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 custom-scrollbar rounded-b-2xl">
