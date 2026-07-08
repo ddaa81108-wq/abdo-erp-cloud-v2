@@ -742,10 +742,10 @@ export default function MerchantsModule({
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      handleExecuteQuickMerchantSettle("archive_only", m);
+                      handleSoftDeleteMerchant(m.id);
                     }}
                     className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
-                    title="أرشفة ❌"
+                    title="أرشفة وإخفاء ❌"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -797,175 +797,124 @@ export default function MerchantsModule({
       {selectedMerchId && selectedMerchDetails && (
         <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-4xl w-full border border-slate-200 flex flex-col max-h-[90vh] text-right">
-            {/* رأس البطاقة */}
-            <div className="flex items-center justify-between border-b pb-3.5 mb-4">
-              <div>
+            {/* رأس البطاقة: معلومات + أزرار في صف واحد */}
+            <div className="flex items-center justify-between border-b pb-3.5 mb-3 gap-3">
+              {/* معلومات التاجر - يمين */}
+              <div className="shrink-0">
                 <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full font-sans">
                   بطاقة كشف حساب تاجر نشط
                 </span>
-                <h3 className="font-black text-sm text-slate-900 mt-1 flex items-center gap-1">
-                  <span>اسم التاجر:</span>
+                <h3 className="font-black text-sm text-slate-900 mt-1">
+                  <span>اسم التاجر: </span>
                   <span className="text-purple-650">
                     {selectedMerchDetails.merch.name}
                   </span>
                 </h3>
               </div>
 
-              <div className="flex gap-2">
+              {/* جميع الأزرار في صف واحد - يسار */}
+              <div className="flex flex-row-reverse items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => setSelectedMerchId(null)}
-                  className="bg-slate-100 hover:bg-slate-200 p-1 px-3 rounded-lg text-xs font-bold text-slate-750 transition"
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-2 rounded-lg transition whitespace-nowrap"
                 >
-                  إغلاق النافذة ✕
+                  ✕ إغلاق
                 </button>
-              </div>
-            </div>
-
-            {/* أرقام تجميع ديون التاجر اليومية والتاريخية (ما داخل الكارت) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-center">
-              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
-                <span className="text-slate-505 text-[10px] font-bold block mb-0.5">
-                  الدين القديم (المنتقل)
-                </span>
-                <span className="text-xs sm:text-sm font-mono font-black text-slate-700">
-                  {(
-                    selectedMerchDetails.merch.previousBalance || 0
-                  ).toLocaleString()}{" "}
-                  د.ل
-                </span>
-              </div>
-
-              <div className="bg-purple-50 border border-purple-100 p-2.5 rounded-xl">
-                <span className="text-purple-805 text-[10px] font-bold block mb-0.5">
-                  ديون السحوبات اليوم (+)
-                </span>
-                <span className="text-xs sm:text-sm font-mono font-black text-purple-700">
-                  {(selectedMerchDetails.merch.newDebt || 0).toLocaleString()}{" "}
-                  د.ل
-                </span>
-              </div>
-
-              <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl">
-                <span className="text-emerald-805 text-[10px] font-bold block mb-0.5">
-                  مسدد اليوم (-)
-                </span>
-                <span className="text-xs sm:text-sm font-mono font-black text-emerald-700">
-                  {(
-                    selectedMerchDetails.merch.paymentToday || 0
-                  ).toLocaleString()}{" "}
-                  د.ل
-                </span>
-              </div>
-
-              <div className="bg-rose-50 border border-rose-100 p-2.5 rounded-xl">
-                <span className="text-rose-805 text-[10px] font-bold block mb-0.5">
-                  صافي المتبقي بذمته
-                </span>
-                <span className="text-xs sm:text-sm font-mono font-black text-rose-600">
-                  {(
-                    (selectedMerchDetails.merch.previousBalance || 0) +
-                    (selectedMerchDetails.merch.newDebt || 0) -
-                    (selectedMerchDetails.merch.paymentToday || 0)
-                  ).toLocaleString()}{" "}
-                  د.ل
-                </span>
-              </div>
-            </div>
-
-            {/* التنبيه لو الرصيد مصفى لسهولة الأرشفة */}
-            {(selectedMerchDetails.merch.previousBalance || 0) +
-              (selectedMerchDetails.merch.newDebt || 0) -
-              (selectedMerchDetails.merch.paymentToday || 0) ===
-              0 && (
-              <div className="bg-emerald-50 border border-emerald-250 p-3 rounded-xl mb-3 text-xs text-emerald-955 flex items-center justify-between">
-                <div>
-                  <span className="font-bold flex items-center gap-1">
-                    🎯 تم تسوية وتصفية حساب التاجر بالكامل!
-                  </span>
-                  <p className="text-[10px] text-emerald-800 mt-0.5">
-                    حسابه مصفى برصيد (0 د.ل) حالياً. يمكنك أرشفة وإخفاء هذا
-                    الكرت ليبقى نظيفاً على الشاشة.
-                  </p>
-                </div>
                 <button
-                  onClick={() =>
-                    handleSoftDeleteMerchant(selectedMerchDetails.merch.id)
-                  }
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] p-1.5 px-3 rounded-lg transition"
+                  onClick={() => {
+                    setTxType("debt");
+                    setTxAmount("");
+                    setTxNote("");
+                    setShowAddTxModal(true);
+                  }}
+                  className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[11px] px-3 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
                 >
-                  أرشفة وإخفاء الكرت الآن 📥
+                  🔴 إضافة دين
+                </button>
+                <button
+                  onClick={() => {
+                    setTxType("payment");
+                    setTxAmount("");
+                    setTxNote("");
+                    setShowAddTxModal(true);
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  🟢 تسديد دين
+                </button>
+                <button
+                  onClick={() => handleExportSingleMerchantImage(selectedMerchDetails.merch)}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-[11px] px-3 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
+                >
+                  🖨️ طباعة PDF
                 </button>
               </div>
-            )}
+            </div>
+
+            {/* بيانات موجزة + إجمالي الدين */}
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-slate-600">
+                {selectedMerchDetails.merch.contact && (
+                  <div>📞 <span className="font-mono">{selectedMerchDetails.merch.contact}</span></div>
+                )}
+              </div>
+              <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-1.5">
+                <span className="text-[11px] font-bold text-slate-500">إجمالي الدين:</span>
+                <span className={`font-black text-lg font-mono ${(selectedMerchDetails.merch.balance || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                  {Math.round(selectedMerchDetails.merch.balance || 0).toLocaleString("en-US")} د.ل
+                </span>
+              </div>
+            </div>
 
             {/* الأرشيف وحركات الفواتير التاريخية للتاجر */}
-            <div className="flex-1 overflow-y-auto border border-slate-150 rounded-xl p-3 bg-slate-50 mb-4 min-h-[160px]">
-              <h4 className="text-xs font-extrabold text-slate-705 mb-2.5 pb-1.5 border-b border-slate-200 flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-purple-500 font-bold" />
-                <span>
-                  أرشيف التاجر (السحوبات التاريخية وفواتير الذمم وتواريخ قيود
-                  الدفوعات والترحيل اليومي)
-                </span>
-              </h4>
+            {/* الأرشيف */}
+            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 min-h-[160px]">
+              <div className="sticky top-0 bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center gap-2 z-10">
+                <Clock className="w-4 h-4 text-purple-500" />
+                <span className="text-xs font-extrabold text-slate-700">أرشيف العمليات</span>
+                <span className="text-[10px] text-slate-400 mr-auto">({selectedMerchDetails.txs.length} عملية)</span>
+              </div>
 
               {selectedMerchDetails.txs.length === 0 ? (
-                <div className="text-center py-8 text-slate-404 text-xs italic">
-                  لا توجد أي معاملات سابقة مسجلة (لا شغل جديد ولا تسديد) في كشف
-                  حساب هذا التاجر بعد.
+                <div className="text-center py-12 text-slate-400 text-xs italic">
+                  لا توجد أي معاملات سابقة مسجلة بعد.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] border-collapse text-right">
+                  <table className="w-full text-[11px] border-collapse">
                     <thead>
-                      <tr className="bg-slate-200 text-slate-700 font-bold border-b border-slate-300">
-                        <th className="p-2 text-right">المستند والوقت</th>
-                        <th className="p-2 text-right">الوصف (سداد / مستحق)</th>
-                        <th className="p-2 text-left">مبلغ الحركة</th>
-                        <th className="p-2 text-center">إجراء</th>
+                      <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[10px]">
+                        <th className="p-2.5 text-right">التاريخ والوقت</th>
+                        <th className="p-2.5 text-right">نوع العملية</th>
+                        <th className="p-2.5 text-left">القيمة</th>
+                        <th className="p-2.5 text-center w-10">حذف</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white font-mono">
+                    <tbody className="divide-y divide-slate-100 bg-white">
                       {[...selectedMerchDetails.txs].reverse().map((tx) => (
-                        <tr key={tx.id} className="hover:bg-slate-50">
-                          <td className="p-2">
-                            <span className="text-slate-400 block text-[9px]">
-                              {tx.referenceNo}
-                            </span>
-                            <span className="text-slate-600 block text-[9.5px]/none font-sans">
-                              {new Date(tx.date).toLocaleDateString("ar-LY")}
-                            </span>
+                        <tr key={tx.id} className="hover:bg-slate-50/80 transition-colors group">
+                          <td className="p-2.5 font-sans text-[10.5px] text-slate-600 whitespace-nowrap">
+                            <span className="text-slate-400 text-[9px] block">{tx.referenceNo}</span>
+                            {new Date(tx.date).toLocaleDateString("ar-LY")}{" "}
+                            {new Date(tx.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}
                           </td>
-                          <td className="p-2">
-                            <span
-                              className={`inline-block px-1.5 py-0.5 rounded text-[9.5px] font-sans font-black ${
-                                tx.type === "debt"
-                                  ? "bg-purple-105 text-purple-800"
-                                  : "bg-emerald-105 text-emerald-800"
-                              }`}
-                            >
-                              {tx.type === "debt"
-                                ? "🔴 مستحقات تاجر (ذمة)"
-                                : "🟢 دفعة مسددة"}
+                          <td className="p-2.5">
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-sans font-bold ${
+                              tx.type === "debt" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"
+                            }`}>
+                              {tx.type === "debt" ? "🔴 إضافة دين" : "🟢 تسديد دين"}
                             </span>
                           </td>
-                          <td
-                            className={`p-2 text-left font-black ${
-                              tx.type === "debt"
-                                ? "text-purple-650"
-                                : "text-emerald-700"
-                            }`}
-                          >
-                            {tx.type === "debt" ? "+" : "-"}
-                            {tx.amount.toLocaleString()} د.ل
+                          <td className={`p-2.5 text-left font-black font-mono ${
+                            tx.type === "debt" ? "text-purple-700" : "text-emerald-700"
+                          }`}>
+                            {tx.type === "debt" ? "+" : "-"}{Math.round(tx.amount).toLocaleString("en-US")} د.ل
                           </td>
-                          <td className="p-2 text-center">
+                          <td className="p-2.5 text-center">
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteTransaction(tx.id);
-                              }}
-                              className="text-slate-350 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition animate-bounce cursor-pointer"
-                              title="حذف القيد وتراجع الرصيد"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx.id); }}
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-1 rounded-md transition-all cursor-pointer"
+                              title="حذف هذه العملية"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -976,91 +925,6 @@ export default function MerchantsModule({
                   </table>
                 </div>
               )}
-            </div>
-
-            {/* شريط الإجراءات السفلي (قيد وسحب وحذف) */}
-            <div className="border-t pt-3.5 flex flex-wrap gap-2 justify-between items-center">
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    handleSoftDeleteMerchant(selectedMerchDetails.merch.id)
-                  }
-                  className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>أرشفة وإخفاء التاجر من الشاشة 🗑️</span>
-                </button>
-
-                {Number(selectedMerchDetails.merch.balance) === 0 ? (
-                  <button
-                    onClick={async () => {
-                      const success = await copySettledImage(selectedMerchDetails.merch.name, "كارت مخالصة للتاجر");
-                      if (success) {
-                        alert("تم نسخ كارت المخالصة بنجاح 📋");
-                      }
-                    }}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white border border-emerald-400 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer shadow-md"
-                    title="نسخ كارت المخالصة 📋"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>نسخ كارت المخالصة 📋</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      const remaining = selectedMerchDetails.merch.balance || 0;
-                      openSmartCardStudio({
-                        type: "companies",
-                        acctype: "merchant",
-                        name: selectedMerchDetails.merch.name,
-                        amount: Math.abs(remaining),
-                        currency: "د.ل",
-                      });
-                    }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white border border-purple-500 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer shadow-md"
-                    title="فتح كارت التاجر في منظومة الكروت الذكية 👑"
-                  >
-                    <Copy className="w-4 h-4" />
-                    <span>كارت التاجر الذكي 👑</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() =>
-                    handleExportSingleMerchantImage(selectedMerchDetails.merch)
-                  }
-                  className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-250 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer"
-                  title="تصدير كشف الحساب كصورة لمشاركتها عبر الواتساب"
-                >
-                  <span>صورة كشوفات التاجر 📸</span>
-                </button>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setTxType("debt");
-                    setTxAmount("");
-                    setTxNote("");
-                    setShowAddTxModal(true);
-                  }}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-750 border border-slate-250 font-bold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer"
-                >
-                  ➕ قيد سحب / فاتورة آجل
-                </button>
-
-                <button
-                  onClick={() => {
-                    setTxType("payment");
-                    setTxAmount("");
-                    setTxNote("");
-                    setShowAddTxModal(true);
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-755 text-white font-extrabold text-xs p-2.5 px-4 rounded-xl shadow-xs transition cursor-pointer"
-                >
-                  💸 تسجيل وتوريد دفعة سداد 💰
-                </button>
-              </div>
             </div>
           </div>
         </div>
