@@ -1019,23 +1019,24 @@ export default function DepositsModule({
                 </span>
               </div>
 
-              {/* الصف الثاني: الأزرار في صف واحد مع مسافات بين المجموعات */}
-              <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-2">
-                <div className="flex flex-row-reverse items-center gap-1.5">
-                  {/* المجموعة الأولى: إغلاق */}
+              {/* الصف الثاني: الأزرار موزعة على عرض الكارت - 3 مجموعات */}
+              <div className="flex flex-row-reverse items-center justify-between border-b border-slate-100 pb-3 mb-2">
+                {/* المجموعة الأولى: أقصى اليسار - إغلاق */}
+                <div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleCloseExpandedCard(); }}
                     className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition whitespace-nowrap"
                   >
                     ✕ إغلاق
                   </button>
-                  <span className="w-px h-6 bg-slate-200 mx-2" />
-                  {/* المجموعة الثانية: طباعة PDF + إيداع ليبي + سحب ليبي */}
+                </div>
+                {/* المجموعة الثانية: الوسط - طباعة PDF + إيداع ليبي + سحب ليبي */}
+                <div className="flex flex-row-reverse items-center gap-1.5">
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
-                    className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw'); }}
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   >
-                    🖨️ طباعة PDF
+                    💸 سحب ليبي
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
@@ -1044,18 +1045,19 @@ export default function DepositsModule({
                     ➕ إيداع ليبي
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw'); }}
-                    className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                    onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
+                    className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   >
-                    💸 سحب ليبي
+                    🖨️ طباعة PDF
                   </button>
-                  <span className="w-px h-6 bg-slate-200 mx-2" />
-                  {/* المجموعة الثالثة: إيداع مصري + سحب مصري + تحويل مصري */}
+                </div>
+                {/* المجموعة الثالثة: أقصى اليمين - إيداع مصري + سحب مصري + تحويل مصري */}
+                <div className="flex flex-row-reverse items-center gap-1.5">
                   <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('convert'); }}
+                    className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   >
-                    🇪🇬 إيداع مصري
+                    🔄 تحويل مصري
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw_egp'); }}
@@ -1064,10 +1066,10 @@ export default function DepositsModule({
                     🇪🇬 سحب مصري
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('convert'); }}
-                    className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
+                    onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
                   >
-                    🔄 تحويل مصري
+                    🇪🇬 إيداع مصري
                   </button>
                 </div>
               </div>
