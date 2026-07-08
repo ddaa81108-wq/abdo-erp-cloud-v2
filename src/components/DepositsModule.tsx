@@ -949,10 +949,10 @@ export default function DepositsModule({
                   className={`${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1 text-white' : 'bg-indigo-600 border-indigo-500 text-white'} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center overflow-visible`}
                 >
                   {/* CARD TILE BODY */}
-                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
                     <Landmark className="w-12 h-12 text-white" />
                   </div>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-1 relative z-10">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
