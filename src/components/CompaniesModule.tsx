@@ -718,7 +718,7 @@ export default function CompaniesModule({
       type: "companies",
       acctype: "company",
       name: company.name,
-      amount: Math.abs(remaining),
+      amount: remaining,
       currency: "د.ل",
     });
     setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");

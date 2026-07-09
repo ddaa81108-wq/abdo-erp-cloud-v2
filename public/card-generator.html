@@ -784,13 +784,15 @@
                 else if (currentType === 'companies') {
                     document.getElementById('companies-inputs-group').classList.remove('hidden-element');
                     let accType = document.getElementById('companyOrMerchant').value;
+                    let compRawAmount = document.getElementById('amountInput').value || '0';
+                    let isNegative = compRawAmount.trim().startsWith('-');
                     if (accType === 'merchant') {
-                        document.getElementById('status-label').innerText = "إجمالي الديون عليكم:";
-                        document.getElementById('card-header').innerText = "❖ إشعار تاجر ❖";
+                        document.getElementById('status-label').innerText = isNegative ? "لكم رصيد مستحق لدينا:" : "عليكم ديون مستحقة:";
+                        document.getElementById('card-header').innerText = isNegative ? "❖ إشعار رصيد تاجر ❖" : "❖ إشعار مديونية تاجر ❖";
                         document.getElementById('name-input-label').innerText = "اسم التاجر:";
                     } else {
-                        document.getElementById('status-label').innerText = "إجمالي المديونية عليكم:";
-                        document.getElementById('card-header').innerText = "❖ إشعار شركة ❖";
+                        document.getElementById('status-label').innerText = isNegative ? "لكم رصيد مستحق لدينا:" : "عليكم ديون مستحقة:";
+                        document.getElementById('card-header').innerText = isNegative ? "❖ إشعار رصيد شركة ❖" : "❖ إشعار مديونية شركة ❖";
                         document.getElementById('name-input-label').innerText = "اسم الشركة:";
                     }
                 }
