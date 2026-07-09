@@ -20,6 +20,7 @@
         .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); }
         .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
         .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-vip { background: linear-gradient(160deg, #050505 0%, #1a1400 30%, #0a0a0a 50%, #140f00 70%, #050505 100%) !important; --text-main: #f5d76e; --badge-bg: rgba(212,175,55,0.1); --badge-border: rgba(245,215,110,0.4); border: 2px solid rgba(212,175,55,0.25) !important; box-shadow: 0 0 50px rgba(212,175,55,0.18), 0 0 100px rgba(212,175,55,0.06), inset 0 0 80px rgba(212,175,55,0.03) !important; }
 
         /* تنسيق الكارت الأساسي */
         .card { width: 100%; max-width: 1000px; min-height: 720px; border-radius: 30px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; overflow: hidden; }
@@ -234,6 +235,9 @@
                             <option value="bg-copper">النحاسي الكلاسيكي</option>
                             <option value="bg-purple">البنفسجي الملكي</option>
                         </optgroup>
+                        <optgroup label="💎 VIP حصرياً">
+                            <option value="bg-vip">الأسود الماسي VIP</option>
+                        </optgroup>
                     </select>
                 </div>
 
@@ -314,6 +318,7 @@
             { id: 'debt', label: 'قسم ديون العملاء' },
             { id: 'companies', label: 'قسم الشركات والتجار' },
             { id: 'trust', label: 'قسم الامانات' },
+            { id: 'vip', label: 'قسم VIP 👑' },
             { id: 'zero', label: 'تصفير الحساب' },
             { id: 'masraweya', label: 'قسم المصراويه' },
             { id: 'purchases', label: 'قسم المشتريات' },
@@ -325,6 +330,7 @@
             'debt': [{ name: 'أحمد حمادة', amount: '15000', note: 'متبقي من حساب سابق' }],
             'companies': [{ name: 'شركة الأهرام', amount: '150000', note: 'دفعة تحت الحساب' }],
             'trust': [{ name: 'خالد الزواوي', amount: '8000', note: 'أمانة مستلمة' }],
+            'vip': [{ name: 'عميل مميز', amount: '0', note: 'كارت VIP' }],
             'zero': [{ name: 'حساب تم تصفيره', amount: '0', note: 'تم تصفير رصيد الحساب بنجاح' }],
             'masraweya': [{ name: 'حساب مصراويه', amount: '0', note: '' }],
             'purchases': [{ name: 'شراء بضاعة', amount: '0', note: '' }],
@@ -411,6 +417,10 @@
                     renderTiles();
                     renderInbox();
                     document.getElementById('tafqeet-display').classList.add('hidden-element');
+                    // تفعيل ثيم VIP تلقائي
+                    if (sec.id === 'vip') {
+                        document.getElementById('themeSelect').value = 'bg-vip';
+                    }
                     updateCard();
                 };
                 container.appendChild(btn);
@@ -781,6 +791,15 @@
                     if (displayAmount) { displayAmount.style.position = 'relative'; displayAmount.style.top = '-8px'; }
                     if (currencyLabel) currencyLabel.style.alignSelf = 'flex-end';
                 }
+                else if (currentType === 'vip') {
+                    document.getElementById('status-label').innerText = "✦ عميل مميز ✦";
+                    document.getElementById('card-header').innerText = "👑 ❖ VIP ❖ 👑";
+                    document.getElementById('name-input-label').innerText = "اسم العميل الـ VIP:";
+                    document.getElementById('status-label').style.fontSize = '30pt';
+                    document.getElementById('status-label').style.letterSpacing = '4px';
+                    document.getElementById('display-amount').style.fontSize = '150pt';
+                    document.getElementById('secondary-price-group').classList.add('hidden-element');
+                }
                 else if (currentType === 'companies') {
                     document.getElementById('companies-inputs-group').classList.remove('hidden-element');
                     let accType = document.getElementById('companyOrMerchant').value;
@@ -810,6 +829,11 @@
                 document.getElementById('card-footer').style.fontWeight = '';
                 document.getElementById('exchange-note').classList.add('hidden-element');
                 document.getElementById('amount-box-container').style.marginTop = '';
+                // Reset VIP-specific styles
+                const statusLabel = document.getElementById('status-label');
+                statusLabel.style.fontSize = '';
+                statusLabel.style.letterSpacing = '';
+                document.getElementById('display-amount').style.fontSize = '';
                 // Reset any zero-specific inline styles
                 try {
                     const statusEl = document.getElementById('status-label'); if (statusEl) { statusEl.style.transform = ''; statusEl.style.marginBottom = ''; }
