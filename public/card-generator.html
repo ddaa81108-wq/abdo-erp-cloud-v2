@@ -10,17 +10,39 @@
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
         /* الألوان والخلفيات - تم وضع !important لمنع أي تضارب وجعلها تعمل بقوة */
-        .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); }
-        .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); }
-        .bg-navy { background: linear-gradient(135deg, #141e30 0%, #243b55 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.3); --badge-border: rgba(255, 255, 255, 0.3); }
-        .bg-dark { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important; --text-main: #f1c40f; --badge-bg: rgba(255, 255, 255, 0.1); --badge-border: rgba(241, 196, 15, 0.5); }
-        .bg-emerald { background: linear-gradient(135deg, #0f3422 0%, #1e5639 50%, #2ecc71 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
-        .bg-ruby { background: linear-gradient(135deg, #640d14 0%, #ad2831 50%, #e5383b 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
-        .bg-ocean { background: linear-gradient(135deg, #021B79 0%, #0575E6 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
-        .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); }
-        .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
-        .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
-        .bg-vip { background: linear-gradient(160deg, #050505 0%, #1a1400 30%, #0a0a0a 50%, #140f00 70%, #050505 100%) !important; --text-main: #f5d76e; --badge-bg: rgba(212,175,55,0.1); --badge-border: rgba(245,215,110,0.4); border: 2px solid rgba(212,175,55,0.25) !important; box-shadow: 0 0 50px rgba(212,175,55,0.18), 0 0 100px rgba(212,175,55,0.06), inset 0 0 80px rgba(212,175,55,0.03) !important; }
+        .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); --corner-color: rgba(180,140,30,0.55); --text-glow: rgba(200,160,40,0.35); }
+        .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); --corner-color: rgba(140,140,140,0.5); --text-glow: rgba(150,150,150,0.3); }
+        .bg-navy { background: linear-gradient(135deg, #141e30 0%, #243b55 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.3); --badge-border: rgba(255, 255, 255, 0.3); --corner-color: rgba(150,180,220,0.5); --text-glow: rgba(150,180,220,0.3); }
+        .bg-dark { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important; --text-main: #f1c40f; --badge-bg: rgba(255, 255, 255, 0.1); --badge-border: rgba(241, 196, 15, 0.5); --corner-color: rgba(241,196,15,0.55); --text-glow: rgba(241,196,15,0.35); }
+        .bg-emerald { background: linear-gradient(135deg, #0f3422 0%, #1e5639 50%, #2ecc71 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(80,220,140,0.5); --text-glow: rgba(80,220,140,0.3); }
+        .bg-ruby { background: linear-gradient(135deg, #640d14 0%, #ad2831 50%, #e5383b 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(240,80,80,0.5); --text-glow: rgba(240,80,80,0.3); }
+        .bg-ocean { background: linear-gradient(135deg, #021B79 0%, #0575E6 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(80,160,255,0.5); --text-glow: rgba(80,160,255,0.3); }
+        .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); --corner-color: rgba(150,150,150,0.45); --text-glow: rgba(160,160,160,0.25); }
+        .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(240,170,120,0.5); --text-glow: rgba(240,170,120,0.3); }
+        .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(220,100,200,0.5); --text-glow: rgba(220,100,200,0.3); }
+        .bg-vip { 
+            background-color: #060606 !important;
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(212,175,55,0.025) 3px, rgba(212,175,55,0.025) 6px),
+                repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(212,175,55,0.015) 3px, rgba(212,175,55,0.015) 6px),
+                radial-gradient(ellipse at 50% 10%, rgba(212,175,55,0.14) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 85%, rgba(212,175,55,0.07) 0%, transparent 35%),
+                radial-gradient(ellipse at 80% 85%, rgba(212,175,55,0.07) 0%, transparent 35%),
+                linear-gradient(180deg, #0a0800 0%, #0d0a02 18%, #050505 45%, #0d0a02 75%, #0a0800 100%) !important;
+            --text-main: #f5d76e; 
+            --badge-bg: rgba(212,175,55,0.08); 
+            --badge-border: rgba(245,215,110,0.3); 
+            --corner-color: rgba(212,175,55,0.7); --text-glow: rgba(212,175,55,0.5);
+            border: none !important;
+            box-shadow: 0 0 80px rgba(212,175,55,0.28), 0 0 180px rgba(212,175,55,0.10), inset 0 0 140px rgba(212,175,55,0.05) !important;
+        }
+
+        /* زخارف عامة - إطار موحد + تبروز النص لكل الثيمات */
+        .card::before { content:''; position:absolute; inset:10px; border:1.5px solid rgba(255,255,255,0.3); border-radius:22px; pointer-events:none; z-index:2; }
+        .card::after { content:''; position:absolute; inset:18px; border:1px solid rgba(255,255,255,0.15); border-radius:15px; pointer-events:none; z-index:2; }
+        .card .header { text-shadow: 0 3px 6px rgba(0,0,0,0.35), 0 0 25px var(--text-glow,transparent), 0 0 50px var(--text-glow,transparent); }
+        .card .client-name { text-shadow: 0 3px 5px rgba(0,0,0,0.3), 0 0 18px var(--text-glow,transparent); font-weight: 900; }
+        .card .label { text-shadow: 0 2px 4px rgba(0,0,0,0.25), 0 0 12px var(--text-glow,transparent); }
 
         /* تنسيق الكارت الأساسي */
         .card { width: 100%; max-width: 1000px; min-height: 720px; border-radius: 30px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; overflow: hidden; }
@@ -184,6 +206,12 @@
                 <div class="card-date hidden-element" id="card-date-display"></div>
                 <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
                 <div class="spacer" id="card-spacer"></div>
+                <!-- زخارف ماسية لكل الثيمات -->
+                <div id="corner-tl" style="position:absolute;top:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                <div id="corner-tr" style="position:absolute;top:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                <div id="corner-bl" style="position:absolute;bottom:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                <div id="corner-br" style="position:absolute;bottom:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                <div id="crown-top" style="position:absolute;top:5px;left:50%;transform:translateX(-50%);font-size:14pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;letter-spacing:8px;opacity:0.75;">◆ ◇ ◆ ◇ ◆</div>
             </div>
         </div>
 
@@ -258,6 +286,13 @@
                 <div id="secondary-price-group">
                     <label class="block text-sm text-gray-400 mb-1">السعر الإضافي (اختياري):</label>
                     <input type="text" id="priceInput" class="solid-input" placeholder="مثال: 6.25..." value="" oninput="updateCard()">
+                </div>
+
+                <!-- إعدادات VIP -->
+                <div id="vip-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm text-amber-500">
+                        <input type="checkbox" id="vipLogoCheck" checked onchange="updateCard()" class="w-4 h-4 accent-amber-500"> إظهار شعار VIP
+                    </label>
                 </div>
 
                 <!-- إعدادات الشركات -->
@@ -692,6 +727,7 @@
             
             document.getElementById('statement-inputs-group').classList.add('hidden-element');
             document.getElementById('purchases-inputs-group').classList.add('hidden-element');
+            document.getElementById('vip-inputs-group').classList.add('hidden-element');
             document.getElementById('main-amount-group').classList.add('hidden-element');
             document.getElementById('secondary-price-group').classList.add('hidden-element');
             document.getElementById('companies-inputs-group').classList.add('hidden-element'); 
@@ -792,12 +828,20 @@
                     if (currencyLabel) currencyLabel.style.alignSelf = 'flex-end';
                 }
                 else if (currentType === 'vip') {
-                    document.getElementById('status-label').innerText = "✦ عميل مميز ✦";
-                    document.getElementById('card-header').innerText = "👑 ❖ VIP ❖ 👑";
+                    document.getElementById('vip-inputs-group').classList.remove('hidden-element');
+                    const showLogo = document.getElementById('vipLogoCheck').checked;
+                    if (showLogo) {
+                        document.getElementById('status-label').innerText = "✦ عميل مميز ✦";
+                        document.getElementById('card-header').innerText = "👑 ❖ VIP ❖ 👑";
+                    } else {
+                        document.getElementById('status-label').innerText = "الرصيد الحالي:";
+                        document.getElementById('card-header').innerText = "❖ عميل مميز ❖";
+                    }
                     document.getElementById('name-input-label').innerText = "اسم العميل الـ VIP:";
                     document.getElementById('status-label').style.fontSize = '30pt';
-                    document.getElementById('status-label').style.letterSpacing = '4px';
+                    document.getElementById('status-label').style.letterSpacing = '6px';
                     document.getElementById('display-amount').style.fontSize = '150pt';
+                    document.getElementById('display-amount').style.textShadow = '0 0 30px rgba(212,175,55,0.6)';
                     document.getElementById('secondary-price-group').classList.add('hidden-element');
                 }
                 else if (currentType === 'companies') {
@@ -833,7 +877,9 @@
                 const statusLabel = document.getElementById('status-label');
                 statusLabel.style.fontSize = '';
                 statusLabel.style.letterSpacing = '';
-                document.getElementById('display-amount').style.fontSize = '';
+                const damt = document.getElementById('display-amount');
+                damt.style.fontSize = '';
+                damt.style.textShadow = '';
                 // Reset any zero-specific inline styles
                 try {
                     const statusEl = document.getElementById('status-label'); if (statusEl) { statusEl.style.transform = ''; statusEl.style.marginBottom = ''; }
