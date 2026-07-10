@@ -20,6 +20,35 @@
         .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); --corner-color: rgba(150,150,150,0.45); --text-glow: rgba(160,160,160,0.25); }
         .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(240,170,120,0.5); --text-glow: rgba(240,170,120,0.3); }
         .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(220,100,200,0.5); --text-glow: rgba(220,100,200,0.3); }
+        .bg-exchange { 
+            background-color: #151515 !important;
+            background-image: 
+                radial-gradient(ellipse at 75% 15%, rgba(255,255,255,0.07) 0%, transparent 55%),
+                radial-gradient(ellipse at 20% 85%, rgba(212,175,55,0.07) 0%, transparent 40%),
+                linear-gradient(155deg, rgba(255,255,255,0.04) 0%, transparent 30%, transparent 68%, rgba(212,175,55,0.06) 100%),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 3px, rgba(255,255,255,0.012) 3px, rgba(255,255,255,0.012) 3.5px),
+                linear-gradient(180deg, #202020 0%, #2c2c2c 20%, #1a1a1a 45%, #252525 70%, #181818 100%) !important;
+            --text-main: #e8c547; 
+            --badge-bg: rgba(212,175,55,0.12); 
+            --badge-border: rgba(212,175,55,0.4); 
+            --corner-color: rgba(212,175,55,0.75); 
+            --text-glow: rgba(212,175,55,0.55);
+            border: none !important;
+            box-shadow: 0 0 80px rgba(212,175,55,0.32), 0 0 150px rgba(212,175,55,0.14), inset 0 0 100px rgba(212,175,55,0.06) !important;
+        }
+        /* === تخطيط خاص بكارت أسعار الصرف (الأساسي) === */
+        .card.bg-exchange { justify-content: center !important; gap: 8px !important; padding: 30px 40px 30px 40px !important; }
+        .bg-exchange .price-card-title { font-size: 28pt !important; font-weight: 800 !important; letter-spacing: 3px !important; margin-bottom: 0 !important; }
+        .bg-exchange .label { font-size: 16pt !important; letter-spacing: 5px !important; }
+        .bg-exchange .amount-box-wrapper { margin-top: 5px !important; margin-bottom: 5px !important; }
+        .bg-exchange .exchange-note { font-size: 16pt !important; letter-spacing: 1px !important; opacity: 0.85; }
+        .bg-exchange .footer { font-size: 20pt !important; font-weight: 800 !important; letter-spacing: 1px !important; }
+
+        /* === زخارف خاصة بأسعار الصرف === */
+        .bg-exchange::before { content:''; position:absolute; inset:8px; border:2px solid rgba(212,175,55,0.5); border-radius:23px; pointer-events:none; z-index:2; }
+        .bg-exchange::after { content:''; position:absolute; inset:16px; border:1px solid rgba(212,175,55,0.25); border-radius:16px; pointer-events:none; z-index:2; }
+        .bg-exchange .header { text-shadow: 0 3px 10px rgba(0,0,0,0.5), 0 0 30px rgba(212,175,55,0.6), 0 0 60px rgba(212,175,55,0.35) !important; }
+
         .bg-vip { 
             background-color: #060606 !important;
             background-image: 
@@ -159,7 +188,7 @@
 
         <!-- 3. الكارت المركزي -->
         <div class="w-full lg:w-[60%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 flex justify-center items-start overflow-y-auto">
-            <div class="card bg-gold" id="goldenCard">
+            <div class="card bg-exchange" id="goldenCard">
                 <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
                 <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
                 <div class="client-name" id="display-name">اسم العميل</div>
@@ -249,8 +278,11 @@
                 <div>
                     <label class="block text-sm text-amber-500 font-bold mb-1">خلفية الكارت:</label>
                     <select id="themeSelect" class="solid-input" onchange="updateCard()">
+                        <optgroup label="💱 أساسي - أسعار الصرف">
+                            <option value="bg-exchange">⚡ المعدني الذهبي (أساسي)</option>
+                        </optgroup>
                         <optgroup label="✨ الألوان الأساسية">
-                            <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>
+                            <option value="bg-gold">الذهبي الملكي</option>
                             <option value="bg-silver">الفضي اللامع</option>
                             <option value="bg-navy">الكحلي المؤسسي</option>
                             <option value="bg-dark">الأسود الفاخر</option>
@@ -358,7 +390,8 @@
             { id: 'masraweya', label: 'قسم المصراويه' },
             { id: 'purchases', label: 'قسم المشتريات' },
             { id: 'alert', label: 'إشعار تنبيه 📢' },
-            { id: 'exchange_rate', label: 'أسعار صرف' }
+            { id: 'exchange_rate', label: 'أسعار صرف' },
+            { id: 'exchange_vip', label: '💱 أسعار الصرف الـ VIP' }
         ];
 
         const mockInboxData = {
@@ -370,7 +403,8 @@
             'masraweya': [{ name: 'حساب مصراويه', amount: '0', note: '' }],
             'purchases': [{ name: 'شراء بضاعة', amount: '0', note: '' }],
             'alert': [],
-            'exchange_rate': []
+            'exchange_rate': [],
+            'exchange_vip': [{ name: '', amount: '5.86', note: '' }]
         };
 
         function initDashboard() { generateDate(); loadClientNames(); renderTiles(); renderInbox(); applyIncomingParams(); updateCard(); }
@@ -724,6 +758,8 @@
             document.getElementById('status-label').classList.add('hidden-element');
             document.getElementById('final-statement-box').classList.add('hidden-element');
             document.getElementById('purchases-box').classList.add('hidden-element');
+            document.getElementById('price-card-title').classList.add('hidden-element');
+            document.getElementById('currency-label').classList.remove('hidden-element');
             
             document.getElementById('statement-inputs-group').classList.add('hidden-element');
             document.getElementById('purchases-inputs-group').classList.add('hidden-element');
@@ -765,22 +801,67 @@
                 priceBadge.classList.add('hidden-element');
                 customNoteBox.classList.add('large-note');
             }
-            else if (currentType === 'exchange_rate') {
-                document.getElementById('status-label').innerText = "أسعار الصرف اليوم:";
+            else if (currentType === 'exchange_vip') {
+                // كارت أسعار الصرف VIP — مطابق للصورة المرجعية
+                document.getElementById('card-header').classList.add('hidden-element');
+                document.getElementById('display-name').classList.add('hidden-element');
+                document.getElementById('status-label').classList.add('hidden-element');
+                document.getElementById('currency-label').classList.add('hidden-element');
+                document.getElementById('secondary-price-group').classList.add('hidden-element');
+                document.getElementById('exchange-note').classList.add('hidden-element');
+                document.getElementById('card-date-display').classList.add('hidden-element');
+                document.getElementById('custom-note-box').classList.add('hidden-element');
+                document.getElementById('price-badge').classList.add('hidden-element');
+                document.getElementById('purchases-box').classList.add('hidden-element');
+                document.getElementById('spacer').classList.add('hidden-element');
+                document.getElementById('statement-box').classList.add('hidden-element');
+                document.getElementById('companies-inputs-group').classList.add('hidden-element');
+                document.getElementById('vip-inputs-group').classList.add('hidden-element');
+                // اللي يظهر: اسم الشركة + الرقم + الملاحظة فقط
+                document.getElementById('price-card-title').classList.remove('hidden-element');
+                document.getElementById('price-card-title').innerText = 'شركة الأهرام للاتصالات وتكنولوجيا المعلومات';
+                document.getElementById('amount-box-container').classList.remove('hidden-element');
+                document.getElementById('main-amount-group').classList.remove('hidden-element');
+                document.getElementById('amount-input-label').innerText = 'سعر الصرف:';
                 document.getElementById('display-amount').innerText = formattedAmountDecimal;
-                document.getElementById('amount-input-label').innerText = "السعر (يقبل الكسور):";
+                document.getElementById('display-amount').style.fontSize = '220pt';
+                document.getElementById('card-footer').classList.remove('hidden-element');
+                document.getElementById('card-footer').innerText = 'الأسعار متغيره بتغير سعر الدولار فقط.';
+                document.getElementById('card-footer').style.fontSize = '17pt';
+                document.getElementById('card-footer').style.fontWeight = '400';
+                document.getElementById('amount-box-container').style.marginTop = '0px';
+                document.getElementById('amount-box-container').style.marginBottom = '0px';
+                // لوحة لامعة حول الرقم — زي الصورة
+                document.getElementById('amount-box-container').style.background = 'linear-gradient(180deg, rgba(40,40,40,0.7) 0%, rgba(55,55,55,0.4) 30%, rgba(70,70,70,0.25) 50%, rgba(55,55,55,0.4) 70%, rgba(40,40,40,0.7) 100%)';
+                document.getElementById('amount-box-container').style.border = '1.5px solid rgba(212,175,55,0.3)';
+                document.getElementById('amount-box-container').style.borderRadius = '12px';
+                document.getElementById('amount-box-container').style.padding = '15px 60px';
+                document.getElementById('amount-box-container').style.boxShadow = 'inset 0 0 80px rgba(212,175,55,0.06), 0 0 30px rgba(212,175,55,0.08)';
+                document.getElementById('goldenCard').style.justifyContent = 'center';
+                document.getElementById('goldenCard').style.gap = '12px';
+            }
+            else if (currentType === 'exchange_rate') {
+                // تخطيط مختلف تماماً لكارت أسعار الصرف
+                document.getElementById('card-header').classList.add('hidden-element');
+                document.getElementById('price-card-title').classList.remove('hidden-element');
+                document.getElementById('price-card-title').innerText = "شركة الأهرام للاتصالات وتقنية المعلومات";
+                document.getElementById('display-name').classList.add('hidden-element');
+                document.getElementById('status-label').innerText = "✦ سعر الصرف الحالي ✦";
                 document.getElementById('status-label').classList.remove('hidden-element');
                 document.getElementById('amount-box-container').classList.remove('hidden-element');
                 document.getElementById('main-amount-group').classList.remove('hidden-element');
-                // Emphasize price and company name for exchange rate card
-                document.getElementById('display-amount').style.fontSize = '160pt';
-                document.getElementById('currency-label').style.fontSize = '48pt';
-                document.getElementById('display-price').style.fontSize = '30pt';
-                document.getElementById('card-footer').style.fontSize = '28pt';
-                document.getElementById('card-footer').style.fontWeight = '900';
-                // show exchange explanatory line and add spacing so the price drops a bit
+                document.getElementById('display-amount').innerText = formattedAmountDecimal;
+                document.getElementById('amount-input-label').innerText = "سعر الصرف (يقبل الكسور):";
+                document.getElementById('display-amount').style.fontSize = '200pt';
+                document.getElementById('currency-label').style.fontSize = '56pt';
+                document.getElementById('card-footer').style.fontSize = '16pt';
+                document.getElementById('card-footer').style.fontWeight = '400';
+                document.getElementById('card-footer').innerText = "الأسعار متغيره بتغيير سعر الدولار فقط.";
                 document.getElementById('exchange-note').classList.remove('hidden-element');
-                document.getElementById('amount-box-container').style.marginTop = '26px';
+                document.getElementById('amount-box-container').style.marginTop = '0px';
+                document.getElementById('secondary-price-group').classList.add('hidden-element');
+                document.getElementById('custom-note-box').classList.add('hidden-element');
+                document.getElementById('card-date-display').classList.add('hidden-element');
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -873,7 +954,16 @@
                 document.getElementById('card-footer').style.fontWeight = '';
                 document.getElementById('exchange-note').classList.add('hidden-element');
                 document.getElementById('amount-box-container').style.marginTop = '';
-                // Reset VIP-specific styles
+                document.getElementById('amount-box-container').style.marginBottom = '';
+                document.getElementById('amount-box-container').style.background = '';
+                document.getElementById('amount-box-container').style.border = '';
+                document.getElementById('amount-box-container').style.borderRadius = '';
+                document.getElementById('amount-box-container').style.padding = '';
+                document.getElementById('amount-box-container').style.boxShadow = '';
+                // Reset exchange_vip card layout
+                const gc = document.getElementById('goldenCard');
+                gc.style.justifyContent = '';
+                gc.style.gap = '';
                 const statusLabel = document.getElementById('status-label');
                 statusLabel.style.fontSize = '';
                 statusLabel.style.letterSpacing = '';
