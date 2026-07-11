@@ -726,13 +726,13 @@ export default function CustomerDebtsModule({
     const transactions = currentState.debtTransactions.filter(
       (t) => t.cycleId === activeCycle?.id
     );
-    const totalPurchases = transactions
-      .filter((t) => t.type === "purchase")
+    const totalDebts = transactions
+      .filter((t) => t.type === "debt")
       .reduce((sum, t) => sum + t.amount, 0);
     const totalPayments = transactions
       .filter((t) => t.type === "payment")
       .reduce((sum, t) => sum + t.amount, 0);
-    const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
+    const outstanding = (activeCycle?.initialBalance || 0) + totalDebts - totalPayments;
 
     const timestamp = new Date().toISOString();
     const docNum = generateDocNumber();
