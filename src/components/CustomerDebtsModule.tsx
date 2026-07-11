@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { UserPlus, Calendar, Trash2, CircleCheck as CheckCircle, Clock, CircleAlert as AlertCircle, Camera, Search, X, Check, Landmark, SquareCheck as CheckSquare, Send, FileText, CircleCheck as CheckCircle2, Copy, Calculator, Plus, Minus } from "lucide-react";
 import {
   ERPState,
@@ -212,6 +212,12 @@ export default function CustomerDebtsModule({
 
   // 4. حالات حذف الزبون الكلي
   const [quickXCustomer, setQuickXCustomer] = useState<any | null>(null);
+
+  // 5. Debt Aging Alert State
+  const [showDebtAlert, setShowDebtAlert] = useState(false);
+  const [debtAlertDismissed, setDebtAlertDismissed] = useState(false);
+  const [debtAlertBatchIndex, setDebtAlertBatchIndex] = useState(0);
+  const [debtAlertFading, setDebtAlertFading] = useState(false);
 
   const updateCustomerTimestamp = (customers: Customer[], customerId: string, timestamp: string | number) => {
     const normalizedTimestamp = typeof timestamp === "number" ? new Date(timestamp).toISOString() : timestamp;
@@ -474,6 +480,58 @@ export default function CustomerDebtsModule({
   );
 
   // ----------------------------------------------------
+  // قائمة العملاء اللي آخر دين عليهم تعدى يومين (لإشعار التنبيه)
+  const staleDebtCustomers = useMemo(() => {
+    const now = Date.now();
+    const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+
+    return allActiveAndSettledCustomers
+      .filter((item) => {
+        if (item.debtBalance <= 0) return false;
+
+        const debtOnlyTxs = item.historicalTxs
+          .filter((tx: any) => tx.type === 'debt' && !tx.isDeleted)
+          .sort((a: any, b: any) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+
+        if (debtOnlyTxs.length === 0) return false;
+
+        const lastDebtDate = new Date(debtOnlyTxs[0].date).getTime();
+        return (now - lastDebtDate) >= twoDaysMs;
+      })
+      .map((item) => item.cust.name);
+  }, [allActiveAndSettledCustomers]);
+
+  // ⏰ Debt Aging Alert — ظهور تلقائي
+  useEffect(() => {
+    if (staleDebtCustomers.length === 0 || debtAlertDismissed) {
+      setShowDebtAlert(false);
+      return;
+    }
+
+    const showTimer = setTimeout(() => {
+      setShowDebtAlert(true);
+    }, 3000);
+
+    return () => clearTimeout(showTimer);
+  }, [staleDebtCustomers, debtAlertDismissed]);
+
+  // 🔄 تدوير أسماء العملاء
+  useEffect(() => {
+    if (!showDebtAlert || staleDebtCustomers.length === 0) return;
+
+    const batchSize = 3;
+    const totalBatches = Math.ceil(staleDebtCustomers.length / batchSize);
+
+    const interval = setInterval(() => {
+      setDebtAlertBatchIndex((prev) => (prev + 1) % totalBatches);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [showDebtAlert, staleDebtCustomers.length]);
+
+  // ----------------------------------------------------
   // تسجيل إضافة دين جديد لعميل حالي
   // ----------------------------------------------------
   const handleProcessInnerDebtSubmit = (e: React.FormEvent) => {
@@ -726,13 +784,13 @@ export default function CustomerDebtsModule({
     const transactions = currentState.debtTransactions.filter(
       (t) => t.cycleId === activeCycle?.id
     );
-    const totalDebts = transactions
-      .filter((t) => t.type === "debt")
+    const totalPurchases = transactions
+      .filter((t) => t.type === "purchase")
       .reduce((sum, t) => sum + t.amount, 0);
     const totalPayments = transactions
       .filter((t) => t.type === "payment")
       .reduce((sum, t) => sum + t.amount, 0);
-    const outstanding = (activeCycle?.initialBalance || 0) + totalDebts - totalPayments;
+    const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
 
     const timestamp = new Date().toISOString();
     const docNum = generateDocNumber();
@@ -961,6 +1019,13 @@ export default function CustomerDebtsModule({
     (a) => a.cust.id === selectedCustomerId,
   );
 
+  // المجموعة الحالية من الأسماء اللي حتظهر في الإشعار (كل دفعة 3 أسماء)
+  const debtAlertBatchSize = 3;
+  const debtAlertCurrentBatch = useMemo(() => {
+    const start = debtAlertBatchIndex * debtAlertBatchSize;
+    return staleDebtCustomers.slice(start, start + debtAlertBatchSize);
+  }, [staleDebtCustomers, debtAlertBatchIndex]);
+
   return (
     <div className="space-y-4 text-right" dir="rtl">
       {/* Toast Notification */}
@@ -969,6 +1034,110 @@ export default function CustomerDebtsModule({
           <CheckCircle className="w-5 h-5" />
           <span className="font-bold">{showSuccessToast}</span>
         </div>
+      )}
+
+      {/* 🦅 Debt Aging Alert — Center Screen Notification */}
+      {showDebtAlert && staleDebtCustomers.length > 0 && (
+        <>
+          {/* خلفية داكنة شفافة */}
+          <div
+            className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[9997] transition-opacity duration-500 ${debtAlertFading ? 'opacity-0' : 'opacity-100'}`}
+            onClick={() => {
+              setDebtAlertFading(true);
+              setTimeout(() => {
+                setDebtAlertDismissed(true);
+                setShowDebtAlert(false);
+                setDebtAlertFading(false);
+              }, 500);
+            }}
+          />
+
+          {/* صندوق الإشعار في نص الشاشة */}
+          <div className={`fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none p-4`}>
+            <div className={`bg-slate-900 border-2 border-amber-500/60 rounded-3xl p-8 shadow-[0_0_60px_rgba(245,158,11,0.3)] max-w-md w-full pointer-events-auto debt-alert-popup text-center relative transition-all duration-500 ${debtAlertFading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
+              {/* زر الإغلاق */}
+              <button
+                onClick={() => {
+                  setDebtAlertFading(true);
+                  setTimeout(() => {
+                    setDebtAlertDismissed(true);
+                    setShowDebtAlert(false);
+                    setDebtAlertFading(false);
+                  }, 500);
+                }}
+                className="absolute top-3 right-3 text-slate-500 hover:text-white hover:bg-slate-800 p-2 rounded-full transition-colors z-10"
+                title="إغلاق"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* الأيقونة */}
+              <div className="text-6xl mb-3 drop-shadow-lg">
+                🦅
+              </div>
+
+              {/* العنوان */}
+              <h2 className="text-xl font-black text-amber-400 mb-5 tracking-wide">
+                ⚠️ انتبه! ديون متأخرة
+              </h2>
+
+              {/* قائمة الأسماء */}
+              <div className="space-y-2.5 mb-3">
+                {debtAlertCurrentBatch.map((name, i) => (
+                  <div
+                    key={`${name}-${i}`}
+                    className="debt-alert-name text-white font-extrabold text-base bg-slate-800/80 rounded-2xl py-3 px-5 border border-slate-700/80 shadow-inner"
+                  >
+                    {name}
+                  </div>
+                ))}
+              </div>
+
+              {/* عداد العملاء */}
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <span className="text-slate-500 text-xs">
+                  {staleDebtCustomers.length} {staleDebtCustomers.length === 1 ? 'عميل' : 'عملاء'} عليهم ديون متأخرة
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 debt-alert-dot animate-pulse" />
+              </div>
+
+              {/* نقاط التقدم (pagination dots) */}
+              {Math.ceil(staleDebtCustomers.length / debtAlertBatchSize) > 1 && (
+                <div className="flex items-center justify-center gap-1.5 mt-3">
+                  {Array.from({ length: Math.ceil(staleDebtCustomers.length / debtAlertBatchSize) }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        i === debtAlertBatchIndex
+                          ? 'bg-amber-400 w-4'
+                          : 'bg-slate-700'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* CSS Animations */}
+          <style>{`
+            @keyframes debtAlertPopIn {
+              0% { transform: scale(0.7); opacity: 0; }
+              60% { transform: scale(1.05); opacity: 1; }
+              100% { transform: scale(1); opacity: 1; }
+            }
+            @keyframes debtNameSlideUp {
+              0% { transform: translateY(10px); opacity: 0; }
+              100% { transform: translateY(0); opacity: 1; }
+            }
+            .debt-alert-popup {
+              animation: debtAlertPopIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            }
+            .debt-alert-name {
+              animation: debtNameSlideUp 0.4s ease-out forwards;
+            }
+          `}</style>
+        </>
       )}
 
       {/* القسم العلوي: إجمالي الديون وإجراءات الزبائن */}
