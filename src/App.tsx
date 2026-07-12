@@ -80,7 +80,8 @@ export default function App() {
     | "royal-dark"
     | "corporate-navy"
     | "graphite-gray"
-    | "terminal-market";
+    | "terminal-market"
+    | "vip";
   const [appTheme, setAppTheme] = useState<AppTheme>(() => {
     return (localStorage.getItem("ABDO_ERP_THEME") as AppTheme) || "banker-light";
   });
@@ -788,6 +789,12 @@ export default function App() {
           icon: "📈",
           label: "شاشة التداول",
           bg: "bg-[#111111] hover:bg-[#222222] text-[#10b981] border-[#222222]",
+        };
+      case "vip":
+        return {
+          icon: "💎",
+          label: "VIP الملكي",
+          bg: "bg-[#1a1026] hover:bg-[#241336] text-[#f5d76e] border-[#5b3a82]",
         };
       case "banker-light":
       default:
@@ -1747,7 +1754,7 @@ export default function App() {
               </h2>
               <p className="text-slate-400 text-xs mt-1 font-medium">
                 الرجاء اختيار المظهر المناسب الذي ترغب في استخدامه في المنظومة
-                (يتوفر 5 مظاهر)
+                (يتوفر 6 مظاهر)
               </p>
             </div>
 
@@ -1783,6 +1790,12 @@ export default function App() {
                     icon: "📈",
                     label: "شاشة التداول",
                     bgThemeClass: "bg-black text-emerald-500",
+                  },
+                  {
+                    id: "vip",
+                    icon: "💎",
+                    label: "VIP الملكي",
+                    bgThemeClass: "bg-[#1a1026] text-[#f5d76e]",
                   },
                 ] as const
               ).map((theme) => (

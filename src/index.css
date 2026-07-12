@@ -76,6 +76,16 @@ input[type="number"] {
     --border-color: #222222;
 }
 
+/* 6. وضع VIP الملكي */
+[data-theme="vip"] {
+    --bg-main: #120b1c;
+    --bg-surface: #1a1026;
+    --text-primary: #f8f1ff;
+    --text-secondary: #c5b5d6;
+    --accent-color: #f5d76e; /* ذهبي فاخر */
+    --border-color: #5b3a82;
+}
+
 /* تطبيق المتغيرات على أساسيات المنظومة */
 body {
     background-color: var(--bg-main) !important;
