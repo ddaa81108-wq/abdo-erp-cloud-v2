@@ -210,6 +210,7 @@ export interface UserPermissions {
 export interface User {
   id: string;
   username: string;
+  email?: string;
   name: string;
   role: 'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant';
   password: string;

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { User as UserType, ERPState } from '../types';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 
 interface LoginScreenProps {
   state: ERPState;
@@ -8,29 +10,76 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: LoginScreenProps) {
-  const [usernameInput, setUsernameInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setIsLoggingIn(true);
 
-    const targetUser = state.users.find(
-      u => u.username.toLowerCase() === usernameInput.trim().toLowerCase()
-    );
+    try {
+      if (!auth) {
+        setErrorMessage('خطأ في تهيئة المصادقة. الرجاء تحديث الصفحة.');
+        return;
+      }
 
-    if (!targetUser) {
-      setErrorMessage('المستخدم غير موجود. الرجاء التحقق من البيانات.');
-      return;
+      const email = emailInput.trim().toLowerCase();
+      const password = passwordInput.trim();
+
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      const targetUser = state.users.find(
+        u => u.email?.toLowerCase() === firebaseUser.email?.toLowerCase()
+      );
+
+      if (targetUser) {
+        onLoginSuccess(targetUser);
+        return;
+      }
+
+      const authUser: UserType = {
+        id: firebaseUser.uid,
+        username: firebaseUser.email || '',
+        email: firebaseUser.email || '',
+        name: firebaseUser.displayName || firebaseUser.email || '',
+        role: 'admin',
+        password: '',
+        permissions: {
+          canViewCustomers: true,
+          canViewDebts: true,
+          canViewCompanies: true,
+          canViewTreasury: true,
+          canViewPurchases: true,
+          canViewDeposits: true,
+          canViewArchive: true,
+          canViewBackup: true,
+          canViewAdvances: true,
+        },
+        createdAt: new Date().toISOString(),
+      };
+
+      onLoginSuccess(authUser);
+    } catch (error: any) {
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/invalid-credential'
+      ) {
+        setErrorMessage('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('صيغة البريد الإلكتروني غير صحيحة.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setErrorMessage('محاولات كثيرة جداً. الرجاء الانتظار ثم المحاولة مرة أخرى.');
+      } else {
+        setErrorMessage('حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.');
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    if (targetUser.password !== passwordInput.trim()) {
-      setErrorMessage('كلمة المرور غير صحيحة.');
-      return;
-    }
-
-    onLoginSuccess(targetUser);
   };
 
   return (
@@ -164,9 +213,9 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
           <div className="input-group">
             <input 
               type="text" 
-              placeholder="اسم المستخدم" 
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value)}
+              placeholder="البريد الإلكتروني" 
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
               required
             />
           </div>
@@ -181,7 +230,9 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
             />
           </div>
 
-          <button type="submit" className="login-btn">دخول المنظومة — لا اله الا الله</button>
+          <button type="submit" className="login-btn" disabled={isLoggingIn}>
+            {isLoggingIn ? 'جاري تسجيل الدخول...' : 'دخول المنظومة — لا اله الا الله'}
+          </button>
         </form>
       </div>
     </>
