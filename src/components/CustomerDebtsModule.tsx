@@ -198,7 +198,7 @@ export default function CustomerDebtsModule({
     if (customer.isDeleted) {
       const restoredCustomers = state.customers.map((c) => {
         if (c.id === customer.id) {
-          return { ...c, isDeleted: false, updatedAt: new Date().toISOString(), lastUpdated: Date.now() };
+          return { ...c, isDeleted: false, updatedAt: new Date().toISOString(), lastUpdated: new Date().toISOString() };
         }
         return c;
       });

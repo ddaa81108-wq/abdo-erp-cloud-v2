@@ -251,6 +251,7 @@ export interface ERPState {
   notesAndReminders: NoteReminder[];
   advancePersons: AdvancePerson[];
   advanceTransactions: AdvanceTransaction[];
+  sectionLabels?: Record<string, string>; // Custom section labels
 }
 
 // ----------------------------------------------------
