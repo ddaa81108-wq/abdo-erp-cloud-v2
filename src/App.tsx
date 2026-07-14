@@ -113,7 +113,14 @@ export default function App() {
   const [showCustomCardModal, setShowCustomCardModal] = useState(false);
   const [customCardValue, setCustomCardValue] = useState("");
 
-  const [exportMetrics, setExportMetrics] = useState({
+  const [exportMetrics, setExportMetrics] = useState<{
+    label1: string;
+    value1: string | number;
+    label2: string;
+    value2: string | number;
+    label3: string;
+    value3: string | number;
+  }>({
     label1: "",
     value1: "",
     label2: "",
@@ -1212,10 +1219,7 @@ export default function App() {
                   )}
 
                   {activeTab === "financial_reports" && (
-                    <FinancialReportsModule
-                      state={state}
-                      onOpenExporter={handleOpenExporter}
-                    />
+                    <FinancialReportsModule />
                   )}
 
                   {activeTab === "purchases" && (

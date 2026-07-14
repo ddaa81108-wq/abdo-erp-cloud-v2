@@ -34,156 +34,79 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
   };
 
   return (
-    <>
-      <style>{`
-        .royal-login-body {
-            margin: 0;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #0a0a0a; 
-            background-image:
-                radial-gradient(circle at 15% 50%, rgba(212, 175, 55, 0.05), transparent 30%),
-                radial-gradient(circle at 85% 30%, rgba(212, 175, 55, 0.03), transparent 30%);
-            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            direction: rtl;
-        }
-
-        .royal-glass-card {
-            width: 420px;
-            padding: 50px 40px;
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            overflow: hidden;
-            width: 90%;
-            max-width: 420px;
-        }
-
-        .royal-glass-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.6), transparent);
-        }
-
-        .brand-title {
-            color: #d4af37;
-            font-size: 34pt;
-            font-weight: 900;
-            margin: 0;
-            letter-spacing: 1px;
-            text-shadow: 0 5px 15px rgba(0,0,0,0.6);
-            text-align: center;
-            line-height: 1.2;
-        }
-
-        .version-badge {
-            color: #666;
-            font-size: 12pt;
-            font-weight: bold;
-            letter-spacing: 4px;
-            margin-top: 5px;
-            margin-bottom: 45px;
-        }
-
-        .input-group {
-            width: 100%;
-            margin-bottom: 25px;
-        }
-
-        .input-group input {
-            width: 100%;
-            padding: 18px 20px;
-            font-size: 15pt;
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            color: #fff;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            transition: all 0.3s ease;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #d4af37;
-            background: rgba(0, 0, 0, 0.7);
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.15);
-        }
-
-        .input-group input::placeholder {
-            color: #444;
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 18px;
-            font-size: 18pt;
-            font-weight: bold;
-            color: #0a0a0a;
-            background: linear-gradient(135deg, #fceabb 0%, #d4af37 100%);
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            margin-top: 15px;
-            box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2);
-            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
-            transition: all 0.2s ease;
-        }
-
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 25px rgba(212, 175, 55, 0.35);
-        }
+    <div className="min-h-screen flex items-center justify-center bg-slate-50" dir="rtl">
+      <div className="flex w-full max-w-5xl bg-white shadow-2xl rounded-3xl overflow-hidden min-h-[600px] m-4">
         
-        .login-btn:active {
-            transform: translateY(2px);
-        }
-      `}</style>
-      <div className="royal-login-body">
-        <form onSubmit={handleLoginSubmit} className="royal-glass-card">
-          <h1 className="brand-title">المنظومة الملكية</h1>
-          <div className="version-badge">SECURE V23</div>
+        {/* الجانب الأيمن: نموذج الدخول */}
+        <div className="w-full lg:w-1/2 p-12 sm:p-16 flex flex-col justify-center relative">
+          <div className="mb-10 text-center">
+            <h1 className="text-4xl font-black text-slate-900 mb-2 tracking-tight">المنظومة الملكية</h1>
+            <p className="text-slate-500 font-medium">مرحباً بك مجدداً، يرجى تسجيل الدخول</p>
+          </div>
 
-          {errorMessage && (
-            <div style={{ color: '#ff6b6b', marginBottom: '20px', fontSize: '12pt', textAlign: 'center', background: 'rgba(255,0,0,0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,0,0,0.2)', width: '100%' }}>
-              {errorMessage}
+          <form onSubmit={handleLoginSubmit} className="space-y-6">
+            {errorMessage && (
+              <div className="p-4 bg-red-50 border-r-4 border-red-500 text-red-700 text-sm font-bold rounded-l">
+                {errorMessage}
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">اسم المستخدم</label>
+              <input 
+                type="text" 
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                required
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-800"
+                placeholder="أدخل اسم المستخدم"
+              />
             </div>
-          )}
 
-          <div className="input-group">
-            <input 
-              type="text" 
-              placeholder="اسم المستخدم" 
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value)}
-              required
-            />
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">كلمة المرور</label>
+              <input 
+                type="password" 
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                required
+                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-800"
+                placeholder="أدخل كلمة المرور"
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all transform hover:-translate-y-0.5 active:translate-y-0 mt-4"
+            >
+              تسجيل الدخول
+            </button>
+          </form>
+        </div>
+
+        {/* الجانب الأيسر: الشكل الجمالي */}
+        <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative p-12 items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 opacity-95 z-0"></div>
+          
+          {/* تأثيرات إضاءة هندسية (Abstract Geometric Glow) */}
+          <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-500 rounded-full blur-[100px] opacity-20 transform translate-x-1/4 -translate-y-1/4"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600 rounded-full blur-[120px] opacity-20 transform -translate-x-1/3 translate-y-1/3"></div>
+          
+          {/* محتوى الجانب الأيسر */}
+          <div className="relative z-10 text-center text-white max-w-md">
+            <div className="w-24 h-24 mx-auto bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 flex items-center justify-center mb-8 shadow-2xl">
+              <svg className="w-12 h-12 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+              </svg>
+            </div>
+            <h2 className="text-4xl font-black mb-4 leading-snug">بوابة النظام والمحاسبة</h2>
+            <p className="text-emerald-100/70 text-lg leading-relaxed font-medium">
+              حماية تامة، تحكم متقدم، وتقارير فورية.
+            </p>
           </div>
+        </div>
 
-          <div className="input-group">
-            <input 
-              type="password" 
-              placeholder="كلمة المرور" 
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              required
-            />
-          </div>
-
-          <button type="submit" className="login-btn">دخول المنظومة — لا اله الا الله</button>
-        </form>
       </div>
-    </>
+    </div>
   );
 }

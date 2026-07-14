@@ -278,6 +278,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: true,
         canViewPurchases: true,
         canViewDeposits: true,
+        canViewAdvances: true,
         canViewArchive: true,
         canViewBackup: true
       },
@@ -287,6 +288,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: true,
         canViewPurchases: true,
         canViewDeposits: true,
+        canViewAdvances: true,
         canViewArchive: true,
         canViewBackup: false
       },
@@ -296,6 +298,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: true,
         canViewPurchases: false,
         canViewDeposits: true,
+        canViewAdvances: false,
         canViewArchive: false,
         canViewBackup: false
       },
@@ -305,6 +308,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: false,
         canViewPurchases: true,
         canViewDeposits: false,
+        canViewAdvances: false,
         canViewArchive: true,
         canViewBackup: false
       },
@@ -314,6 +318,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: false,
         canViewPurchases: false,
         canViewDeposits: false,
+        canViewAdvances: false,
         canViewArchive: true,
         canViewBackup: false
       }
