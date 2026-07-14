@@ -210,6 +210,7 @@ export interface UserPermissions {
 export interface User {
   id: string;
   username: string;
+  email?: string;
   name: string;
   role: 'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant';
   password: string;
@@ -250,6 +251,7 @@ export interface ERPState {
   notesAndReminders: NoteReminder[];
   advancePersons: AdvancePerson[];
   advanceTransactions: AdvanceTransaction[];
+  sectionLabels?: Record<string, string>; // Custom section labels
 }
 
 // ----------------------------------------------------

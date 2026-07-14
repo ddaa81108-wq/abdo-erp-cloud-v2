@@ -141,7 +141,7 @@ export default function MerchantsModule({
 
     if (existingInCustomers || existingInCompanies) {
       alert(
-        `╪╣╪░╪▒╪د┘ï╪î ┘è┘à┘╪╣ ╪ز┘â╪▒╪د╪▒ ╪د┘╪ث╪│┘à╪د╪ة! ┘ç╪░╪د ╪د┘╪د╪│┘à ┘à╪│╪ز╪«╪»┘à ┘à╪│╪ذ┘é╪د┘ï ┘┘è ┘é╪│┘à (╪د┘╪»┘è┘ê┘ ╪ث┘ê ╪د┘╪┤╪▒┘â╪د╪ز). ╪د┘╪▒╪ش╪د╪ة ╪ز╪║┘è┘è╪▒┘ç.`,
+        `عذراً، يمنع تكرار الأسماء! هذا الاسم مستخدم مسبقاً في قسم (الديون أو الشركات). الرجاء تغييره.`,
       );
       return;
     }
@@ -157,7 +157,7 @@ export default function MerchantsModule({
 
     if (exactMatchActive) {
       alert(
-        `╪د┘╪ز╪د╪ش╪▒ "${exactMatchActive.name}" ┘à╪│╪ش┘ ┘à╪│╪ذ┘é╪د┘ï ┘┘è ╪د┘╪»┘╪د╪ز╪▒! ┘┘ ┘è╪ز┘à ╪ز┘â╪▒╪د╪▒ ╪د┘╪د╪│┘à.\n╪│┘è╪ز┘à ╪د┘╪ت┘ ┘╪ز╪ص ╪ذ╪╖╪د┘é╪ر ╪د┘╪ز╪د╪ش╪▒ ╪د┘╪ص╪د┘┘è╪ر ┘╪ز╪ز┘à┘â┘ ┘à┘ ╪ح╪╢╪د┘╪ر ╪╣┘à┘┘è╪د╪ز ╪ش╪»┘è╪»╪ر (┘┘ê╪د╪ز┘è╪▒ ┘à╪┤╪ز╪▒┘è╪د╪ز) ┘à┘ ╪»╪د╪«┘ ╪ذ╪╖╪د┘é╪ز┘ç.`,
+        `التاجر "${exactMatchActive.name}" مسجل مسبقاً في الدفاتر! لن يتم تكرار الاسم.\nسيتم الآن فتح بطاقة التاجر الحالية لتتمكن من إضافة عمليات جديدة (فواتير مشتريات) من داخل بطاقته.`,
       );
       setSelectedMerchId(exactMatchActive.id);
       setShowAddMerchantModal(false);
@@ -215,10 +215,10 @@ export default function MerchantsModule({
         merchantId: merchId,
         type: "debt",
         amount: startingDebt,
-        currency: "╪».┘",
+        currency: "د.ل",
         date: new Date().toISOString(),
         referenceNo: generateReferenceNo(),
-        note: "╪▒╪╡┘è╪» ┘à╪»┘è┘ ╪ث┘ê┘ ╪د┘┘à╪»╪«╪▒ ╪╣┘╪» ╪ز┘ç┘è╪خ╪ر ╪د┘┘â╪┤┘ ╪ذ┘é╪│┘à ╪د┘╪ز╪ش╪د╪▒",
+        note: "رصيد مدين أول المدخر عند تهيئة الكشف بقسم التجار",
         postedToTreasury: false,
         createdAt: new Date().toISOString(),
       });
@@ -264,10 +264,10 @@ export default function MerchantsModule({
         merchantId: duplicateTarget.id,
         type: "debt",
         amount: extraDebt,
-        currency: "╪».┘",
+        currency: "د.ل",
         date: new Date().toISOString(),
         referenceNo: generateReferenceNo(),
-        note: "╪»┘è┘ ┘à╪╢╪د┘ ╪╣┘╪» ╪د╪│╪ز╪╣╪د╪»╪ر ┘â╪د╪▒╪ز ╪د┘╪ز╪د╪ش╪▒ ┘à┘ ╪د┘╪ث╪▒╪┤┘è┘",
+        note: "دين مضاف عند استعادة كارت التاجر من الأرشيف",
         postedToTreasury: false,
         createdAt: new Date().toISOString(),
       });
@@ -287,7 +287,7 @@ export default function MerchantsModule({
     setMerchContact("");
     setInitialDebt("");
     alert(
-      `≡اë ╪ز┘à ╪ح╪╣╪د╪»╪ر ╪د╪│╪ز╪▒╪ش╪د╪╣ ┘ê╪ز┘╪╣┘è┘ ┘â╪د╪▒╪ز ╪د┘╪ز╪د╪ش╪▒ ┘ê╪د╪ص╪ز╪│╪د╪ذ┘ç ╪ذ╪د┘╪ث╪▒╪┤┘è┘ ╪د┘╪ز╪د╪▒┘è╪«┘è ╪ذ┘╪ش╪د╪ص: ${duplicateTarget.name}`,
+      `🎉 تم إعادة استرجاع وتفعيل كارت التاجر واحتسابه بالأرشيف التاريخي بنجاح: ${duplicateTarget.name}`,
     );
   };
 
@@ -310,14 +310,14 @@ export default function MerchantsModule({
       merchantId: selectedMerchId,
       type: txType,
       amount: amount,
-      currency: "╪».┘",
+      currency: "د.ل",
       date: new Date().toISOString(),
       referenceNo: refNo,
       note:
         txNote ||
         (txType === "debt"
-          ? "┘╪د╪ز┘ê╪▒╪ر ╪ذ┘è╪╣/╪د╪│╪ز┘╪د┘à ╪ذ╪د┘╪ت╪ش┘"
-          : "╪»┘╪╣╪ر ╪│╪»╪د╪» ╪ص╪│╪د╪ذ ┘à┘ ╪د┘╪ز╪د╪ش╪▒"),
+          ? "فاتورة بيع/استلام بالآجل"
+          : "دفعة سداد حساب من التاجر"),
       postedToTreasury: false,
       createdAt: new Date().toISOString(),
     };
@@ -357,12 +357,12 @@ export default function MerchantsModule({
     setTxAmount("");
     setTxNote("");
     setShowAddTxModal(false);
-    setShowSuccessToast("≡اë ╪ز┘à ┘é┘è╪» ┘ê╪ز╪ص╪»┘è╪س ╪د┘╪│╪ش┘ ╪د┘┘à╪د┘┘è ┘┘╪ز╪د╪ش╪▒ ╪ذ┘╪ش╪د╪ص.");
+    setShowSuccessToast("🎉 تم قيد وتحديث السجل المالي للتاجر بنجاح.");
   };
 
   const handleDeleteTransaction = (txId: string) => {
     const tx = (state.merchantTransactions || []).find((t) => t.id === txId);
-    const displayName = tx ? `╪ص╪▒┘â╪ر ╪ص╪│╪د╪ذ ╪د┘╪ز╪د╪ش╪▒` : `╪ص╪▒┘â╪ر ╪ص╪│╪د╪ذ`;
+    const displayName = tx ? `حركة حساب التاجر` : `حركة حساب`;
 
     if (onScheduleDeletion) {
       onScheduleDeletion('transaction', txId, displayName, () => {
@@ -377,21 +377,28 @@ export default function MerchantsModule({
     const tx = (state.merchantTransactions || []).find((t) => t.id === txId);
     if (!tx) return;
 
+    // منع حذف معاملات التهيئة والاستعادة (init/restore)
+    if (tx.id.includes("tx_mer_init_") || tx.id.includes("tx_mer_restore_")) {
+      alert("⚠️ لا يمكن حذف معاملة التهيئة أو الاستعادة. هذه المعاملات أساسية لحساب الرصيد الافتتاحي.");
+      setMerchantDeleteTxId(null);
+      return;
+    }
+
     const updatedTxs = state.merchantTransactions.filter((t) => t.id !== txId);
 
     const updatedMerch = state.merchants.map((m) => {
       if (m.id === tx.merchantId) {
-        const merchTxs = updatedTxs.filter((t) => t.merchantId === m.id)
-          .filter((t) => !t.id.includes("tx_mer_init_") && !t.id.includes("tx_mer_restore_"));
-
-        let calcNewDebt = 0;
-        let calcPayToday = 0;
-        merchTxs.forEach((t) => {
-          if (t.type === "debt") calcNewDebt += t.amount;
-          else calcPayToday += t.amount;
-        });
-
         const prev = m.previousBalance || 0;
+        let calcNewDebt = m.newDebt || 0;
+        let calcPayToday = m.paymentToday || 0;
+
+        // Reverse logic: عكس أثر العملية المحذوفة على الإجماليات
+        if (tx.type === "debt") {
+          calcNewDebt -= tx.amount;
+        } else {
+          calcPayToday -= tx.amount;
+        }
+
         return {
           ...m,
           newDebt: calcNewDebt,
@@ -408,12 +415,12 @@ export default function MerchantsModule({
       merchants: updatedMerch,
     });
     setMerchantDeleteTxId(null);
-    setShowSuccessToast("╪ز┘à ╪ص╪░┘ ╪ص╪▒┘â╪ر ╪د┘╪ص╪│╪د╪ذ ┘┘╪ز╪د╪ش╪▒ ╪ذ┘╪ش╪د╪ص.");
+    setShowSuccessToast("تم حذف حركة الحساب للتاجر بنجاح.");
   };
 
   const handleSoftDeleteMerchant = (merchId: string) => {
     const merch = (state.merchants || []).find((m) => m.id === merchId);
-    const displayName = merch ? merch.name : "╪ز╪د╪ش╪▒";
+    const displayName = merch ? merch.name : "تاجر";
 
     if (onScheduleDeletion) {
       onScheduleDeletion('merchant', merchId, displayName, () => {
@@ -442,7 +449,7 @@ export default function MerchantsModule({
 
     setSelectedMerchId(null);
     setMerchantSoftDeleteId(null);
-    setShowSuccessToast(`≡اôح ╪ز┘à ┘┘é┘ ┘ê╪ث╪▒╪┤┘╪ر ╪ذ╪╖╪د┘é╪ر ╪د┘╪ز╪د╪ش╪▒ (${merch.name}) ╪ذ┘╪ش╪د╪ص.`);
+    setShowSuccessToast(`📥 تم نقل وأرشفة بطاقة التاجر (${merch.name}) بنجاح.`);
   };
 
   const handleExecuteQuickMerchantSettle = (
@@ -463,10 +470,10 @@ export default function MerchantsModule({
           merchantId: merch.id,
           type: "payment",
           amount: outstanding,
-          currency: "╪».┘",
+          currency: "د.ل",
           date: timestamp,
           referenceNo: refNo,
-          note: "╪»┘╪╣╪ر ╪│╪»╪د╪» ╪ز╪╡┘┘è╪ر ╪│╪▒┘è╪╣╪ر ┘ê╪«╪▒┘ê╪ش ┘à┘ ╪د┘╪┤╪د╪┤╪ر ╪د┘┘╪┤╪╖╪ر ┘┘╪▓╪ذ┘ê┘ ╪د┘┘à╪ذ╪د╪┤╪▒",
+          note: "دفعة سداد تصفية سريعة وخروج من الشاشة النشطة للزبون المباشر",
           postedToTreasury: false,
           createdAt: timestamp,
         });
@@ -496,7 +503,7 @@ export default function MerchantsModule({
     setSelectedMerchId(null);
   };
 
-  // ╪ز╪╡┘┘è╪ر ┘â╪د┘╪ر ╪ذ╪╖╪د┘é╪د╪ز ╪د┘╪ز╪ش╪د╪▒ ╪د┘┘╪┤╪╖╪ر ┘ê╪║┘è╪▒ ╪د┘┘à╪ص╪░┘ê┘╪ر (╪ص╪ز┘ë ┘┘ê ┘â╪د┘ ╪د┘╪▒╪╡┘è╪» ╪╡┘╪▒╪د┘ï) ┘╪ز╪ز┘à ╪ز╪╡┘┘è╪ز┘ç┘à ┘ê╪ث╪▒╪┤╪ز┘ç┘à ╪ذ╪د┘╪ز╪ص┘â┘à ╪د┘┘è╪»┘ê┘è ┘ê╪▓╪▒ X
+  // تصفية كافة بطاقات التجار النشطة وغير المحذوفة (حتى لو كان الرصيد صفراً) لتتم تصفيتهم وأرشتهم بالتحكم اليدوي وزر X
   const activeMerchants = (state.merchants || []).filter((m) => {
     return !m.isDeleted;
   });
@@ -515,9 +522,14 @@ export default function MerchantsModule({
       .filter((t) => t.merchantId === merch.id)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
+    // Filter out initial/restore transactions because they are already accounted for in merch.previousBalance
+    const filteredTxs = merchTxs.filter(
+      (t) => !t.id.includes("tx_mer_init_") && !t.id.includes("tx_mer_restore_")
+    );
+
     let runningBalance = merch.previousBalance || 0;
 
-    const rows = merchTxs.map((t) => {
+    const rows = filteredTxs.map((t) => {
       let debit = 0;
       let credit = 0;
       if (t.type === "debt") {
@@ -535,60 +547,60 @@ export default function MerchantsModule({
             hour: "2-digit",
             minute: "2-digit",
           }),
-        t.note || (credit > 0 ? "╪ز╪│╪ش┘è┘ ╪»┘è┘" : "╪│╪»╪د╪» ╪»┘╪╣╪ر ┘à┘ ╪د┘╪ز╪د╪ش╪▒"),
+        t.note || (credit > 0 ? "تسجيل دين" : "سداد دفعة من التاجر"),
         credit > 0 ? `+${credit.toLocaleString()} ` : "-",
         debit > 0 ? `-${debit.toLocaleString()} ` : "-",
-        `${runningBalance.toLocaleString()} ╪».┘`,
+        `${runningBalance.toLocaleString()} د.ل`,
       ];
     });
 
     const headers = [
-      "╪ز╪د╪▒┘è╪« ╪د┘╪ص╪▒┘â╪ر",
-      "╪د┘╪ذ┘è╪د┘",
-      "╪»┘è┘ ╪ش╪»┘è╪» (+)",
-      "╪ز╪│╪»┘è╪» (-)",
-      "╪د┘╪▒╪╡┘è╪» ╪د┘╪ز╪▒╪د┘â┘à┘è",
+      "تاريخ الحركة",
+      "البيان",
+      "دين جديد (+)",
+      "تسديد (-)",
+      "الرصيد التراكمي",
     ];
 
-    const totalDebts = merchTxs
+    const totalDebts = filteredTxs
       .filter((t) => t.type === "debt")
       .reduce((acc, t) => acc + t.amount, 0);
-    const totalPayments = merchTxs
+    const totalPayments = filteredTxs
       .filter((t) => t.type === "payment")
       .reduce((acc, t) => acc + t.amount, 0);
 
     const footerMetrics = [
       {
-        label: "╪▒╪╡┘è╪» ╪│╪د╪ذ┘é",
-        value: `${(merch.previousBalance || 0).toLocaleString()} ╪».┘`,
+        label: "رصيد سابق",
+        value: `${(merch.previousBalance || 0).toLocaleString()} د.ل`,
         colorClass: "text-slate-700",
       },
       {
-        label: "╪┤╪║┘ ╪ش╪»┘è╪»",
-        value: `+${totalDebts.toLocaleString()} ╪».┘`,
+        label: "شغل جديد",
+        value: `+${totalDebts.toLocaleString()} د.ل`,
         colorClass: "text-amber-700",
       },
       {
-        label: "╪د┘╪»┘╪╣ ╪د┘┘è┘ê┘à",
-        value: `-${totalPayments.toLocaleString()} ╪».┘`,
+        label: "الدفع اليوم",
+        value: `-${totalPayments.toLocaleString()} د.ل`,
         colorClass: "text-emerald-700",
       },
       {
-        label: "╪د┘╪▒╪╡┘è╪» ╪د┘╪ص╪د┘┘è",
-        value: `${runningBalance.toLocaleString()} ╪».┘`,
+        label: "الرصيد الحالي",
+        value: `${runningBalance.toLocaleString()} د.ل`,
         colorClass: "text-rose-700",
       },
     ];
 
     onOpenExporter(
-      `┘â╪┤┘ ╪ص╪│╪د╪ذ ╪د┘╪ز╪د╪ش╪▒: ${merch.name}`,
+      `كشف حساب التاجر: ${merch.name}`,
       {
-        label1: "╪د┘╪ز╪د╪ش╪▒ ╪د┘┘à╪╣╪ز┘à╪»",
+        label1: "التاجر المعتمد",
         value1: merch.name,
-        label2: "╪ذ╪د┘é┘è ╪د┘┘à╪ز╪ذ┘é┘è ╪ذ╪░┘à╪ز┘ç",
-        value2: `${(merch.balance || 0).toLocaleString()} ╪».┘`,
-        label3: "╪ح╪ش┘à╪د┘┘è ╪د┘╪ص╪▒┘â╪د╪ز",
-        value3: `${merchTxs.length} ┘à╪╣╪د┘à┘╪ر ╪ذ╪د┘╪»┘╪ز╪▒`,
+        label2: "باقي المتبقي بذمته",
+        value2: `${(merch.balance || 0).toLocaleString()} د.ل`,
+        label3: "إجمالي الحركات",
+        value3: `${filteredTxs.length} معاملة بالدفتر`,
       },
       headers,
       rows,
@@ -599,29 +611,29 @@ export default function MerchantsModule({
 
   const handleOpenShareCard = () => {
     const headers = [
-      "╪د┘╪ز╪د╪ش╪▒ ┘ê╪د┘╪ز┘ê╪د╪╡┘",
-      "╪د┘╪»┘è┘ ╪د┘╪│╪د╪ذ┘é ╪د┘┘à╪ز╪▒╪د┘â┘à",
-      "╪»┘è┘ ╪د┘┘è┘ê┘à ╪د┘┘à╪╢╪د┘",
-      "╪د┘┘à╪ذ╪د┘╪║ ╪د┘┘à╪│╪»╪»╪ر ╪د┘┘è┘ê┘à",
-      "╪د┘╪»┘è┘ ╪د┘┘à╪ز╪ذ┘é┘è ╪د┘╪ص╪د┘┘è ╪ذ╪ذ╪╖╪د┘é╪ز┘ç",
+      "التاجر والتواصل",
+      "الدين السابق المتراكم",
+      "دين اليوم المضاف",
+      "المبالغ المسددة اليوم",
+      "الدين المتبقي الحالي ببطاقته",
     ];
     const rows = filteredMerchants.map((m) => [
-      `${m.name} (${m.contact || "╪ذ╪»┘ê┘ ┘ç╪د╪ز┘"})`,
-      `${(m.previousBalance || 0).toLocaleString()} ╪».┘`,
-      `${(m.newDebt || 0).toLocaleString()} ╪».┘`,
-      `${(m.paymentToday || 0).toLocaleString()} ╪».┘`,
-      `${(m.balance || 0).toLocaleString()} ╪».┘`,
+      `${m.name} (${m.contact || "بدون هاتف"})`,
+      `${(m.previousBalance || 0).toLocaleString()} د.ل`,
+      `${(m.newDebt || 0).toLocaleString()} د.ل`,
+      `${(m.paymentToday || 0).toLocaleString()} د.ل`,
+      `${(m.balance || 0).toLocaleString()} د.ل`,
     ]);
 
     onOpenExporter(
-      "┘é╪│┘à ╪د┘╪ز╪ش╪د╪▒ ┘ê┘à╪│╪ز╪ص┘é╪د╪ز ╪د┘╪░┘à┘à ╪د┘┘è┘ê┘à┘è╪ر",
+      "قسم التجار ومستحقات الذمم اليومية",
       {
-        label1: "╪ح╪ش┘à╪د┘┘è ╪»┘è┘ê┘ ╪د┘╪ز╪ش╪د╪▒ ╪د┘┘à╪ز╪▒╪╡╪»╪ر",
-        value1: totalOwedToMerchants.toLocaleString() + " ╪».┘",
-        label2: "╪╣╪»╪» ╪ص╪│╪د╪ذ╪د╪ز ╪د┘╪ز╪ش╪د╪▒ ╪د┘┘à╪│╪ش┘┘è┘",
-        value2: activeMerchants.length + " ┘â╪┤┘ ╪ز╪د╪ش╪▒ ┘╪┤╪╖",
-        label3: "┘à╪│╪ز┘ê┘ë ╪د┘╪س┘é╪ر ┘ê╪د┘╪ز╪╖╪د╪ذ┘é ┘┘┘é┘è┘ê╪»",
-        value3: "┘â╪د┘à┘ ┘ê┘à╪▒╪ص┘ّ┘ ╪ح┘è╪ش╪د╪ذ┘è╪د┘ï ┘┘╪ز╪ص╪╡┘è┘╪د╪ز",
+        label1: "إجمالي ديون التجار المترصدة",
+        value1: totalOwedToMerchants.toLocaleString() + " د.ل",
+        label2: "عدد حسابات التجار المسجلين",
+        value2: activeMerchants.length + " كشف تاجر نشط",
+        label3: "مستوى الثقة والتطابق للقيود",
+        value3: "كامل ومرحّل إيجابياً للتحصيلات",
       },
       headers,
       rows,
@@ -652,7 +664,7 @@ export default function MerchantsModule({
           <div className="relative z-10 flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
               <span className="text-slate-500 font-extrabold text-xs tracking-wide">
-                ╪ح╪ش┘à╪د┘┘è ╪»┘è┘ê┘ ╪د┘╪ز╪ش╪د╪▒ ╪د┘┘à╪ز╪▒╪╡╪»╪ر
+                إجمالي ديون التجار المترصدة
               </span>
               <div className="bg-purple-50 p-2 rounded-xl text-purple-600">
                 <Users className="w-4 h-4" />
@@ -661,10 +673,10 @@ export default function MerchantsModule({
             <div className="mt-auto">
               <div className="text-3xl font-black text-purple-600 drop-shadow-sm">
                 {totalOwedToMerchants.toLocaleString()}{" "}
-                <span className="text-sm font-bold opacity-70">╪».┘</span>
+                <span className="text-sm font-bold opacity-70">د.ل</span>
               </div>
               <div className="text-[10px] text-slate-400 font-bold mt-1.5 inline-block bg-slate-100 px-2 py-1 rounded-md">
-                {activeMerchants.length} ┘â╪┤┘ ╪ز╪د╪ش╪▒ ┘╪┤╪╖
+                {activeMerchants.length} كشف تاجر نشط
               </div>
             </div>
           </div>
@@ -678,7 +690,7 @@ export default function MerchantsModule({
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div className="flex items-center justify-between mb-3">
               <span className="text-slate-500 font-extrabold text-xs tracking-wide">
-                ╪ح╪»╪د╪▒╪ر ┘é╪│┘à ╪د┘╪ز╪ش╪د╪▒
+                إدارة قسم التجار
               </span>
               <div className="bg-fuchsia-50 p-2 rounded-xl text-fuchsia-600">
                 <FileText className="w-4 h-4" />
@@ -690,16 +702,16 @@ export default function MerchantsModule({
                 className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-extrabold text-[11px] px-3 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
               >
                 <Plus className="w-4 h-4 text-fuchsia-600" />
-                <span>╪ح╪╢╪د┘╪ر ┘â╪┤┘ ╪ز╪د╪ش╪▒ ≡اّج</span>
+                <span>إضافة كشف تاجر 👤</span>
               </button>
 
               <button
                 onClick={handleOpenShareCard}
                 className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 font-extrabold text-[11px] px-3 py-2.5 rounded-xl shadow-sm cursor-pointer flex items-center justify-center gap-1.5 transition-all text-center border border-slate-200"
-                title="╪ز╪╡╪»┘è╪▒ ╪د┘┘â╪┤┘ê┘╪د╪ز ┘┘┘ê╪د╪ز╪│╪د╪ذ"
+                title="تصدير الكشوفات للواتساب"
               >
                 <Camera className="w-4 h-4 text-fuchsia-600" />
-                <span>╪╡┘ê╪▒╪ر ┘â╪┤┘ê┘╪د╪ز ≡اô╕</span>
+                <span>صورة كشوفات 📸</span>
               </button>
             </div>
           </div>
@@ -711,11 +723,11 @@ export default function MerchantsModule({
         <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400">
           <Users className="w-12 h-12 text-slate-200 mx-auto mb-2" />
           <h4 className="font-bold text-slate-600 text-sm mb-1">
-            ┘╪د ╪ز┘ê╪ش╪» ┘â╪┤┘ê┘╪د╪ز ┘┘╪ز╪ش╪د╪▒ ┘à╪╖╪د╪ذ┘é╪ر
+            لا توجد كشوفات للتجار مطابقة
           </h4>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            ╪د┘┘é╪▒ ╪╣┘┘ë ╪▓╪▒ "╪ح╪╢╪د┘╪ر ┘â╪┤┘ ╪ز╪د╪ش╪▒ ╪ش╪»┘è╪»" ╪ذ╪د┘╪ث╪╣┘┘ë ┘╪ز┘ç┘è╪خ╪ر ┘à╪╣╪د┘à┘╪ر ╪ز╪د╪ش╪▒ ╪ش╪»┘è╪» ╪ث┘ê
-            ╪ز┘╪╣┘è┘ ┘à┘┘ ┘à╪ج╪▒╪┤┘.
+            انقر على زر "إضافة كشف تاجر جديد" بالأعلى لتهيئة معاملة تاجر جديد أو
+            تفعيل ملف مؤرشف.
           </p>
         </div>
       ) : (
@@ -746,7 +758,7 @@ export default function MerchantsModule({
                       handleSoftDeleteMerchant(m.id);
                     }}
                     className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
-                    title="╪ث╪▒╪┤┘╪ر ┘ê╪ح╪«┘╪د╪ة ظإî"
+                    title="أرشفة وإخفاء ❌"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -763,7 +775,7 @@ export default function MerchantsModule({
                 <div className="text-left shrink-0">
                   {Number(remaining) > 0 ? (
                     <span className="font-mono font-extrabold text-purple-600 text-xs bg-purple-50/50 px-2 py-1 rounded border border-purple-100/50 block">
-                      {remaining.toLocaleString()} ╪».┘
+                      {remaining.toLocaleString()} د.ل
                     </span>
                   ) : (
                     <div className="flex items-center gap-1">
@@ -772,18 +784,18 @@ export default function MerchantsModule({
                         onClick={async (e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          const success = await copySettledImage(m.name, "┘â╪د╪▒╪ز ┘à╪«╪د┘╪╡╪ر ┘┘╪ز╪د╪ش╪▒");
+                          const success = await copySettledImage(m.name, "كارت مخالصة للتاجر");
                           if (success) {
-                            alert("╪ز┘à ┘╪│╪« ┘â╪د╪▒╪ز ╪د┘┘à╪«╪د┘╪╡╪ر ╪ذ┘╪ش╪د╪ص ≡اôï");
+                            alert("تم نسخ كارت المخالصة بنجاح 📋");
                           }
                         }}
                         className="bg-emerald-50 hover:bg-emerald-100 text-emerald-600 p-1 rounded border border-emerald-100 shadow-xs cursor-pointer transition-colors"
-                        title="┘╪│╪« ┘â╪د╪▒╪ز ╪د┘┘à╪«╪د┘╪╡╪ر ≡اôï"
+                        title="نسخ كارت المخالصة 📋"
                       >
                         <Copy className="w-3 h-3" />
                       </button>
                       <span className="font-sans font-extrabold text-emerald-700 text-[10px] bg-emerald-50 px-2 py-1 rounded border border-emerald-100 block">
-                        ┘à╪│╪»╪» ظ£ô
+                        مسدد ✓
                       </span>
                     </div>
                   )}
@@ -794,32 +806,32 @@ export default function MerchantsModule({
         </div>
       )}
 
-      {/* ≡اôé ╪د┘┘╪د┘╪░╪ر ╪د┘┘â╪ذ┘è╪▒╪ر: ╪ز┘╪د╪╡┘è┘ ╪ث╪▒╪┤┘è┘ ╪د┘╪ز╪د╪ش╪▒ ┘ê╪ص╪▒┘â╪د╪ز ┘é┘è┘ê╪»┘ç ╪د┘╪ز╪د╪▒┘è╪«┘è╪ر */}
+      {/* 📂 النافذة الكبيرة: تفاصيل أرشيف التاجر وحركات قيوده التاريخية */}
       {selectedMerchId && selectedMerchDetails && (
         <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-4xl w-full border border-slate-200 flex flex-col max-h-[90vh] text-right">
-            {/* ╪▒╪ث╪│ ╪د┘╪ذ╪╖╪د┘é╪ر: ┘à╪╣┘┘ê┘à╪د╪ز + ╪ث╪▓╪▒╪د╪▒ ┘┘è ╪╡┘ ┘ê╪د╪ص╪» */}
-            <div className="flex items-center justify-between border-b pb-3.5 mb-3 gap-3">
-              {/* ┘à╪╣┘┘ê┘à╪د╪ز ╪د┘╪ز╪د╪ش╪▒ - ┘è┘à┘è┘ */}
-              <div className="shrink-0">
+            {/* رأس البطاقة: معلومات + أزرار في صف واحد */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-3.5 mb-3 gap-3">
+              {/* معلومات التاجر - يمين */}
+              <div className="w-full md:w-auto md:shrink-0">
                 <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full font-sans">
-                  ╪ذ╪╖╪د┘é╪ر ┘â╪┤┘ ╪ص╪│╪د╪ذ ╪ز╪د╪ش╪▒ ┘╪┤╪╖
+                  بطاقة كشف حساب تاجر نشط
                 </span>
                 <h3 className="font-black text-sm text-slate-900 mt-1">
-                  <span>╪د╪│┘à ╪د┘╪ز╪د╪ش╪▒: </span>
+                  <span>اسم التاجر: </span>
                   <span className="text-purple-650">
                     {selectedMerchDetails.merch.name}
                   </span>
                 </h3>
               </div>
 
-              {/* ╪ش┘à┘è╪╣ ╪د┘╪ث╪▓╪▒╪د╪▒ ┘┘è ╪╡┘ ┘ê╪د╪ص╪» - ┘è╪│╪د╪▒ */}
-              <div className="flex flex-row-reverse items-center gap-1.5 shrink-0">
+              {/* جميع الأزرار - سطح المكتب صف واحد، الموبايل تلتف تلقائياً */}
+              <div className="flex flex-wrap items-center gap-1.5 w-full mt-2 md:mt-0 md:w-auto md:flex-row-reverse md:flex-nowrap md:shrink-0">
                 <button
                   onClick={() => setSelectedMerchId(null)}
                   className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-2 rounded-lg transition whitespace-nowrap"
                 >
-                  ظ£ـ ╪ح╪║┘╪د┘é
+                  ✕ إغلاق
                 </button>
                 <button
                   onClick={() => {
@@ -830,7 +842,7 @@ export default function MerchantsModule({
                   }}
                   className="bg-purple-500 hover:bg-purple-600 text-white font-extrabold text-[11px] px-3 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
                 >
-                  ≡ا¤┤ ╪ح╪╢╪د┘╪ر ╪»┘è┘
+                  🔴 إضافة دين
                 </button>
                 <button
                   onClick={() => {
@@ -841,54 +853,54 @@ export default function MerchantsModule({
                   }}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
                 >
-                  ≡اات ╪ز╪│╪»┘è╪» ╪»┘è┘
+                  🟢 تسديد دين
                 </button>
                 <button
                   onClick={() => handleExportSingleMerchantImage(selectedMerchDetails.merch)}
                   className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-[11px] px-3 py-2 rounded-lg transition shadow-sm whitespace-nowrap"
                 >
-                  ≡اûذي╕ ╪╖╪ذ╪د╪╣╪ر PDF
+                  🖨️ طباعة PDF
                 </button>
               </div>
             </div>
 
-            {/* ╪ذ┘è╪د┘╪د╪ز ┘à┘ê╪ش╪▓╪ر + ╪ح╪ش┘à╪د┘┘è ╪د┘╪»┘è┘ */}
+            {/* بيانات موجزة + إجمالي الدين */}
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm text-slate-600">
                 {selectedMerchDetails.merch.contact && (
-                  <div>≡اôئ <span className="font-mono">{selectedMerchDetails.merch.contact}</span></div>
+                  <div>📞 <span className="font-mono">{selectedMerchDetails.merch.contact}</span></div>
                 )}
               </div>
               <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-4 py-1.5">
-                <span className="text-[11px] font-bold text-slate-500">╪ح╪ش┘à╪د┘┘è ╪د┘╪»┘è┘:</span>
+                <span className="text-[11px] font-bold text-slate-500">إجمالي الدين:</span>
                 <span className={`font-black text-lg font-mono ${(selectedMerchDetails.merch.balance || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {Math.round(selectedMerchDetails.merch.balance || 0).toLocaleString("en-US")} ╪».┘
+                  {Math.round(selectedMerchDetails.merch.balance || 0).toLocaleString("en-US")} د.ل
                 </span>
               </div>
             </div>
 
-            {/* ╪د┘╪ث╪▒╪┤┘è┘ ┘ê╪ص╪▒┘â╪د╪ز ╪د┘┘┘ê╪د╪ز┘è╪▒ ╪د┘╪ز╪د╪▒┘è╪«┘è╪ر ┘┘╪ز╪د╪ش╪▒ */}
-            {/* ╪د┘╪ث╪▒╪┤┘è┘ */}
+            {/* الأرشيف وحركات الفواتير التاريخية للتاجر */}
+            {/* الأرشيف */}
             <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 min-h-[160px]">
               <div className="sticky top-0 bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center gap-2 z-10">
                 <Clock className="w-4 h-4 text-purple-500" />
-                <span className="text-xs font-extrabold text-slate-700">╪ث╪▒╪┤┘è┘ ╪د┘╪╣┘à┘┘è╪د╪ز</span>
-                <span className="text-[10px] text-slate-400 mr-auto">({selectedMerchDetails.txs.length} ╪╣┘à┘┘è╪ر)</span>
+                <span className="text-xs font-extrabold text-slate-700">أرشيف العمليات</span>
+                <span className="text-[10px] text-slate-400 mr-auto">({selectedMerchDetails.txs.length} عملية)</span>
               </div>
 
               {selectedMerchDetails.txs.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 text-xs italic">
-                  ┘╪د ╪ز┘ê╪ش╪» ╪ث┘è ┘à╪╣╪د┘à┘╪د╪ز ╪│╪د╪ذ┘é╪ر ┘à╪│╪ش┘╪ر ╪ذ╪╣╪».
+                  لا توجد أي معاملات سابقة مسجلة بعد.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-slate-100 text-slate-600 font-bold border-b border-slate-200 text-[10px]">
-                        <th className="p-2.5 text-right">╪د┘╪ز╪د╪▒┘è╪« ┘ê╪د┘┘ê┘é╪ز</th>
-                        <th className="p-2.5 text-right">┘┘ê╪╣ ╪د┘╪╣┘à┘┘è╪ر</th>
-                        <th className="p-2.5 text-left">╪د┘┘é┘è┘à╪ر</th>
-                        <th className="p-2.5 text-center w-10">╪ص╪░┘</th>
+                        <th className="p-2.5 text-right">التاريخ والوقت</th>
+                        <th className="p-2.5 text-right">نوع العملية</th>
+                        <th className="p-2.5 text-left">القيمة</th>
+                        <th className="p-2.5 text-center w-10">حذف</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
@@ -903,19 +915,19 @@ export default function MerchantsModule({
                             <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-sans font-bold ${
                               tx.type === "debt" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"
                             }`}>
-                              {tx.type === "debt" ? "≡ا¤┤ ╪ح╪╢╪د┘╪ر ╪»┘è┘" : "≡اات ╪ز╪│╪»┘è╪» ╪»┘è┘"}
+                              {tx.type === "debt" ? "🔴 إضافة دين" : "🟢 تسديد دين"}
                             </span>
                           </td>
                           <td className={`p-2.5 text-left font-black font-mono ${
                             tx.type === "debt" ? "text-purple-700" : "text-emerald-700"
                           }`}>
-                            {tx.type === "debt" ? "+" : "-"}{Math.round(tx.amount).toLocaleString("en-US")} ╪».┘
+                            {tx.type === "debt" ? "+" : "-"}{Math.round(tx.amount).toLocaleString("en-US")} د.ل
                           </td>
                           <td className="p-2.5 text-center">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteTransaction(tx.id); }}
                               className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-1 rounded-md transition-all cursor-pointer"
-                              title="╪ص╪░┘ ┘ç╪░┘ç ╪د┘╪╣┘à┘┘è╪ر"
+                              title="حذف هذه العملية"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -940,13 +952,13 @@ export default function MerchantsModule({
           >
             <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-4 flex items-center gap-2">
               <Plus className="w-5 h-5 text-purple-600" />
-              <span>╪ز╪│╪ش┘è┘ ┘â╪┤┘ ╪ز╪د╪ش╪▒ ╪ش╪»┘è╪»</span>
+              <span>تسجيل كشف تاجر جديد</span>
             </h3>
 
             <form onSubmit={handleCreateMerchantAttempt} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-705 mb-1">
-                  ╪د╪│┘à ╪د┘╪ز╪د╪ش╪▒ ╪د┘╪┤╪▒┘è┘â ╪ذ╪د┘┘â╪د┘à┘ *
+                  اسم التاجر الشريك بالكامل *
                 </label>
                 <div className="relative">
                   <input
@@ -954,7 +966,7 @@ export default function MerchantsModule({
                     required
                     value={merchName}
                     onChange={(e) => setMerchName(e.target.value)}
-                    placeholder="┘à╪س╪د┘: ╪د┘╪ص╪د╪ش ╪╡╪د┘╪ص ╪د┘╪ز╪د╪ش┘ê╪▒┘è"
+                    placeholder="مثال: الحاج صالح التاجوري"
                     className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                   />
                   <div className="absolute right-1.5 top-1.5">
@@ -966,7 +978,7 @@ export default function MerchantsModule({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-705 mb-1">
-                    ┘ç╪د╪ز┘ ┘ê╪ز┘ê╪د╪╡┘ (╪د╪«╪ز┘è╪د╪▒┘è)
+                    هاتف وتواصل (اختياري)
                   </label>
                   <input
                     type="text"
@@ -979,7 +991,7 @@ export default function MerchantsModule({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-755 mb-1">
-                    ╪»┘è┘ ┘à╪د┘┘è ╪ث┘ê┘ (╪د╪«╪ز┘è╪د╪▒┘è)
+                    دين مالي أول (اختياري)
                   </label>
                   <div className="relative">
                     <input
@@ -991,7 +1003,7 @@ export default function MerchantsModule({
                       className="w-full text-right p-2.5 pl-8 border border-slate-200 rounded-xl text-xs font-mono font-bold bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                     />
                     <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-[10px]">
-                      ╪».┘
+                      د.ل
                     </span>
                   </div>
                 </div>
@@ -1003,13 +1015,13 @@ export default function MerchantsModule({
                   onClick={() => setShowAddMerchantModal(false)}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition"
                 >
-                  ╪ز╪▒╪د╪ش╪╣
+                  تراجع
                 </button>
                 <button
                   type="submit"
                   className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-5 py-2 rounded-lg text-xs cursor-pointer transition"
                 >
-                  ╪ص┘╪╕ ┘ê╪ز╪│╪ش┘è┘ ╪د┘╪ز╪د╪ش╪▒
+                  حفظ وتسجيل التاجر
                 </button>
               </div>
             </form>
@@ -1032,12 +1044,12 @@ export default function MerchantsModule({
               {txType === "debt" ? (
                 <>
                   <Plus className="w-5 h-5 text-purple-600" />
-                  <span>≡ا¤┤ ┘é┘è╪» ╪│╪ص╪ذ ╪ذ╪╢╪د╪╣╪ر ╪ذ╪د┘╪ت╪ش┘ ┘┘╪ز╪د╪ش╪▒ (╪»┘è┘ ╪ش╪»┘è╪»)</span>
+                  <span>🔴 قيد سحب بضاعة بالآجل للتاجر (دين جديد)</span>
                 </>
               ) : (
                 <>
                   <Plus className="w-5 h-5 text-emerald-600" />
-                  <span>≡اات ┘é┘è╪» ┘ê╪ز┘ê╪▒┘è╪» ╪»┘╪╣╪ر ╪│╪»╪د╪» ╪ص╪│╪د╪ذ ┘à┘ ╪د┘╪ز╪د╪ش╪▒ (┘à╪»┘┘ê╪╣)</span>
+                  <span>🟢 قيد وتوريد دفعة سداد حساب من التاجر (مدفوع)</span>
                 </>
               )}
             </h3>
@@ -1045,7 +1057,7 @@ export default function MerchantsModule({
             <form onSubmit={handleAddTransactionSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-705 mb-1">
-                  ┘é┘è┘à╪ر ╪د┘┘é┘è╪» ╪د┘┘à╪د┘┘è ╪د┘┘â┘┘è *
+                  قيمة القيد المالي الكلي *
                 </label>
                 <div className="relative">
                   <input
@@ -1054,18 +1066,18 @@ export default function MerchantsModule({
                     step="any"
                     value={txAmount}
                     onChange={(e) => setTxAmount(e.target.value)}
-                    placeholder="╪ث╪»╪«┘ ╪د┘┘à╪ذ┘╪║ ╪ذ╪د┘╪»┘è┘╪د╪▒ ╪د┘┘┘è╪ذ┘è ╪».┘"
+                    placeholder="أدخل المبلغ بالدينار الليبي د.ل"
                     className="w-full text-right p-2.5 pr-3 pl-9 border border-slate-200 rounded-xl text-xs font-mono font-bold bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                   />
                   <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs font-mono">
-                    ╪».┘
+                    د.ل
                   </span>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-705 mb-1">
-                  ╪ذ┘è╪د┘ ┘ê┘à┘╪د╪ص╪╕╪ر ╪د┘╪│┘╪»
+                  بيان وملاحظة السند
                 </label>
                 <div className="relative">
                   <input
@@ -1074,8 +1086,8 @@ export default function MerchantsModule({
                     onChange={(e) => setTxNote(e.target.value)}
                     placeholder={
                       txType === "debt"
-                        ? "┘╪د╪ز┘ê╪▒╪ر ╪│╪ص╪ذ ┘â╪د╪ذ┘╪د╪ز ┘ê╪ث╪│┘╪د┘â ┘╪ص╪د╪│┘è╪ر"
-                        : "╪د╪│╪ز┘╪د┘à ╪»┘╪╣╪ر ┘┘é╪»┘è╪ر ╪ذ┘è╪» ╪د┘┘à┘ê╪»╪╣"
+                        ? "فاتورة سحب كابلات وأسلاك نحاسية"
+                        : "استلام دفعة نقدية بيد المودع"
                     }
                     className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 focus:ring-1 focus:ring-purple-500 focus:outline-none"
                   />
@@ -1091,13 +1103,13 @@ export default function MerchantsModule({
                   onClick={() => setShowAddTxModal(false)}
                   className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-lg text-xs cursor-pointer transition"
                 >
-                  ╪ح┘╪║╪د╪ة ╪د┘╪ز╪▒╪د╪ش╪╣
+                  إلغاء التراجع
                 </button>
                 <button
                   type="submit"
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold px-5 py-2 rounded-lg text-xs cursor-pointer transition"
                 >
-                  ╪ز╪س╪ذ┘è╪ز ┘ê┘é┘è╪» ╪د┘╪╣┘à┘┘è╪ر ╪د┘┘à╪ص╪د╪│╪ذ┘è╪ر
+                  تثبيت وقيد العملية المحاسبية
                 </button>
               </div>
             </form>
@@ -1116,18 +1128,18 @@ export default function MerchantsModule({
               <ShieldAlert className="w-8 h-8 shrink-0 animate-pulse" />
               <div>
                 <h4 className="font-black text-slate-900 text-sm">
-                  ╪ز┘╪ذ┘è┘ç: ┘à╪ص╪د┘ê┘╪ر ╪ز┘â╪▒╪د╪▒ ╪ث┘ê ╪د╪│╪ز╪▒╪»╪د╪» ┘â╪د╪▒╪ز ╪ز╪د╪ش╪▒ ┘é╪»┘è┘à!
+                  تنبيه: محاولة تكرار أو استرداد كارت تاجر قديم!
                 </h4>
                 <p className="text-xs text-slate-404">
-                  ╪ز╪د╪ش╪▒ ╪┤╪▒┘è┘â ╪ذ╪د╪│┘à "{merchName}" ┘à╪ز┘ê╪د╪ش╪» ╪ذ╪د┘┘╪╣┘ ╪ذ╪د┘╪ث╪▒╪┤┘è┘ ╪د┘┘é╪»┘è┘à.
+                  تاجر شريك باسم "{merchName}" متواجد بالفعل بالأرشيف القديم.
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-slate-605 leading-relaxed mb-4">
-              ╪د┘┘à┘╪╕┘ê┘à╪ر ╪ز┘┘è╪» ╪ذ╪ث┘ ╪د┘╪ز╪د╪ش╪▒ "{merchName}" ┘╪»┘è┘ç ┘à┘┘ ┘é╪»┘è┘à ╪ذ╪د┘╪ث╪▒╪┤┘è┘
-              ╪د┘┘à╪د┘┘è. ┘ç┘ ╪ز╪▒┘è╪» ╪د╪│╪ز╪▒╪ش╪د╪╣ ┘à┘┘┘ç ╪د┘┘é╪»┘è┘à ┘ê╪ص┘╪╕ ╪د┘╪ص╪▒┘â╪ر ╪د┘╪ش╪»┘è╪»╪ر ┘╪ز╪╕┘
-              ┘à╪╣╪د┘à┘╪د╪ز┘ç ╪د┘╪ز╪د╪▒┘è╪«┘è╪ر ┘à╪ز┘â╪د┘à┘╪ر╪ا ╪ث┘à ╪ز╪▒┘è╪» ┘â╪د╪▒╪ز ┘à╪│╪ز┘é┘ ╪ش╪»┘è╪» ┘â┘┘è╪د┘ï╪ا
+              المنظومة تفيد بأن التاجر "{merchName}" لديه ملف قديم بالأرشيف
+              المالي. هل تريد استرجاع ملفه القديم وحفظ الحركة الجديدة لتظل
+              معاملاته التاريخية متكاملة؟ أم تريد كارت مستقل جديد كلياً؟
             </p>
 
             <div className="space-y-2">
@@ -1136,11 +1148,11 @@ export default function MerchantsModule({
                 className="w-full text-right bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border border-indigo-200 font-bold p-3 rounded-xl text-xs transition cursor-pointer flex flex-col justify-start"
               >
                 <span className="font-extrabold text-[12px] text-indigo-700">
-                  ≡اات ┘╪╣┘à╪î ╪د╪│╪ز╪▒╪ش╪╣ ╪ذ╪╖╪د┘é╪ر ╪ص╪│╪د╪ذ┘ç ╪د┘┘é╪»┘è┘à╪ر (╪د┘╪ث╪▒╪┤┘è┘ ┘à╪ز┘â╪د┘à┘):
+                  🟢 نعم، استرجع بطاقة حسابه القديمة (الأرشيف متكامل):
                 </span>
                 <span className="text-[10px] text-slate-500 mt-0.5">
-                  ╪│┘è╪╣╪د╪» ╪ز┘╪╣┘è┘┘ç ┘à┘è┘â╪د┘┘è┘â┘è╪د┘ï ┘à╪╣ ╪▒╪ذ╪╖ ╪د┘╪»┘è┘ ╪د┘╪ش╪»┘è╪» ┘ê╪│╪ش┘ ╪│╪ص┘ê╪ذ╪د╪ز┘ç
-                  ┘ê╪»┘╪╣╪د╪ز┘ç ╪د┘╪ز╪د╪▒┘è╪«┘è╪ر.
+                  سيعاد تفعيله ميكانيكياً مع ربط الدين الجديد وسجل سحوباته
+                  ودفعاته التاريخية.
                 </span>
               </button>
 
@@ -1151,7 +1163,7 @@ export default function MerchantsModule({
                 }}
                 className="w-full text-center bg-slate-100 hover:bg-slate-200 text-slate-650 font-bold py-2 rounded-xl text-xs transition cursor-pointer"
               >
-                ╪ز╪▒╪د╪ش╪╣ ┘ê╪ح┘╪║╪د╪ة ╪د┘╪╣┘à┘┘è╪ر
+                تراجع وإلغاء العملية
               </button>
             </div>
           </div>
@@ -1167,11 +1179,11 @@ export default function MerchantsModule({
           <div className="bg-white rounded-3xl border border-slate-100 p-6 max-w-sm w-full shadow-2xl relative text-right">
             <h3 className="font-extrabold text-slate-900 text-base mb-2 flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-              <span>╪ز╪ث┘â┘è╪» ╪ص╪░┘ ╪د┘┘à╪╣╪د┘à┘╪ر ╪د┘┘à╪د┘┘è╪ر ظأبي╕</span>
+              <span>تأكيد حذف المعاملة المالية ⚠️</span>
             </h3>
             <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-              ┘ç┘ ╪ث┘╪ز ┘ê╪د╪س┘é ┘à┘ ╪▒╪║╪ذ╪ز┘â ┘┘è ╪ص╪░┘ ╪ص╪▒┘â╪ر ╪د┘╪ص╪│╪د╪ذ ┘┘╪ز╪د╪ش╪▒ ┘ê╪ز╪╣╪»┘è┘ ╪د┘╪ث╪▒╪╡╪»╪ر
-              ╪د┘╪ز╪▒╪د┘â┘à┘è╪ر ╪ز┘┘é╪د╪خ┘è╪د┘ï╪ا ┘╪د ┘è┘à┘â┘ ╪د╪│╪ز╪▒╪ش╪د╪╣ ┘ç╪░┘ç ╪د┘╪╣┘à┘┘è╪ر ╪ذ╪╣╪» ╪د┘╪ز╪ث┘â┘è╪».
+              هل أنت واثق من رغبتك في حذف حركة الحساب للتاجر وتعديل الأرصدة
+              التراكمية تلقائياً؟ لا يمكن استرجاع هذه العملية بعد التأكيد.
             </p>
             <div className="flex justify-end gap-2">
               <button
@@ -1179,14 +1191,14 @@ export default function MerchantsModule({
                 onClick={() => executeDeleteTransaction(merchantDeleteTxId)}
                 className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer focus:outline-none"
               >
-                ╪ز╪ث┘â┘è╪» ╪د┘╪ص╪░┘ ┘ê╪د┘╪«╪╡┘à
+                تأكيد الحذف والخصم
               </button>
               <button
                 type="button"
                 onClick={() => setMerchantDeleteTxId(null)}
                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
               >
-                ╪ح┘╪║╪د╪ة ╪د┘╪ز╪▒╪د╪ش╪╣
+                إلغاء التراجع
               </button>
             </div>
           </div>
@@ -1208,14 +1220,14 @@ export default function MerchantsModule({
               <div className="bg-white rounded-3xl border border-slate-100 p-6 max-w-md w-full shadow-2xl relative text-right">
                 <h3 className="font-extrabold text-slate-900 text-base mb-2 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                  <span>╪ث╪▒╪┤┘╪ر ┘ê╪ذ╪╖╪د┘é╪ر ╪د┘╪ز╪د╪ش╪▒ ╪د┘┘à╪╣╪ز┘à╪» ≡اôح</span>
+                  <span>أرشفة وبطاقة التاجر المعتمد 📥</span>
                 </h3>
                 <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-                  ┘ç┘ ╪ث┘╪ز ┘ê╪د╪س┘é ┘à┘ ╪ح╪«┘╪د╪ة ┘ê╪ث╪▒╪┤┘╪ر ╪د┘╪ز╪د╪ش╪▒{" "}
-                  <strong className="text-slate-900">({merch.name})</strong> ┘à┘
-                  ╪د┘╪┤╪د╪┤╪ر ╪د┘╪▒╪خ┘è╪│┘è╪ر╪ا ╪│┘è╪ز┘à ╪د┘╪د╪ص╪ز┘╪د╪╕ ╪ذ┘â╪د┘à┘ ┘â╪┤┘ ╪د┘┘à╪╣╪د┘à┘╪د╪ز ╪د┘╪ز╪د╪▒┘è╪«┘è ┘┘è
-                  ┘é╪د╪╣╪»╪ر ╪د┘╪ذ┘è╪د┘╪د╪ز╪î ┘ê╪╣┘╪» ┘â╪ز╪د╪ذ╪ر ╪د╪│┘à┘ç ┘à╪ش╪»╪»╪د┘ï ╪│╪ز╪ز┘à┘â┘ ┘à┘ ╪د╪│╪ز╪╣╪د╪»╪ر
-                  ╪ث╪▒╪┤┘è┘┘ç ┘┘ê╪▒╪د┘ï.
+                  هل أنت واثق من إخفاء وأرشفة التاجر{" "}
+                  <strong className="text-slate-900">({merch.name})</strong> من
+                  الشاشة الرئيسية؟ سيتم الاحتفاظ بكامل كشف المعاملات التاريخي في
+                  قاعدة البيانات، وعند كتابة اسمه مجدداً ستتمكن من استعادة
+                  أرشيفه فوراً.
                 </p>
                 <div className="flex justify-end gap-2">
                   <button
@@ -1225,14 +1237,14 @@ export default function MerchantsModule({
                     }
                     className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer focus:outline-none"
                   >
-                    ┘╪╣┘à╪î ╪ح╪«┘╪د╪ة ┘ê╪ث╪▒╪┤┘╪ر ╪د┘╪ذ╪╖╪د┘é╪ر
+                    نعم، إخفاء وأرشفة البطاقة
                   </button>
                   <button
                     type="button"
                     onClick={() => setMerchantSoftDeleteId(null)}
                     className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer"
                   >
-                    ╪ز╪▒╪د╪ش╪╣
+                    تراجع
                   </button>
                 </div>
               </div>
@@ -1247,7 +1259,7 @@ export default function MerchantsModule({
           dir="rtl"
         >
           <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-900 font-black flex items-center justify-center text-xs">
-            ظ£ô
+            ✓
           </div>
           <span className="text-xs font-bold">{showSuccessToast}</span>
         </div>
@@ -1260,7 +1272,7 @@ export default function MerchantsModule({
             <div className="flex items-center justify-between border-b border-slate-100 p-4">
               <h3 className="font-black text-sm text-slate-800 flex items-center gap-2">
                 <Calculator className="w-4 h-4 text-indigo-600" />
-                ┘à╪│┘ê╪»╪ر ╪ص╪د╪│╪ذ╪ر ╪ز╪ش╪د╪▒
+                مسودة حاسبة تجار
               </h3>
               <button
                 onClick={() => setShowCalculator(false)}
@@ -1296,7 +1308,7 @@ export default function MerchantsModule({
                         dir="ltr"
                         lang="en"
                         data-arrow-nav="true"
-                        placeholder="╪د┘┘é┘è┘à╪ر 2"
+                        placeholder="القيمة 2"
                         value={row.price}
                         onChange={(e) => handleUpdateCalcRow(row.id, 'price', e.target.value)}
                         className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -1308,28 +1320,28 @@ export default function MerchantsModule({
                       <button
                         onClick={() => handleUpdateCalcRow(row.id, 'operator', 'multiply')}
                         className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'multiply' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
-                        title="╪╢╪▒╪ذ"
+                        title="ضرب"
                       >
-                        ├ù
+                        ×
                       </button>
                       <button
                         onClick={() => handleUpdateCalcRow(row.id, 'operator', 'divide')}
                         className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'divide' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
-                        title="┘é╪│┘à╪ر"
+                        title="قسمة"
                       >
-                        ├╖
+                        ÷
                       </button>
                       <button
                         onClick={() => handleUpdateCalcRow(row.id, 'operator', 'add')}
                         className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'add' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
-                        title="╪ش┘à╪╣"
+                        title="جمع"
                       >
                         +
                       </button>
                       <button
                         onClick={() => handleUpdateCalcRow(row.id, 'operator', 'subtract')}
                         className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === 'subtract' ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400 hover:bg-slate-200'}`}
-                        title="╪╖╪▒╪ص"
+                        title="طرح"
                       >
                         -
                       </button>
@@ -1343,7 +1355,7 @@ export default function MerchantsModule({
                         dir="ltr"
                         lang="en"
                         data-arrow-nav="true"
-                        placeholder="╪د┘┘é┘è┘à╪ر 1"
+                        placeholder="القيمة 1"
                         value={row.value}
                         onChange={(e) => handleUpdateCalcRow(row.id, 'value', e.target.value)}
                         className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -1367,12 +1379,12 @@ export default function MerchantsModule({
                 className="w-full py-2 border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 mb-4"
               >
                 <Plus className="w-3.5 h-3.5" />
-                ╪ح╪╢╪د┘╪ر ╪╡┘ ╪ش╪»┘è╪»
+                إضافة صف جديد
               </button>
 
               {/* Total Output */}
               <div className="bg-slate-900 text-white rounded-xl p-4 flex flex-col relative overflow-hidden shadow-inner">
-                <div className="text-[10px] text-slate-400 font-bold mb-1">╪د┘┘╪د╪ز╪ش ╪د┘╪ح╪ش┘à╪د┘┘è</div>
+                <div className="text-[10px] text-slate-400 font-bold mb-1">الناتج الإجمالي</div>
                 <div className="text-2xl font-mono font-black text-left" dir="ltr">
                   {totalCalcResult.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </div>
@@ -1382,7 +1394,7 @@ export default function MerchantsModule({
                   className={`absolute bottom-3 right-3 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${calcCopied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 hover:bg-indigo-500 text-white'}`}
                 >
                   {calcCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {calcCopied ? '╪ز┘à ╪د┘┘╪│╪«' : '┘╪│╪« ╪د┘┘╪د╪ز╪ش'}
+                  {calcCopied ? 'تم النسخ' : 'نسخ الناتج'}
                 </button>
               </div>
             </div>
@@ -1393,12 +1405,12 @@ export default function MerchantsModule({
         <button
           onClick={() => setShowCalculator(!showCalculator)}
           className={`${showCalculator ? 'bg-indigo-600 text-white shadow-indigo-500/25' : 'bg-slate-900 text-white shadow-[0_8px_30px_rgb(0,0,0,0.15)]'} hover:scale-105 p-3.5 rounded-full shadow-lg transition-all flex items-center justify-center relative group self-start`}
-          title="┘à╪│┘ê╪»╪ر ╪ص╪د╪│╪ذ╪ر ╪ز╪ش╪د╪▒"
+          title="مسودة حاسبة تجار"
         >
           <Calculator className="w-5 h-5" />
           {!showCalculator && (
             <span className="absolute left-full ml-3 bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg">
-              ┘à╪│┘ê╪»╪ر ╪ص╪د╪│╪ذ╪ر ╪ز╪ش╪د╪▒
+              مسودة حاسبة تجار
             </span>
           )}
         </button>

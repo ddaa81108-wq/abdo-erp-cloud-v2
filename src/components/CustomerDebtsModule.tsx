@@ -194,6 +194,17 @@ export default function CustomerDebtsModule({
   }, [newCustName, state.customers]);
 
   const handleSelectSuggestedCustomer = (customer: Customer) => {
+    // استرجاع تلقائي لو كان العميل محذوفاً — بدون أسئلة
+    if (customer.isDeleted) {
+      const restoredCustomers = state.customers.map((c) => {
+        if (c.id === customer.id) {
+          return { ...c, isDeleted: false, updatedAt: new Date().toISOString(), lastUpdated: new Date().toISOString() };
+        }
+        return c;
+      });
+      onUpdateState({ ...state, customers: restoredCustomers });
+    }
+
     setNewCustName(customer.name);
     setNewCustPhone(customer.phone || "");
     setNewCustCollector((customer.collector as "abdullah" | "ali") || "abdullah");
@@ -289,9 +300,58 @@ export default function CustomerDebtsModule({
     );
 
     if (existingDeleted) {
-      // الزبون مسجل سابقاً ومحذوف! نعرض رسالة الاختيار
-      setRestorableCustomer(existingDeleted);
-      setShowRestorePrompt(true);
+      // استرجاع تلقائي للزبون المحذوف وفتح بطاقته فوراً — بدون نافذة منبثقة
+      const debtAmount = Math.round(parseFloat(newCustDebt) || 0);
+
+      const restoredCustomers = state.customers.map((c) => {
+        if (c.id === existingDeleted.id) {
+          return { ...c, isDeleted: false };
+        }
+        return c;
+      });
+
+      const newCycleId = `cycle_${existingDeleted.id}_${Date.now()}`;
+      const newCycle: CustomerCycle = {
+        id: newCycleId,
+        customerId: existingDeleted.id,
+        startDate: new Date().toISOString(),
+        status: "active",
+        initialBalance: debtAmount,
+        currentBalance: debtAmount,
+      };
+
+      const updatedTransactions = [...state.debtTransactions];
+      if (debtAmount > 0) {
+        updatedTransactions.push({
+          id: `tx_rest_${Date.now()}`,
+          customerId: existingDeleted.id,
+          cycleId: newCycleId,
+          type: "debt",
+          amount: debtAmount,
+          currency: "د.ل",
+          conversionRate: 1.0,
+          date: new Date().toISOString(),
+          referenceNo: generateDocNumber(),
+          note: "دين جديد مضاف لزبون سابق مسترجع من الأرشيف",
+          postedToTreasury: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      onUpdateState({
+        ...state,
+        customers: updateCustomerTimestamp(restoredCustomers, existingDeleted.id, Date.now()),
+        cycles: [...state.cycles, newCycle],
+        debtTransactions: updatedTransactions,
+      });
+
+      setSelectedCustomerId(existingDeleted.id);
+      setShowAddCustomerModal(false);
+      setNewCustName("");
+      setNewCustPhone("");
+      setNewCustDebt("");
+      setShowRestorePrompt(false);
+      setRestorableCustomer(null);
       return;
     }
 

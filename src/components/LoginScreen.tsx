@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { User as UserType, ERPState } from '../types';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
+import { Crown, Mail, Lock, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface LoginScreenProps {
   state: ERPState;
@@ -8,29 +12,77 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: LoginScreenProps) {
-  const [usernameInput, setUsernameInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setIsLoggingIn(true);
 
-    const targetUser = state.users.find(
-      u => u.username.toLowerCase() === usernameInput.trim().toLowerCase()
-    );
+    try {
+      if (!auth) {
+        setErrorMessage('خطأ في تهيئة المصادقة. الرجاء تحديث الصفحة.');
+        setIsLoggingIn(false);
+        return;
+      }
 
-    if (!targetUser) {
-      setErrorMessage('المستخدم غير موجود. الرجاء التحقق من البيانات.');
-      return;
+      const email = emailInput.trim().toLowerCase();
+      const password = passwordInput.trim();
+
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      const targetUser = state.users.find(
+        u => u.email?.toLowerCase() === firebaseUser.email?.toLowerCase()
+      );
+
+      if (targetUser) {
+        onLoginSuccess(targetUser);
+        return;
+      }
+
+      const authUser: UserType = {
+        id: firebaseUser.uid,
+        username: firebaseUser.email || '',
+        email: firebaseUser.email || '',
+        name: firebaseUser.displayName || firebaseUser.email || '',
+        role: 'admin',
+        password: '',
+        permissions: {
+          canViewDebts: true,
+          canViewCompanies: true,
+          canViewTreasury: true,
+          canViewPurchases: true,
+          canViewDeposits: true,
+          canViewArchive: true,
+          canViewBackup: true,
+          canViewAdvances: true,
+        },
+        createdAt: new Date().toISOString(),
+      };
+
+      onLoginSuccess(authUser);
+    } catch (error: any) {
+      if (
+        error.code === 'auth/user-not-found' ||
+        error.code === 'auth/wrong-password' ||
+        error.code === 'auth/invalid-credential'
+      ) {
+        setErrorMessage('البريد الإلكتروني أو كلمة المرور غير صحيحة.');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('صيغة البريد الإلكتروني غير صحيحة.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setErrorMessage('محاولات كثيرة جداً. الرجاء الانتظار ثم المحاولة مرة أخرى.');
+      } else {
+        setErrorMessage('حدث خطأ غير متوقع. الرجاء المحاولة مرة أخرى.');
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
-
-    if (targetUser.password !== passwordInput.trim()) {
-      setErrorMessage('كلمة المرور غير صحيحة.');
-      return;
-    }
-
-    onLoginSuccess(targetUser);
   };
 
   return (
@@ -45,41 +97,67 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-6">
-            {errorMessage && (
-              <div className="p-4 bg-red-50 border-r-4 border-red-500 text-red-700 text-sm font-bold rounded-l">
-                {errorMessage}
-              </div>
-            )}
+            <AnimatePresence>
+              {errorMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, height: 0 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  className="p-4 bg-red-50 border-r-4 border-red-500 text-red-700 text-sm font-bold rounded-l"
+                >
+                  {errorMessage}
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">اسم المستخدم</label>
-              <input 
-                type="text" 
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                required
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-800"
-                placeholder="أدخل اسم المستخدم"
-              />
+              <label className="block text-sm font-bold text-slate-700 mb-2">البريد الإلكتروني</label>
+              <div className="relative">
+                <input 
+                  type="text" 
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  required
+                  dir="ltr"
+                  className="w-full px-5 py-4 pl-12 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-800"
+                  placeholder="أدخل البريد الإلكتروني"
+                />
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400">
+                  <Mail size={20} />
+                </div>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">كلمة المرور</label>
-              <input 
-                type="password" 
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                required
-                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-800"
-                placeholder="أدخل كلمة المرور"
-              />
+              <div className="relative">
+                <input 
+                  type={showPassword ? 'text' : 'password'}
+                  value={passwordInput}
+                  onChange={(e) => setPasswordInput(e.target.value)}
+                  required
+                  dir="ltr"
+                  className="w-full px-5 py-4 pl-12 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-slate-800"
+                  placeholder="أدخل كلمة المرور"
+                  style={{ letterSpacing: showPassword ? '0' : '3px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all transform hover:-translate-y-0.5 active:translate-y-0 mt-4"
+              disabled={isLoggingIn}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-lg py-4 rounded-xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition-all transform hover:-translate-y-0.5 active:translate-y-0 mt-4 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-wait"
             >
-              تسجيل الدخول
+              {isLoggingIn && <Sparkles size={20} className="animate-spin" />}
+              {isLoggingIn ? 'جاري الدخول...' : 'تسجيل الدخول'}
             </button>
           </form>
         </div>
@@ -88,21 +166,34 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
         <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative p-12 items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 opacity-95 z-0"></div>
           
-          {/* تأثيرات إضاءة هندسية (Abstract Geometric Glow) */}
           <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-500 rounded-full blur-[100px] opacity-20 transform translate-x-1/4 -translate-y-1/4"></div>
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-600 rounded-full blur-[120px] opacity-20 transform -translate-x-1/3 translate-y-1/3"></div>
           
-          {/* محتوى الجانب الأيسر */}
           <div className="relative z-10 text-center text-white max-w-md">
-            <div className="w-24 h-24 mx-auto bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 flex items-center justify-center mb-8 shadow-2xl">
-              <svg className="w-12 h-12 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-              </svg>
-            </div>
-            <h2 className="text-4xl font-black mb-4 leading-snug">بوابة النظام والمحاسبة</h2>
-            <p className="text-emerald-100/70 text-lg leading-relaxed font-medium">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="w-24 h-24 mx-auto bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 flex items-center justify-center mb-8 shadow-2xl"
+            >
+              <Crown className="w-12 h-12 text-emerald-400" />
+            </motion.div>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-4xl font-black mb-4 leading-snug"
+            >
+              بوابة النظام والمحاسبة
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-emerald-100/70 text-lg leading-relaxed font-medium"
+            >
               حماية تامة، تحكم متقدم، وتقارير فورية.
-            </p>
+            </motion.p>
           </div>
         </div>
 
