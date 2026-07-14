@@ -964,9 +964,9 @@ export default function CompaniesModule({
         <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-4xl w-full border border-slate-200 flex flex-col max-h-[90vh] text-right">
             {/* رأس البطاقة: معلومات + أزرار في صف واحد */}
-            <div className="flex items-center justify-between border-b pb-3.5 mb-3 gap-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-3.5 mb-3 gap-3">
               {/* معلومات الشركة - يمين */}
-              <div className="shrink-0">
+              <div className="w-full md:w-auto md:shrink-0">
                 <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full font-sans">
                   بطاقة كشف حساب جهة توريدية نشطة
                 </span>
@@ -978,8 +978,8 @@ export default function CompaniesModule({
                 </h3>
               </div>
 
-              {/* جميع الأزرار في صف واحد - يسار */}
-              <div className="flex flex-row-reverse items-center gap-1.5 shrink-0">
+              {/* جميع الأزرار - سطح المكتب صف واحد، الموبايل تلتف تلقائياً */}
+              <div className="flex flex-wrap items-center gap-1.5 w-full mt-2 md:mt-0 md:w-auto md:flex-row-reverse md:flex-nowrap md:shrink-0">
                 <button
                   onClick={() => setSelectedCompId(null)}
                   className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-2 rounded-lg transition whitespace-nowrap"
@@ -1032,7 +1032,6 @@ export default function CompaniesModule({
               </div>
             </div>
 
-            {/* Tabs Form */}
             <div className="flex gap-2 mb-3 border-b border-slate-200 pb-2">
               <button
                 onClick={() => setActiveTab('ledger')}
