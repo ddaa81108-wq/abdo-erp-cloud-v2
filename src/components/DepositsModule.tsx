@@ -1004,8 +1004,8 @@ export default function DepositsModule({
           >
             {/* رأس البطاقة */}
             <div className={`border-t-[6px] rounded-t-2xl px-5 pt-4 pb-3 ${(expandedDepositLyd > 0 || expandedDepositEgp > 0) ? (expandedDepositLyd === 0 && expandedDepositEgp > 0 ? 'border-amber-500' : 'border-indigo-500') : 'border-emerald-500'}`}>
-              {/* الصف الأول: جميع الأزرار - من اليمين لليسار */}
-              <div className="flex items-center gap-1.5 border-b border-slate-100 pb-3 mb-2">
+              {/* الصف الأول: جميع الأزرار - من اليمين لليسار، تلتف على الموبايل */}
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-3 mb-2 md:flex-nowrap">
                 <button
                   onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
                   className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
