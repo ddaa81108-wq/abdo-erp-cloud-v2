@@ -845,12 +845,12 @@ export default function CustomerDebtsModule({
       (t) => t.cycleId === activeCycle?.id
     );
     const totalPurchases = transactions
-      .filter((t) => t.type === "debt")
+      .filter((t) => t.type === "purchase")
       .reduce((sum, t) => sum + t.amount, 0);
     const totalPayments = transactions
       .filter((t) => t.type === "payment")
       .reduce((sum, t) => sum + t.amount, 0);
-    const outstanding = (activeCycle?.initialBalance || 0) + totalPurchases - totalPayments;
+    const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
 
     const timestamp = new Date().toISOString();
     const docNum = generateDocNumber();
@@ -1560,9 +1560,9 @@ export default function CustomerDebtsModule({
         <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-4xl w-full border border-slate-200 flex flex-col max-h-[90vh] text-right">
             {/* رأس البطاقة: معلومات الزبون + جميع أزرار العمليات في صف واحد */}
-            <div className="flex items-center justify-between border-b pb-3.5 mb-4 gap-3">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b pb-3.5 mb-4 gap-3">
               {/* معلومات الزبون - يمين */}
-              <div className="shrink-0">
+              <div className="w-full md:w-auto md:shrink-0">
                 <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full font-sans">
                   بطاقة كشف زبون حالي
                 </span>
@@ -1574,8 +1574,8 @@ export default function CustomerDebtsModule({
                 </h3>
               </div>
 
-              {/* جميع الأزرار في صف واحد - يسار (flex-row-reverse عشان يبدأ من اليسار للإغلاق) */}
-              <div className="flex flex-row-reverse items-center gap-1.5 shrink-0">
+              {/* جميع الأزرار - سطح المكتب صف واحد، الموبايل تلتف تلقائياً */}
+              <div className="flex flex-wrap items-center gap-1.5 w-full mt-2 md:mt-0 md:w-auto md:flex-row-reverse md:flex-nowrap md:shrink-0">
                 <button
                   onClick={() => setSelectedCustomerId(null)}
                   className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-2 rounded-lg transition whitespace-nowrap"
