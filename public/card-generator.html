@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>استوديو الكروت الذكية - المنظومة الملكية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -147,17 +148,89 @@
             /* تضييق الحواف لطباعة أنظف */
             html, body { background: #fff !important; }
         }
+
+        /* === تجاوب الموبايل === */
+        @media (max-width: 768px) {
+            body { font-size: 14px; }
+            .card { max-width: 100%; min-height: auto; padding: 18px 12px; border-radius: 16px; gap: 8px; }
+            .card::before { inset: 6px; border-radius: 12px; }
+            .card::after { inset: 10px; border-radius: 8px; }
+            .header { font-size: 15pt; }
+            .price-card-title { font-size: 20pt; width: 95%; }
+            .client-name { font-size: 28pt; }
+            .label { font-size: 14pt; }
+            .amount-text { font-size: 48pt; gap: 6px; }
+            .currency { font-size: 18pt; }
+            .tafqeet-text { font-size: 14pt; margin-top: 8px; }
+            .amount-box-wrapper { min-height: auto; margin-top: 2px; margin-bottom: 2px; }
+            .price-badge { font-size: 13pt; padding: 6px 16px; border-radius: 10px; gap: 6px; }
+            .custom-note-box { font-size: 12pt; padding: 8px 16px; border-radius: 10px; width: 90%; }
+            .large-note { font-size: 22pt !important; padding: 20px !important; }
+            .footer { font-size: 12pt; }
+            .card-date { font-size: 11pt; }
+            .spacer { height: 15px; }
+            .final-statement-box { width: 98%; gap: 8px; }
+            .stmt-header-row { gap: 8px; margin-bottom: 6px; }
+            .stmt-header { font-size: 18pt; }
+            .stmt-date { font-size: 11pt; }
+            .stmt-row { padding: 10px 14px; border-radius: 10px; gap: 8px; min-height: auto; }
+            .stmt-label { font-size: 13pt; min-width: auto; }
+            .stmt-value { font-size: 18pt; min-width: auto; }
+            .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 20pt; }
+            .masraweya-card { gap: 10px; padding: 12px 16px; }
+            .masraweya-card .final-statement-box { gap: 10px; }
+            .masraweya-card .stmt-header { font-size: 22pt; }
+            .masraweya-card .stmt-date { font-size: 12pt; }
+            .purchases-box { width: 98%; gap: 8px; }
+            .purchases-top-bar { font-size: 14pt; margin-bottom: 4px; }
+            .purchases-row { padding: 10px 16px; border-radius: 10px; }
+            .p-label { font-size: 16pt; }
+            .p-value { font-size: 22pt; gap: 8px; }
+            .p-currency { font-size: 12pt; }
+            .bg-exchange .price-card-title { font-size: 18pt !important; }
+            .bg-exchange .label { font-size: 11pt !important; letter-spacing: 2px !important; }
+            .bg-exchange .exchange-note { font-size: 11pt !important; }
+            .bg-exchange .footer { font-size: 13pt !important; }
+            .card.bg-exchange { padding: 16px 18px !important; gap: 4px !important; }
+            #corner-tl, #corner-tr { top: 14px; font-size: 16pt; }
+            #corner-bl, #corner-br { bottom: 14px; font-size: 16pt; }
+            #crown-top { top: 2px; font-size: 10pt; letter-spacing: 4px; }
+        }
+
+        @media (max-width: 480px) {
+            .card { padding: 12px 8px; border-radius: 12px; gap: 5px; }
+            .header { font-size: 12pt; }
+            .price-card-title { font-size: 16pt; }
+            .client-name { font-size: 22pt; }
+            .label { font-size: 12pt; }
+            .amount-text { font-size: 36pt; }
+            .currency { font-size: 15pt; }
+            .tafqeet-text { font-size: 12pt; }
+            .footer { font-size: 10pt; }
+            .stmt-header { font-size: 15pt; }
+            .stmt-value { font-size: 15pt; }
+            .stmt-label { font-size: 11pt; }
+            .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 17pt; }
+            .stmt-row { padding: 8px 10px; }
+            .p-label { font-size: 14pt; }
+            .p-value { font-size: 18pt; }
+            .custom-note-box { font-size: 11pt; }
+            .large-note { font-size: 18pt !important; }
+            #corner-tl, #corner-tr { top: 10px; font-size: 13pt; }
+            #corner-bl, #corner-br { bottom: 10px; font-size: 13pt; }
+            #crown-top { top: 1px; font-size: 8pt; letter-spacing: 3px; }
+        }
     </style>
 </head>
 <body class="bg-[#121212] text-white min-h-screen font-sans p-4" onload="initDashboard()">
 
     <!-- 1. شريط الأقسام العلوي -->
-    <div class="flex gap-4 mb-6 overflow-x-auto pb-2 scrollbar-hide" id="tiles-container"></div>
+    <div class="flex gap-2 lg:gap-4 mb-4 lg:mb-6 overflow-x-auto pb-2 scrollbar-hide" id="tiles-container"></div>
 
-    <div class="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)]">
+    <div class="flex flex-col lg:flex-row gap-6 min-h-screen lg:h-[calc(100vh-100px)]">
 
         <!-- 2. الشريط الأيمن (الاستقبال والرسائل) -->
-        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-5 flex flex-col gap-4 overflow-y-auto">
+        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 lg:p-5 flex flex-col gap-3 lg:gap-4 overflow-y-auto max-h-[300px] lg:max-h-none">
             <h3 class="text-xl font-bold text-amber-500 mb-2 border-b border-white/10 pb-2">📥 صندوق الاستقبال</h3>
             <div id="inbox-container" class="flex flex-col gap-2 mb-4 overflow-y-auto max-h-[250px]"></div>
 
@@ -187,7 +260,7 @@
         </div>
 
         <!-- 3. الكارت المركزي -->
-        <div class="w-full lg:w-[60%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 flex justify-center items-start overflow-y-auto">
+        <div class="w-full lg:w-[60%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 lg:p-6 flex justify-center items-start overflow-y-auto">
             <div class="card bg-exchange" id="goldenCard">
                 <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
                 <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
@@ -245,7 +318,7 @@
         </div>
 
         <!-- 4. الشريط الأيسر (التحكم) -->
-        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-5 flex flex-col overflow-y-auto">
+        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-4 lg:p-5 flex flex-col overflow-y-auto max-h-[400px] lg:max-h-none">
             <h3 class="text-xl font-bold text-amber-500 mb-4 border-b border-white/10 pb-2">البيانات والتحكم</h3>
 
             <!-- زر التحكم في لون العنوان -->
