@@ -5,8 +5,6 @@ import {
   Plus, Trash2, Edit3, X, Check, Eye, Save, RotateCcw, AlertTriangle
 } from "lucide-react";
 import { ERPState, User, UserPermissions, Customer, Company, Merchant } from "../types";
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
-import { auth } from "../firebase";
 
 interface Props {
   state: ERPState;
@@ -170,29 +168,10 @@ function PasswordChange({ state, currentUser, onUpdateState, onUpdateCurrentSess
   const [messageType, setMessageType] = useState<"success" | "error">("success");
   const users = state.users || [];
 
-  const handleChange = async () => {
+  const handleChange = () => {
     if (!newPassword.trim()) { setMessage("كلمة المرور مطلوبة"); setMessageType("error"); return; }
     if (newPassword.length < 3) { setMessage("كلمة المرور قصيرة جداً"); setMessageType("error"); return; }
     if (newPassword !== confirmPassword) { setMessage("كلمة المرور غير متطابقة"); setMessageType("error"); return; }
-
-    // تحديث Firebase Auth إذا كان المستخدم الحالي هو صاحب الحساب
-    if (selectedUserId === currentUser.id && auth && auth.currentUser) {
-      try {
-        // نحاول تحديث كلمة المرور في Firebase Auth مباشرة
-        await updatePassword(auth.currentUser, newPassword.trim());
-      } catch (err: any) {
-        // لو محتاج إعادة مصادقة، نطلب منه يسجل دخول جديد
-        if (err.code === "auth/requires-recent-login") {
-          setMessage("لأسباب أمنية، يجب تسجيل الخروج ثم الدخول مرة أخرى قبل تغيير كلمة المرور");
-          setMessageType("error");
-          return;
-        }
-        setMessage(`❌ فشل تغيير كلمة المرور: ${err.message}`);
-        setMessageType("error");
-        return;
-      }
-    }
-
     const updatedUsers = users.map(u => u.id === selectedUserId ? { ...u, password: newPassword.trim() } : u);
     onUpdateState({ ...state, users: updatedUsers });
     if (selectedUserId === currentUser.id) { const u = updatedUsers.find(x => x.id === currentUser.id); if (u) onUpdateCurrentSession(u); }
@@ -426,23 +405,21 @@ function BackupSection({ state, onUpdateState }: { state: ERPState; onUpdateStat
 }
 
 // ════════════════ 6. SECTION LABELS ════════════════
-type StateWithLabels = ERPState & { sectionLabels?: Record<string, string> };
 function SectionLabels({ state, onUpdateState }: { state: ERPState; onUpdateState: (s: ERPState) => void }) {
-  const s = state as StateWithLabels;
-  const labels = s.sectionLabels || {};
+  const labels = state.sectionLabels || {};
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
 
   const startEdit = (key: string) => { setEditingKey(key); setEditValue(labels[key] || SECTION_KEYS.find(s => s.key === key)?.defaultLabel || key); };
   const saveEdit = (key: string) => {
     const newLabels = { ...labels, [key]: editValue.trim() || SECTION_KEYS.find(s => s.key === key)?.defaultLabel || key };
-    onUpdateState({ ...state, sectionLabels: newLabels } as any);
+    onUpdateState({ ...state, sectionLabels: newLabels });
     setEditingKey(null);
   };
   const resetLabel = (key: string) => {
     const newLabels = { ...labels };
     delete newLabels[key];
-    onUpdateState({ ...state, sectionLabels: newLabels } as any);
+    onUpdateState({ ...state, sectionLabels: newLabels });
   };
 
   return (
