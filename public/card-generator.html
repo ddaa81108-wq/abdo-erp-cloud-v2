@@ -3,12 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>استوديو الكروت الذكية - المنظومة الملكية</title>
+
+    <script>
+        const activeSession = sessionStorage.getItem("ABDO_ERP_V2_ACTIVE_USER");
+        if (!activeSession) {
+            window.location.replace("/");
+        }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-
+        
         /* الألوان والخلفيات - تم وضع !important لمنع أي تضارب وجعلها تعمل بقوة */
         .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); --corner-color: rgba(180,140,30,0.55); --text-glow: rgba(200,160,40,0.35); }
         .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); --corner-color: rgba(140,140,140,0.5); --text-glow: rgba(150,150,150,0.3); }
