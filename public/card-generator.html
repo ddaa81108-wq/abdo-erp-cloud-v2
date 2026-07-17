@@ -963,35 +963,40 @@
                 document.getElementById('display-name').classList.add('hidden-element');
                 document.getElementById('status-label').classList.add('hidden-element');
                 document.getElementById('exchange-note').classList.add('hidden-element');
+                document.getElementById('secondary-price-group').classList.add('hidden-element');
+                document.getElementById('custom-note-box').classList.add('hidden-element');
+                document.getElementById('card-date-display').classList.add('hidden-element');
+                document.getElementById('card-spacer').classList.add('hidden-element');
+                // اسم الشركة في الأعلى
                 document.getElementById('price-card-title').classList.remove('hidden-element');
-                document.getElementById('price-card-title').style.borderTop = 'none';
-                document.getElementById('price-card-title').style.borderBottom = 'none';
-                document.getElementById('price-card-title').style.padding = '0';
-                document.getElementById('price-card-title').style.margin = '15px 0 0 0';
-                document.getElementById('price-card-title').style.fontSize = '28pt';
+                const pt = document.getElementById('price-card-title');
+                pt.style.border = 'none'; pt.style.padding = '5px 0'; pt.style.margin = '10px 0 0 0';
+                pt.style.fontSize = '28pt'; pt.style.fontWeight = '800'; pt.style.width = '90%';
+                pt.style.textAlign = 'center'; pt.style.lineHeight = '1.4';
+                // السعر في المنتصف
                 document.getElementById('amount-box-container').classList.remove('hidden-element');
                 document.getElementById('main-amount-group').classList.remove('hidden-element');
                 document.getElementById('amount-input-label').innerText = 'السعر (يقبل الكسور):';
                 document.getElementById('display-amount').innerText = formattedAmountDecimal;
-                document.getElementById('display-amount').style.fontSize = '250pt';
+                document.getElementById('display-amount').style.fontSize = '160pt';
+                document.getElementById('display-amount').style.lineHeight = '0.9';
                 document.getElementById('currency-label').classList.add('hidden-element');
-                document.getElementById('amount-box-container').style.flex = '1 1 auto';
-                document.getElementById('amount-box-container').style.display = 'flex';
-                document.getElementById('amount-box-container').style.flexDirection = 'column';
-                document.getElementById('amount-box-container').style.alignItems = 'center';
-                document.getElementById('amount-box-container').style.justifyContent = 'center';
-                document.getElementById('amount-box-container').style.margin = '0';
-                document.getElementById('amount-box-container').style.minHeight = '0';
+                const abw = document.getElementById('amount-box-container');
+                abw.style.flex = '1 1 0'; abw.style.display = 'flex'; abw.style.flexDirection = 'column';
+                abw.style.alignItems = 'center'; abw.style.justifyContent = 'center';
+                abw.style.margin = '0'; abw.style.padding = '0'; abw.style.minHeight = '0';
+                abw.style.overflow = 'hidden'; abw.style.width = '100%';
+                // التنبيه في الأسفل
                 document.getElementById('card-footer').classList.remove('hidden-element');
-                document.getElementById('card-footer').innerText = 'الأسعار متغيرة بتغير سعر الصرف';
-                document.getElementById('card-footer').style.fontSize = '18pt';
-                document.getElementById('card-footer').style.fontWeight = '600';
+                const cf = document.getElementById('card-footer');
+                cf.innerText = 'الأسعار متغيرة بتغير سعر الصرف';
+                cf.style.fontSize = '18pt'; cf.style.fontWeight = '600'; cf.style.margin = '0 0 8px 0'; cf.style.opacity = '0.9';
+                // إخفاء الزخارف
                 document.getElementById('corner-tl').classList.add('hidden-element');
                 document.getElementById('corner-tr').classList.add('hidden-element');
                 document.getElementById('corner-bl').classList.add('hidden-element');
                 document.getElementById('corner-br').classList.add('hidden-element');
                 document.getElementById('crown-top').classList.add('hidden-element');
-                document.getElementById('card-spacer').classList.add('hidden-element');
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -1088,11 +1093,22 @@
                 document.getElementById('amount-box-container').style.alignItems = '';
                 document.getElementById('amount-box-container').style.justifyContent = '';
                 document.getElementById('amount-box-container').style.minHeight = '';
-                document.getElementById('price-card-title').style.borderTop = '';
-                document.getElementById('price-card-title').style.borderBottom = '';
-                document.getElementById('price-card-title').style.padding = '';
-                document.getElementById('price-card-title').style.margin = '';
-                document.getElementById('price-card-title').style.fontSize = '';
+                document.getElementById('amount-box-container').style.overflow = '';
+                document.getElementById('amount-box-container').style.width = '';
+                document.getElementById('amount-box-container').style.padding = '';
+                document.getElementById('display-amount').style.lineHeight = '';
+                document.getElementById('card-footer').style.margin = '';
+                document.getElementById('card-footer').style.opacity = '';
+                // Reset price-card-title overrides from exchange_rate
+                const ptReset = document.getElementById('price-card-title');
+                ptReset.style.border = '';
+                ptReset.style.padding = '';
+                ptReset.style.margin = '';
+                ptReset.style.fontSize = '';
+                ptReset.style.fontWeight = '';
+                ptReset.style.width = '';
+                ptReset.style.textAlign = '';
+                ptReset.style.lineHeight = '';
                 
                 const statusLabel = document.getElementById('status-label');
                 statusLabel.style.fontSize = '';
