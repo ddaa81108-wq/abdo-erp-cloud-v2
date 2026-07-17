@@ -958,29 +958,40 @@
                 }
             }
             else if (currentType === 'exchange_rate') {
+                // تخطيط كارت أسعار الصرف: شركة فوق، سعر في النص، تنبيه تحت
+                document.getElementById('card-header').classList.add('hidden-element');
+                document.getElementById('display-name').classList.add('hidden-element');
+                document.getElementById('status-label').classList.add('hidden-element');
+                document.getElementById('exchange-note').classList.add('hidden-element');
                 document.getElementById('price-card-title').classList.remove('hidden-element');
-                document.getElementById('status-label').innerText = "نعلمكم أن الأسعار متغيرة بتغيير سعر الدولار";
-                document.getElementById('display-amount').innerText = formattedAmountDecimal;
-                document.getElementById('amount-input-label').innerText = "السعر (يقبل الكسور):";
-                document.getElementById('status-label').classList.remove('hidden-element');
+                document.getElementById('price-card-title').style.borderTop = 'none';
+                document.getElementById('price-card-title').style.borderBottom = 'none';
+                document.getElementById('price-card-title').style.padding = '0';
+                document.getElementById('price-card-title').style.margin = '15px 0 0 0';
+                document.getElementById('price-card-title').style.fontSize = '28pt';
                 document.getElementById('amount-box-container').classList.remove('hidden-element');
                 document.getElementById('main-amount-group').classList.remove('hidden-element');
-                
+                document.getElementById('amount-input-label').innerText = 'السعر (يقبل الكسور):';
+                document.getElementById('display-amount').innerText = formattedAmountDecimal;
                 document.getElementById('display-amount').style.fontSize = '250pt';
                 document.getElementById('currency-label').classList.add('hidden-element');
-                
-                document.getElementById('status-label').style.fontSize = '35pt';
-                document.getElementById('status-label').style.fontWeight = 'bold';
-                document.getElementById('status-label').style.marginTop = '20px';
-                
+                document.getElementById('amount-box-container').style.flex = '1 1 auto';
+                document.getElementById('amount-box-container').style.display = 'flex';
+                document.getElementById('amount-box-container').style.flexDirection = 'column';
+                document.getElementById('amount-box-container').style.alignItems = 'center';
+                document.getElementById('amount-box-container').style.justifyContent = 'center';
+                document.getElementById('amount-box-container').style.margin = '0';
+                document.getElementById('amount-box-container').style.minHeight = '0';
+                document.getElementById('card-footer').classList.remove('hidden-element');
+                document.getElementById('card-footer').innerText = 'الأسعار متغيرة بتغير سعر الصرف';
+                document.getElementById('card-footer').style.fontSize = '18pt';
+                document.getElementById('card-footer').style.fontWeight = '600';
                 document.getElementById('corner-tl').classList.add('hidden-element');
                 document.getElementById('corner-tr').classList.add('hidden-element');
                 document.getElementById('corner-bl').classList.add('hidden-element');
                 document.getElementById('corner-br').classList.add('hidden-element');
                 document.getElementById('crown-top').classList.add('hidden-element');
-                
-                document.getElementById('amount-box-container').style.marginTop = '40px';
-                document.getElementById('exchange-note').classList.add('hidden-element');
+                document.getElementById('card-spacer').classList.add('hidden-element');
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -1070,6 +1081,18 @@
                 document.getElementById('card-footer').style.fontWeight = '';
                 document.getElementById('exchange-note').classList.add('hidden-element');
                 document.getElementById('amount-box-container').style.marginTop = '';
+                document.getElementById('amount-box-container').style.margin = '';
+                document.getElementById('amount-box-container').style.flex = '';
+                document.getElementById('amount-box-container').style.display = '';
+                document.getElementById('amount-box-container').style.flexDirection = '';
+                document.getElementById('amount-box-container').style.alignItems = '';
+                document.getElementById('amount-box-container').style.justifyContent = '';
+                document.getElementById('amount-box-container').style.minHeight = '';
+                document.getElementById('price-card-title').style.borderTop = '';
+                document.getElementById('price-card-title').style.borderBottom = '';
+                document.getElementById('price-card-title').style.padding = '';
+                document.getElementById('price-card-title').style.margin = '';
+                document.getElementById('price-card-title').style.fontSize = '';
                 
                 const statusLabel = document.getElementById('status-label');
                 statusLabel.style.fontSize = '';
@@ -1161,5 +1184,7 @@
             }
         }
     </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"3279d41ec7804124a29acc6e692f9a2b","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"3279d41ec7804124a29acc6e692f9a2b","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 </body>
 </html>
