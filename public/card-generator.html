@@ -741,14 +741,23 @@
                     document.getElementById('custom-note-box').style.fontSize = (14 + (zoomLevel * 1)) + 'pt';
                 }
             } else {
-                document.getElementById('card-header').style.fontSize = '';
-                document.getElementById('custom-note-box').style.fontSize = '';
-                document.getElementById('display-name').style.fontSize = (50 + (zoomLevel * 4)) + 'pt';
-                document.getElementById('status-label').style.fontSize = (22 + (zoomLevel * 2)) + 'pt';
-                let amountTextDiv = document.getElementById('amount-container');
-                if(amountTextDiv) amountTextDiv.style.fontSize = (100 + (zoomLevel * 6)) + 'pt';
-                let currencySpan = document.getElementById('currency-label');
-                if(currencySpan) currencySpan.style.fontSize = (32 + (zoomLevel * 2)) + 'pt';
+                const isExchange = currentType === 'exchange_rate';
+                if (isExchange) {
+                    document.getElementById('price-card-title').style.fontSize = (28 + (zoomLevel * 3)) + 'pt';
+                    const damtEx = document.getElementById('display-amount');
+                    if(damtEx) damtEx.style.fontSize = (160 + (zoomLevel * 12)) + 'pt';
+                    const enEx = document.getElementById('exchange-note');
+                    if(enEx) enEx.style.fontSize = (18 + (zoomLevel * 2)) + 'pt';
+                } else {
+                    document.getElementById('card-header').style.fontSize = '';
+                    document.getElementById('custom-note-box').style.fontSize = '';
+                    document.getElementById('display-name').style.fontSize = (50 + (zoomLevel * 4)) + 'pt';
+                    document.getElementById('status-label').style.fontSize = (22 + (zoomLevel * 2)) + 'pt';
+                    let amountTextDiv = document.getElementById('amount-container');
+                    if(amountTextDiv) amountTextDiv.style.fontSize = (100 + (zoomLevel * 6)) + 'pt';
+                    let currencySpan = document.getElementById('currency-label');
+                    if(currencySpan) currencySpan.style.fontSize = (32 + (zoomLevel * 2)) + 'pt';
+                }
             }
 
             document.querySelectorAll('.stmt-label').forEach(el => el.style.fontSize = (22 + (zoomLevel * 2)) + 'pt');
@@ -987,10 +996,11 @@
                 abw.style.margin = '0'; abw.style.padding = '0'; abw.style.minHeight = '0';
                 abw.style.overflow = 'hidden'; abw.style.width = '100%';
                 // التنبيه في الأسفل
-                document.getElementById('card-footer').classList.remove('hidden-element');
-                const cf = document.getElementById('card-footer');
-                cf.innerText = 'الأسعار متغيرة بتغير سعر الصرف';
-                cf.style.fontSize = '18pt'; cf.style.fontWeight = '600'; cf.style.margin = '0 0 8px 0'; cf.style.opacity = '0.9';
+                document.getElementById('card-footer').classList.add('hidden-element');
+                document.getElementById('exchange-note').classList.remove('hidden-element');
+                document.getElementById('exchange-note').style.fontSize = '18pt';
+                document.getElementById('exchange-note').style.fontWeight = '600';
+                document.getElementById('exchange-note').style.margin = '0 0 8px 0';
                 // إخفاء الزخارف
                 document.getElementById('corner-tl').classList.add('hidden-element');
                 document.getElementById('corner-tr').classList.add('hidden-element');
@@ -1097,8 +1107,8 @@
                 document.getElementById('amount-box-container').style.width = '';
                 document.getElementById('amount-box-container').style.padding = '';
                 document.getElementById('display-amount').style.lineHeight = '';
-                document.getElementById('card-footer').style.margin = '';
-                document.getElementById('card-footer').style.opacity = '';
+                const en = document.getElementById('exchange-note');
+                en.style.fontSize = ''; en.style.fontWeight = ''; en.style.margin = '';
                 // Reset price-card-title overrides from exchange_rate
                 const ptReset = document.getElementById('price-card-title');
                 ptReset.style.border = '';
