@@ -743,11 +743,14 @@
             } else {
                 const isExchange = currentType === 'exchange_rate';
                 if (isExchange) {
+                    // Zoom for absolute positioning: adjust font-size + position offsets
                     document.getElementById('price-card-title').style.fontSize = (28 + (zoomLevel * 3)) + 'pt';
+                    document.getElementById('price-card-title').style.top = (32 + (zoomLevel * 3)) + 'px';
                     const damtEx = document.getElementById('display-amount');
                     if(damtEx) damtEx.style.fontSize = (160 + (zoomLevel * 12)) + 'pt';
                     const enEx = document.getElementById('exchange-note');
                     if(enEx) enEx.style.fontSize = (18 + (zoomLevel * 2)) + 'pt';
+                    if(enEx) enEx.style.bottom = (28 + (zoomLevel * 2)) + 'px';
                 } else {
                     document.getElementById('card-header').style.fontSize = '';
                     document.getElementById('custom-note-box').style.fontSize = '';
@@ -967,40 +970,50 @@
                 }
             }
             else if (currentType === 'exchange_rate') {
-                // تخطيط كارت أسعار الصرف: شركة فوق، سعر في النص، تنبيه تحت
+                // === تخطيط absolute positioning — متطابق بين العرض والنسخ والطباعة ===
+                // إخفاء كل العناصر غير المطلوبة
                 document.getElementById('card-header').classList.add('hidden-element');
                 document.getElementById('display-name').classList.add('hidden-element');
                 document.getElementById('status-label').classList.add('hidden-element');
-                document.getElementById('exchange-note').classList.add('hidden-element');
-                document.getElementById('secondary-price-group').classList.add('hidden-element');
-                document.getElementById('custom-note-box').classList.add('hidden-element');
-                document.getElementById('card-date-display').classList.add('hidden-element');
+                document.getElementById('card-footer').classList.add('hidden-element');
                 document.getElementById('card-spacer').classList.add('hidden-element');
-                // اسم الشركة في الأعلى
-                document.getElementById('price-card-title').classList.remove('hidden-element');
-                const pt = document.getElementById('price-card-title');
-                pt.style.border = 'none'; pt.style.padding = '5px 0'; pt.style.margin = '10px 0 0 0';
-                pt.style.fontSize = '28pt'; pt.style.fontWeight = '800'; pt.style.width = '90%';
-                pt.style.textAlign = 'center'; pt.style.lineHeight = '1.4';
-                // السعر في المنتصف
+                document.getElementById('card-date-display').classList.add('hidden-element');
+                document.getElementById('custom-note-box').classList.add('hidden-element');
+                document.getElementById('secondary-price-group').classList.add('hidden-element');
+                document.getElementById('tafqeet-display').classList.add('hidden-element');
+                // إظهار السعر
                 document.getElementById('amount-box-container').classList.remove('hidden-element');
                 document.getElementById('main-amount-group').classList.remove('hidden-element');
                 document.getElementById('amount-input-label').innerText = 'السعر (يقبل الكسور):';
                 document.getElementById('display-amount').innerText = formattedAmountDecimal;
+                document.getElementById('currency-label').classList.add('hidden-element');
+                // === 1. اسم الشركة — absolute top ===
+                document.getElementById('price-card-title').classList.remove('hidden-element');
+                const pt = document.getElementById('price-card-title');
+                pt.style.position = 'absolute'; pt.style.top = '32px'; pt.style.left = '0'; pt.style.right = '0';
+                pt.style.textAlign = 'center'; pt.style.fontSize = '28pt'; pt.style.fontWeight = '800';
+                pt.style.border = 'none'; pt.style.padding = '0'; pt.style.margin = '0';
+                pt.style.width = '90%'; pt.style.lineHeight = '1.4';
+                pt.style.zIndex = '5';
+                // === 2. السعر — absolute center ===
+                const abw = document.getElementById('amount-box-container');
+                abw.style.position = 'absolute'; abw.style.top = '50%'; abw.style.left = '50%';
+                abw.style.transform = 'translate(-50%, -50%)';
+                abw.style.margin = '0'; abw.style.padding = '0';
+                abw.style.width = 'auto'; abw.style.height = 'auto';
+                abw.style.display = 'block'; abw.style.flex = '';
+                abw.style.justifyContent = ''; abw.style.alignItems = '';
+                abw.style.overflow = 'visible'; abw.style.minHeight = '';
+                abw.style.zIndex = '5';
                 document.getElementById('display-amount').style.fontSize = '160pt';
                 document.getElementById('display-amount').style.lineHeight = '0.9';
-                document.getElementById('currency-label').classList.add('hidden-element');
-                const abw = document.getElementById('amount-box-container');
-                abw.style.flex = '1 1 0'; abw.style.display = 'flex'; abw.style.flexDirection = 'column';
-                abw.style.alignItems = 'center'; abw.style.justifyContent = 'center';
-                abw.style.margin = '0'; abw.style.padding = '0'; abw.style.minHeight = '0';
-                abw.style.overflow = 'hidden'; abw.style.width = '100%';
-                // التنبيه في الأسفل
-                document.getElementById('card-footer').classList.add('hidden-element');
+                // === 3. التنبيه — absolute bottom ===
                 document.getElementById('exchange-note').classList.remove('hidden-element');
-                document.getElementById('exchange-note').style.fontSize = '18pt';
-                document.getElementById('exchange-note').style.fontWeight = '600';
-                document.getElementById('exchange-note').style.margin = '0 0 8px 0';
+                const en = document.getElementById('exchange-note');
+                en.style.position = 'absolute'; en.style.bottom = '28px'; en.style.left = '0'; en.style.right = '0';
+                en.style.textAlign = 'center'; en.style.fontSize = '18pt'; en.style.fontWeight = '600';
+                en.style.margin = '0'; en.style.padding = '0'; en.style.opacity = '0.9';
+                en.style.zIndex = '5';
                 // إخفاء الزخارف
                 document.getElementById('corner-tl').classList.add('hidden-element');
                 document.getElementById('corner-tr').classList.add('hidden-element');
@@ -1106,9 +1119,18 @@
                 document.getElementById('amount-box-container').style.overflow = '';
                 document.getElementById('amount-box-container').style.width = '';
                 document.getElementById('amount-box-container').style.padding = '';
+                document.getElementById('amount-box-container').style.position = '';
+                document.getElementById('amount-box-container').style.top = '';
+                document.getElementById('amount-box-container').style.left = '';
+                document.getElementById('amount-box-container').style.transform = '';
+                document.getElementById('amount-box-container').style.height = '';
+                document.getElementById('amount-box-container').style.zIndex = '';
                 document.getElementById('display-amount').style.lineHeight = '';
+                // Reset exchange-note absolute styles
                 const en = document.getElementById('exchange-note');
                 en.style.fontSize = ''; en.style.fontWeight = ''; en.style.margin = '';
+                en.style.position = ''; en.style.bottom = ''; en.style.left = ''; en.style.right = '';
+                en.style.textAlign = ''; en.style.padding = ''; en.style.opacity = ''; en.style.zIndex = '';
                 // Reset price-card-title overrides from exchange_rate
                 const ptReset = document.getElementById('price-card-title');
                 ptReset.style.border = '';
@@ -1119,6 +1141,11 @@
                 ptReset.style.width = '';
                 ptReset.style.textAlign = '';
                 ptReset.style.lineHeight = '';
+                ptReset.style.position = '';
+                ptReset.style.top = '';
+                ptReset.style.left = '';
+                ptReset.style.right = '';
+                ptReset.style.zIndex = '';
                 
                 const statusLabel = document.getElementById('status-label');
                 statusLabel.style.fontSize = '';
