@@ -213,7 +213,7 @@ export interface User {
   email?: string;
   name: string;
   role: 'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant';
-  password: string;
+  password?: string; // ⚠️ DEPRECATED: لا تستخدم — ✍المصادقة عبر Firebase Auth فقط. سيتم حذف الحقل تلقائياً من Firestore.
   permissions: UserPermissions;
   createdAt: string;
 }
@@ -244,7 +244,7 @@ export interface ERPState {
   trustDeposits: TrustDeposit[];
   safeAudits: SafeAudit[];
   backupPoints: BackupPoint[];
-  managerPasswordHash: string; // e.g., '1234'
+  managerPasswordHash?: string; // ⚠️ قديم — غير مستخدم حالياً
   users: User[];
   egyptianCashRecords: EgyptianCashRecord[];
   delegates?: string[]; // Custom delegates list
@@ -330,7 +330,7 @@ export const INITIAL_ERP_STATE: ERPState = {
     { id: 'tx_t_0', type: 'in', amount: 150000, currency: 'د.ل', conversionRate: 1, date: '2026-05-01T08:00:00', referenceNo: 'TX-2026-000001', source: 'manual_deposit', description: 'رأس مال إيداع تأسيسي نقدي بالخزينة', createdAt: '2026-05-01T08:00:00' },
     
     // Purchase transaction posted (will decrease safe balance)
-    { id: 'tx_t_6', type: 'out', amount: 12000, currency: 'د.ل', conversionRate: 1, date: '2026-06-02T10:00:00', referenceNo: 'TX-2026-000295', source: 'purchase', sourceId: 'p_1', description: 'مشتريات مسددة: كابلات ضغط عالي مجلفنة', createdAt: '2026-06-02T10:00:00' }
+    { id: 'tx_t_6', type: 'out', amount: 12000, currency: 'د.ل', conversionRate: 1, date: '2026-06-02T10:00:00', referenceNo: 'TX-2026-000295', source: 'purchase', sourceId: 'p_1', description: 'مشتريات مسددة: كابلات ضغط عالي مجلفцة', createdAt: '2026-06-02T10:00:00' }
   ],
   purchases: [],
   trustDeposits: [
@@ -364,7 +364,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       createdAt: '2026-06-10T11:20:00',
       history: [
         { id: 'tx_sub_2', type: 'deposit_lyd', amountLyd: 3000, amountEgp: 0, date: '2026-06-10T10:00:00', note: 'إيداع أمانة أولية بالدينار الليبي' },
-        { id: 'tx_sub_3', type: 'withdraw_lyd', amountLyd: 3000, amountEgp: 0, date: '2026-06-10T11:20:00', note: 'استرجاع كامل قيمة الأمانة نقداً بطلب من المودع' }
+        { id: 'tx_sub_3', type: 'withdraw_lyd', amountLyd: 3000, amountEgp: 0, date: '2026-06-10T11:20:00', note: 'استرجاع كامل قيمة الأمانة نقداً بطلب م؆ المردع' }
       ]
     }
   ],
@@ -374,14 +374,14 @@ export const INITIAL_ERP_STATE: ERPState = {
   backupPoints: [
     { id: 'point_1', name: 'التهيئة الأساسية للنظام', date: '2026-06-14T00:00:00', description: 'نسخة احتياطية تلقائية عند التشغيل لأول مرة بعد تهيئة الداتا المحاسبية', dataJson: '' }
   ],
-  managerPasswordHash: '1234',
+  managerPasswordHash: undefined,
   users: [
     {
       id: 'u_1',
       username: 'abdo',
       name: 'المدير عبدو (المالك)',
       role: 'admin',
-      password: 'abdo',
+      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: true,
@@ -399,7 +399,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'tareq',
       name: 'المحاسب طارق (المالية)',
       role: 'accountant',
-      password: '1111',
+      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: true,
@@ -417,7 +417,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'mohamed',
       name: 'الكاشير محمد (المبيعات)',
       role: 'cashier',
-      password: '2222',
+      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: false,
@@ -435,7 +435,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'ali',
       name: 'أمين المخزن علي (التجهيز)',
       role: 'warehouse',
-      password: '3333',
+      password: undefined,
       permissions: {
         canViewDebts: false,
         canViewCompanies: false,
@@ -453,7 +453,7 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'salem',
       name: 'المساعد سالم (المتابعة)',
       role: 'assistant',
-      password: '4444',
+      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: false,
