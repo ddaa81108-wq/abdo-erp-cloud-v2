@@ -345,6 +345,10 @@ export default function App() {
           const data = docSnap.data() as ERPState;
 
           // Backfill new properties
+          // ⚠️ أمني: حذف كلمات السر من بيانات Firestore
+          if (data.users && Array.isArray(data.users)) {
+            data.users = data.users.map((u: any) => { const { password, ...clean } = u; return clean; });
+          }
           if (!data.users || data.users.length === 0)
             data.users = INITIAL_ERP_STATE.users;
           if (!data.merchants)

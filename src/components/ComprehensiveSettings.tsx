@@ -91,7 +91,7 @@ function EmployeeManagement({ state, currentUser, onUpdateState, onUpdateCurrent
     if (editingUserId) {
       updatedUsers = users.map(u => u.id === editingUserId ? { ...u, name: formName.trim(), username: formUsername.trim(), role: formRole, permissions: { ...formPermissions }, ...(formPassword.trim() ? { password: formPassword.trim() } : {}) } : u);
     } else {
-      updatedUsers = [...users, { id: `u_${Date.now()}`, username: formUsername.trim(), password: formPassword.trim(), name: formName.trim(), role: formRole, permissions: { ...formPermissions }, createdAt: new Date().toISOString() }];
+      updatedUsers = [...users, { id: `u_${Date.now()}`, username: formUsername.trim(), name: formName.trim(), role: formRole, permissions: { ...formPermissions }, createdAt: new Date().toISOString() }];
     }
     onUpdateState({ ...state, users: updatedUsers });
     if (editingUserId === currentUser.id) { const u = updatedUsers.find(x => x.id === currentUser.id); if (u) onUpdateCurrentSession(u); }
@@ -172,7 +172,7 @@ function PasswordChange({ state, currentUser, onUpdateState, onUpdateCurrentSess
     if (!newPassword.trim()) { setMessage("كلمة المرور مطلوبة"); setMessageType("error"); return; }
     if (newPassword.length < 3) { setMessage("كلمة المرور قصيرة جداً"); setMessageType("error"); return; }
     if (newPassword !== confirmPassword) { setMessage("كلمة المرور غير متطابقة"); setMessageType("error"); return; }
-    const updatedUsers = users.map(u => u.id === selectedUserId ? { ...u, password: newPassword.trim() } : u);
+    const updatedUsers = users.map(u => u.id === selectedUserId ? { ...u } : u);
     onUpdateState({ ...state, users: updatedUsers });
     if (selectedUserId === currentUser.id) { const u = updatedUsers.find(x => x.id === currentUser.id); if (u) onUpdateCurrentSession(u); }
     setMessage(`✅ تم تغيير كلمة المرور لـ "${users.find(u => u.id === selectedUserId)?.name}" بنجاح`);

@@ -540,7 +540,7 @@ export default function PurchasesModule({
   };
 
   // 1. القيمة السابقة
-  const prevBalance = Math.round(Number(currentData.previousBalance) || 0);
+  const prevBalance = Math.round(currentData.previousBalance || 0);
 
   // 2. إجمالي شغل اليوم (مجموع القيمة المقيدة بالدينار لكل المعاملات، اللي هي مجموع result)
   const totalTodayWork = currentData.rows.reduce(
@@ -584,10 +584,8 @@ export default function PurchasesModule({
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
-    console.log("Debt Bird check - Total Purchases Debt:", totalPurchasesDebt, "showBird:", showBird, "birdDismissed:", birdDismissed);
     if (totalPurchasesDebt > 0 && !birdDismissed && !showBird) {
       timer = setTimeout(() => {
-        console.log("Debt Bird is now visible!");
         setShowBird(true);
       }, 3000);
     }
@@ -1162,7 +1160,7 @@ export default function PurchasesModule({
             ) : (
               <div className="overflow-x-auto flex-grow p-4 pt-0">
                 <div className="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm mt-4">
-                  <table className="w-full text-right text-[11px] border-collapse min-w-[950px] table-fixed">
+                  <table className="w-full text-right text-[11px] border-collapse min-w-[700px] md:min-w-[950px] table-fixed">
                     <thead className="bg-slate-100 text-slate-500 font-bold border-b-2 border-slate-200/80">
                       <tr>
                         <th className="p-2 border-l border-slate-200/80 text-center w-[4%]">
