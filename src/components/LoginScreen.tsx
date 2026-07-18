@@ -51,7 +51,7 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
         email: firebaseUser.email || '',
         name: firebaseUser.displayName || firebaseUser.email || '',
         role: 'admin',
-        password: '',
+        password: undefined,
         permissions: {
           canViewDebts: true,
           canViewCompanies: true,
