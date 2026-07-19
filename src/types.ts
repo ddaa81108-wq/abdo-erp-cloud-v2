@@ -213,7 +213,6 @@ export interface User {
   email?: string;
   name: string;
   role: 'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant';
-  password?: string; // ⚠️ DEPRECATED: لا تستخدم — ✍المصادقة عبر Firebase Auth فقط. سيتم حذف الحقل تلقائياً من Firestore.
   permissions: UserPermissions;
   createdAt: string;
 }
@@ -381,7 +380,6 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'abdo',
       name: 'المدير عبدو (المالك)',
       role: 'admin',
-      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: true,
@@ -399,7 +397,6 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'tareq',
       name: 'المحاسب طارق (المالية)',
       role: 'accountant',
-      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: true,
@@ -417,7 +414,6 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'mohamed',
       name: 'الكاشير محمد (المبيعات)',
       role: 'cashier',
-      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: false,
@@ -435,7 +431,6 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'ali',
       name: 'أمين المخزن علي (التجهيز)',
       role: 'warehouse',
-      password: undefined,
       permissions: {
         canViewDebts: false,
         canViewCompanies: false,
@@ -453,7 +448,6 @@ export const INITIAL_ERP_STATE: ERPState = {
       username: 'salem',
       name: 'المساعد سالم (المتابعة)',
       role: 'assistant',
-      password: undefined,
       permissions: {
         canViewDebts: true,
         canViewCompanies: false,

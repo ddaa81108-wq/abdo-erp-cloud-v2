@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Users, Key, UserRound, Building2, Database, Tag, ArrowRight, Settings,
+  Users, UserRound, Building2, Database, Tag, ArrowRight, Settings,
   Plus, Trash2, Edit3, X, Check, Eye, Save, RotateCcw, AlertTriangle
 } from "lucide-react";
 import { ERPState, User, UserPermissions, Customer, Company, Merchant } from "../types";
@@ -13,11 +13,10 @@ interface Props {
   onUpdateCurrentSession: (updatedUser: User) => void;
 }
 
-type SubSection = "employees" | "password" | "customers" | "companies" | "backup" | "sections";
+type SubSection = "employees" | "customers" | "companies" | "backup" | "sections";
 
 const subSections: { id: SubSection; icon: React.ReactNode; label: string; description: string }[] = [
   { id: "employees", icon: <Users className="w-5 h-5" />, label: "إدارة الموظفين والصلاحيات", description: "إضافة، تعديل، حذف الموظفين والتحكم بصلاحياتهم" },
-  { id: "password", icon: <Key className="w-5 h-5" />, label: "تغيير كلمة المرور", description: "تغيير الباسورد الخاص بأي موظف" },
   { id: "customers", icon: <UserRound className="w-5 h-5" />, label: "إدارة العملاء", description: "تعديل أسماء العملاء وحذفهم" },
   { id: "companies", icon: <Building2 className="w-5 h-5" />, label: "إدارة الشركات والتجار", description: "تعديل أسماء الشركات والتجار" },
   { id: "backup", icon: <Database className="w-5 h-5" />, label: "النسخ الاحتياطي", description: "حفظ واستعادة نسخ احتياطية من المنظومة" },
@@ -68,28 +67,26 @@ function EmployeeManagement({ state, currentUser, onUpdateState, onUpdateCurrent
   const [showAddForm, setShowAddForm] = useState(false);
   const [formName, setFormName] = useState("");
   const [formUsername, setFormUsername] = useState("");
-  const [formPassword, setFormPassword] = useState("");
   const [formRole, setFormRole] = useState<User["role"]>("cashier");
   const [formPermissions, setFormPermissions] = useState<UserPermissions>(defaultPermissions());
   const [formError, setFormError] = useState("");
   const users = state.users || [];
 
-  const resetForm = () => { setFormName(""); setFormUsername(""); setFormPassword(""); setFormRole("cashier"); setFormPermissions(defaultPermissions()); setFormError(""); };
+  const resetForm = () => { setFormName(""); setFormUsername(""); setFormRole("cashier"); setFormPermissions(defaultPermissions()); setFormError(""); };
 
   const handleAdd = () => { setEditingUserId(null); resetForm(); setShowAddForm(true); };
-  const handleEdit = (user: User) => { setEditingUserId(user.id); setFormName(user.name); setFormUsername(user.username); setFormPassword(""); setFormRole(user.role); setFormPermissions({ ...user.permissions }); setFormError(""); setShowAddForm(true); };
+  const handleEdit = (user: User) => { setEditingUserId(user.id); setFormName(user.name); setFormUsername(user.username); setFormRole(user.role); setFormPermissions({ ...user.permissions }); setFormError(""); setShowAddForm(true); };
   const handleCancel = () => { setShowAddForm(false); setEditingUserId(null); resetForm(); };
 
   const handleSave = () => {
     if (!formName.trim()) { setFormError("الاسم مطلوب"); return; }
     if (!formUsername.trim()) { setFormError("اسم المستخدم مطلوب"); return; }
-    if (!editingUserId && !formPassword.trim()) { setFormError("كلمة المرور مطلوبة"); return; }
     const duplicate = users.find(u => u.username === formUsername.trim() && u.id !== editingUserId);
     if (duplicate) { setFormError("اسم المستخدم موجود بالفعل"); return; }
 
     let updatedUsers: User[];
     if (editingUserId) {
-      updatedUsers = users.map(u => u.id === editingUserId ? { ...u, name: formName.trim(), username: formUsername.trim(), role: formRole, permissions: { ...formPermissions }, ...(formPassword.trim() ? { password: formPassword.trim() } : {}) } : u);
+      updatedUsers = users.map(u => u.id === editingUserId ? { ...u, name: formName.trim(), username: formUsername.trim(), role: formRole, permissions: { ...formPermissions } } : u);
     } else {
       updatedUsers = [...users, { id: `u_${Date.now()}`, username: formUsername.trim(), name: formName.trim(), role: formRole, permissions: { ...formPermissions }, createdAt: new Date().toISOString() }];
     }
@@ -136,7 +133,6 @@ function EmployeeManagement({ state, currentUser, onUpdateState, onUpdateCurrent
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
               <div><label className="block text-[10px] font-bold text-slate-400 mb-1.5">الاسم الكامل</label><input type="text" value={formName} onChange={e => setFormName(e.target.value)} placeholder="مثال: أحمد محمد" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-all" dir="rtl" /></div>
               <div><label className="block text-[10px] font-bold text-slate-400 mb-1.5">اسم المستخدم</label><input type="text" value={formUsername} onChange={e => setFormUsername(e.target.value)} placeholder="مثال: ahmed" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-all" dir="ltr" /></div>
-              <div><label className="block text-[10px] font-bold text-slate-400 mb-1.5">{editingUserId ? "كلمة المرور (اترك فارغاً للاحتفاظ بالقديمة)" : "كلمة المرور"}</label><input type="text" value={formPassword} onChange={e => setFormPassword(e.target.value)} placeholder={editingUserId ? "••••••••" : "كلمة مرور قوية"} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-all" dir="ltr" /></div>
               <div><label className="block text-[10px] font-bold text-slate-400 mb-1.5">الدور الوظيفي</label><select value={formRole} onChange={e => setFormRole(e.target.value as User["role"])} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer" dir="rtl">{ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}</select></div>
             </div>
             <div className="mb-5"><h5 className="text-xs font-black text-amber-400 mb-3 flex items-center gap-1.5"><Eye className="w-3.5 h-3.5" /><span>صلاحيات الموظف:</span></h5>
@@ -155,54 +151,6 @@ function EmployeeManagement({ state, currentUser, onUpdateState, onUpdateCurrent
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
-  );
-}
-
-// ════════════════ 2. PASSWORD CHANGE ════════════════
-function PasswordChange({ state, currentUser, onUpdateState, onUpdateCurrentSession }: Props) {
-  const [selectedUserId, setSelectedUserId] = useState(currentUser.id);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error">("success");
-  const users = state.users || [];
-
-  const handleChange = () => {
-    if (!newPassword.trim()) { setMessage("كلمة المرور مطلوبة"); setMessageType("error"); return; }
-    if (newPassword.length < 3) { setMessage("كلمة المرور قصيرة جداً"); setMessageType("error"); return; }
-    if (newPassword !== confirmPassword) { setMessage("كلمة المرور غير متطابقة"); setMessageType("error"); return; }
-    const updatedUsers = users.map(u => u.id === selectedUserId ? { ...u } : u);
-    onUpdateState({ ...state, users: updatedUsers });
-    if (selectedUserId === currentUser.id) { const u = updatedUsers.find(x => x.id === currentUser.id); if (u) onUpdateCurrentSession(u); }
-    setMessage(`✅ تم تغيير كلمة المرور لـ "${users.find(u => u.id === selectedUserId)?.name}" بنجاح`);
-    setMessageType("success");
-    setNewPassword(""); setConfirmPassword("");
-  };
-
-  return (
-    <div>
-      <h3 className="text-sm font-black text-slate-200 mb-5 flex items-center gap-2"><Key className="w-4 h-4 text-amber-400" /><span>تغيير كلمة المرور</span></h3>
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-5 max-w-lg">
-        {message && <div className={`rounded-xl px-4 py-2.5 mb-4 text-xs font-bold ${messageType === "success" ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>{message}</div>}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">اختر الموظف</label>
-            <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-amber-500/50 transition-all cursor-pointer" dir="rtl">
-              {users.map(u => <option key={u.id} value={u.id}>{u.name} (@{u.username})</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">كلمة المرور الجديدة</label>
-            <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="ادخل كلمة المرور الجديدة" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-all" dir="ltr" />
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-slate-400 mb-1.5">تأكيد كلمة المرور</label>
-            <input type="text" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="أعد كتابة كلمة المرور" className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white font-bold placeholder-slate-500 focus:outline-none focus:border-amber-500/50 transition-all" dir="ltr" />
-          </div>
-          <button onClick={handleChange} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition-all cursor-pointer active:scale-[0.98] shadow-lg shadow-amber-500/20"><Save className="w-4 h-4" /><span>حفظ كلمة المرور الجديدة</span></button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -486,7 +434,6 @@ export default function ComprehensiveSettings({ state, currentUser, onUpdateStat
           <motion.div key={activeSection} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
             <button onClick={() => setActiveSection(null)} className="mb-5 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs transition-all cursor-pointer border border-slate-700 hover:border-slate-600 active:scale-95"><ArrowRight className="w-4 h-4 rotate-180" /><span>العودة للإعدادات الشاملة</span></button>
             {activeSection === "employees" && <EmployeeManagement state={state} currentUser={currentUser} onUpdateState={onUpdateState} onUpdateCurrentSession={onUpdateCurrentSession} />}
-            {activeSection === "password" && <PasswordChange state={state} currentUser={currentUser} onUpdateState={onUpdateState} onUpdateCurrentSession={onUpdateCurrentSession} />}
             {activeSection === "customers" && <CustomerManagement state={state} onUpdateState={onUpdateState} />}
             {activeSection === "companies" && <CompanyManagement state={state} onUpdateState={onUpdateState} />}
             {activeSection === "backup" && <BackupSection state={state} onUpdateState={onUpdateState} />}
