@@ -45,6 +45,24 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
         return;
       }
 
+      // Bootstrap: المالك يقدر يدخل حتى لو الإيميل مش مضاف في النظام
+      const OWNER_EMAIL = 'ddaa81108@gmail.com';
+      if (firebaseUser.email?.toLowerCase() === OWNER_EMAIL) {
+        const updatedUsers = state.users.map(u => {
+          if (u.id === 'u_1' && !u.email) {
+            return { ...u, email: firebaseUser.email! };
+          }
+          return u;
+        });
+        const updatedState = { ...state, users: updatedUsers };
+        onUpdateState(updatedState);
+        const adminUser = updatedUsers.find(u => u.email?.toLowerCase() === OWNER_EMAIL);
+        if (adminUser) {
+          onLoginSuccess(adminUser);
+          return;
+        }
+      }
+
       setErrorMessage('الحساب ده مش مسجل في المنظومة. تواصل مع المدير علشان يضيفك للنظام.');
     } catch (error: any) {
       if (
