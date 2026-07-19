@@ -3,205 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <title>استوديو الكروت الذكية - المنظومة الملكية</title>
-
-    <script>
-        const activeSession = sessionStorage.getItem("ABDO_ERP_V2_ACTIVE_USER");
-        if (!activeSession) {
-            window.location.replace("/");
-        }
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@800;900&display=swap');
-        
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* الألوان والخلفيات - تم وضع !important لمنع أي تضارب وجعلها تعمل بقوة */
-        .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); --corner-color: rgba(180,140,30,0.55); --text-glow: rgba(200,160,40,0.35); }
-        .bg-exchange { background: linear-gradient(160deg, #f9d976 0%, #e9b64c 10%, #fdf0a6 22%, #d4942e 36%, #f9e076 50%, #c5811e 64%, #fdf0a6 78%, #e9b64c 90%, #d4af37 100%) !important; --text-main: #0a0500; --corner-color: rgba(150,100,15,0.45); }
-        .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); --corner-color: rgba(140,140,140,0.5); --text-glow: rgba(150,150,150,0.3); }
-        .bg-navy { background: linear-gradient(135deg, #141e30 0%, #243b55 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.3); --badge-border: rgba(255, 255, 255, 0.3); --corner-color: rgba(150,180,220,0.5); --text-glow: rgba(150,180,220,0.3); }
-        .bg-dark { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important; --text-main: #f1c40f; --badge-bg: rgba(255, 255, 255, 0.1); --badge-border: rgba(241, 196, 15, 0.5); --corner-color: rgba(241,196,15,0.55); --text-glow: rgba(241,196,15,0.35); }
-        .bg-emerald { background: linear-gradient(135deg, #0f3422 0%, #1e5639 50%, #2ecc71 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(80,220,140,0.5); --text-glow: rgba(80,220,140,0.3); }
-        .bg-ruby { background: linear-gradient(135deg, #640d14 0%, #ad2831 50%, #e5383b 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(240,80,80,0.5); --text-glow: rgba(240,80,80,0.3); }
-        .bg-ocean { background: linear-gradient(135deg, #021B79 0%, #0575E6 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(80,160,255,0.5); --text-glow: rgba(80,160,255,0.3); }
-        .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); --corner-color: rgba(150,150,150,0.45); --text-glow: rgba(160,160,160,0.25); }
-        .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(240,170,120,0.5); --text-glow: rgba(240,170,120,0.3); }
-        .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); --corner-color: rgba(220,100,200,0.5); --text-glow: rgba(220,100,200,0.3); }
-        .bg-vip { 
-            background-color: #060606 !important;
-            background-image: 
-                repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(212,175,55,0.025) 3px, rgba(212,175,55,0.025) 6px),
-                repeating-linear-gradient(-45deg, transparent, transparent 3px, rgba(212,175,55,0.015) 3px, rgba(212,175,55,0.015) 6px),
-                radial-gradient(ellipse at 50% 10%, rgba(212,175,55,0.14) 0%, transparent 50%),
-                radial-gradient(ellipse at 20% 85%, rgba(212,175,55,0.07) 0%, transparent 35%),
-                radial-gradient(ellipse at 80% 85%, rgba(212,175,55,0.07) 0%, transparent 35%),
-                linear-gradient(180deg, #0a0800 0%, #0d0a02 18%, #050505 45%, #0d0a02 75%, #0a0800 100%) !important;
-            --text-main: #f5d76e; 
-            --badge-bg: rgba(212,175,55,0.08); 
-            --badge-border: rgba(245,215,110,0.3); 
-            --corner-color: rgba(212,175,55,0.7); --text-glow: rgba(212,175,55,0.5);
-            border: none !important;
-            box-shadow: 0 0 80px rgba(212,175,55,0.28), 0 0 180px rgba(212,175,55,0.10), inset 0 0 140px rgba(212,175,55,0.05) !important;
-        }
 
-        /* زخارف عامة - إطار موحد + تبروز النص لكل الثيمات */
-        .card::before { content:''; position:absolute; inset:10px; border:1.5px solid rgba(255,255,255,0.3); border-radius:22px; pointer-events:none; z-index:2; }
-        .card::after { content:''; position:absolute; inset:18px; border:1px solid rgba(255,255,255,0.15); border-radius:15px; pointer-events:none; z-index:2; }
-        .card .header { text-shadow: 0 3px 6px rgba(0,0,0,0.35), 0 0 25px var(--text-glow,transparent), 0 0 50px var(--text-glow,transparent); }
-        .card .client-name { text-shadow: 0 3px 5px rgba(0,0,0,0.3), 0 0 18px var(--text-glow,transparent); font-weight: 900; }
-        .card .label { text-shadow: 0 2px 4px rgba(0,0,0,0.25), 0 0 12px var(--text-glow,transparent); }
+        /* الألوان والخلفيات - تم وضع !important لمنع أي تضارب وجعلها تعمل بقوة */
+        .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); }
+        .bg-silver { background: linear-gradient(135deg, #e2e2e2 0%, #999999 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(255, 255, 255, 0.5); --badge-border: rgba(255, 255, 255, 0.8); }
+        .bg-navy { background: linear-gradient(135deg, #141e30 0%, #243b55 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.3); --badge-border: rgba(255, 255, 255, 0.3); }
+        .bg-dark { background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%) !important; --text-main: #f1c40f; --badge-bg: rgba(255, 255, 255, 0.1); --badge-border: rgba(241, 196, 15, 0.5); }
+        .bg-emerald { background: linear-gradient(135deg, #0f3422 0%, #1e5639 50%, #2ecc71 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-ruby { background: linear-gradient(135deg, #640d14 0%, #ad2831 50%, #e5383b 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-ocean { background: linear-gradient(135deg, #021B79 0%, #0575E6 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-pearl { background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%) !important; --text-main: #1a1a1a; --badge-bg: rgba(0, 0, 0, 0.05); --badge-border: rgba(0, 0, 0, 0.1); }
+        .bg-copper { background: linear-gradient(135deg, #a43931 0%, #d47e4c 50%, #e6a06f 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
+        .bg-purple { background: linear-gradient(135deg, #30142b 0%, #8a2387 50%, #e94057 100%) !important; --text-main: #ffffff; --badge-bg: rgba(0, 0, 0, 0.2); --badge-border: rgba(255, 255, 255, 0.4); }
 
         /* تنسيق الكارت الأساسي */
-        .card { width: 1200px !important; min-height: 600px; border-radius: 24px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; overflow: hidden; }
-        .header { font-size: 26pt; font-weight: bold; margin: 0; transition: color 0.3s ease; text-align: center; line-height: 1.25; }
-        .price-card-title { font-size: 42pt; font-weight: 900; margin: 30px 0; width: 85%; text-align: center; border-top: 3px solid rgba(255,255,255,0.4); border-bottom: 3px solid rgba(255,255,255,0.4); padding: 25px 0; line-height: 1.4; color: var(--text-main); }
-        .client-name { font-size: 55pt; font-weight: 900; margin: 0; line-height: 1.15; text-align: center; transition: filter 0.3s ease, color 0.3s ease; max-width: 92%; overflow-wrap: anywhere; }
-        .label { font-size: 24pt; font-weight: bold; text-align: center; line-height: 1.35; max-width: 92%; overflow-wrap: anywhere; margin: 0; }
-
-        .amount-box-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; margin-bottom: 5px; width: 100%; min-height: 180px; }
-
-        .exchange-note { font-size: 16pt; color: var(--text-main); opacity: 0.95; margin-top: 6px; text-align: center; }
-        .amount-box { display: flex; justify-content: center; align-items: center; width: 100%; }
-        .amount-text { font-size: 100pt; font-weight: 900; font-family: 'Arial Black', Impact, Arial, sans-serif; margin: 0; line-height: 0.95; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 16px; max-width: 100%; text-align: center; }
-        .currency { font-size: 32pt; font-weight: bold; }
-        .tafqeet-text { font-size: 22pt; font-weight: bold; margin-top: 15px; color: var(--text-main); opacity: 0.85; text-align: center; }
+        .card { width: 100%; max-width: 1000px; min-height: 800px; border-radius: 30px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; }
+        .header { font-size: 26pt; font-weight: bold; margin-top: 5px; transition: color 0.3s ease; }
+        .price-card-title { font-size: 38pt; font-weight: 900; margin-top: 20px; width: 90%; text-align: center; }
+        .client-name { font-size: 55pt; font-weight: 900; margin: 0; line-height: 1.1; text-align: center; transition: filter 0.3s ease, color 0.3s ease; }
+        .label { font-size: 24pt; font-weight: bold; text-align: center;}
+        
+        .amount-box-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 5px; margin-bottom: 5px; }
+        .amount-box { display: flex; justify-content: center; align-items: center; }
+        .amount-text { font-size: 120pt; font-weight: 900; font-family: 'Arial Black', Impact, Arial, sans-serif; margin: 0; line-height: 1; display: flex; align-items: center; gap: 20px; }
+        .currency { font-size: 35pt; font-weight: bold; }
+        .tafqeet-text { font-size: 24pt; font-weight: bold; margin-top: 15px; color: var(--text-main); opacity: 0.85; text-align: center; }
 
         .price-badge { font-size: 22pt; font-weight: bold; background: var(--badge-bg); padding: 8px 30px; border-radius: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; border: none; }
         .custom-note-box { font-size: 18pt; font-weight: bold; background: var(--badge-bg); padding: 12px 30px; border-radius: 15px; margin-bottom: 10px; text-align: center; line-height: 1.5; width: 85%; white-space: pre-wrap; border: none; }
         .large-note { font-size: 38pt !important; line-height: 1.8; padding: 40px !important; background: transparent !important; flex-grow: 1; display: flex; align-items: center; justify-content: center; }
 
-        /* الكروت الصغيرة */
-        .card.mini-card-layout { width: 600px !important; max-width: 600px !important; min-height: 400px; padding: 25px; gap: 15px; border-radius: 16px; }
-        .card.mini-card-layout .header { font-size: 24pt; }
-        .card.mini-card-layout .client-name { font-size: 32pt; }
-        .card.mini-card-layout .amount-text { font-size: 48pt; }
-        .card.mini-card-layout .currency { font-size: 18pt; }
-        .card.mini-card-layout .label { font-size: 16pt; }
-        .card.mini-card-layout .custom-note-box { font-size: 14pt; padding: 10px 15px; width: 90%; }
-        .card.mini-card-layout .footer { font-size: 12pt; }
-        .card.mini-card-layout #corner-tl, .card.mini-card-layout #corner-tr, .card.mini-card-layout #corner-bl, .card.mini-card-layout #corner-br { font-size: 16pt; }
-        .card.mini-card-layout #crown-top { font-size: 10pt; top: 8px; }
-        .card.mini-card-layout::before { inset: 8px; border-width: 1.5px; border-radius: 12px; }
-        .card.mini-card-layout::after { inset: 14px; border-width: 1px; border-radius: 8px; }
-
-        .card.mini-card-layout.mini-card-centered { justify-content: center; }
-        .card.mini-card-layout.mini-card-centered .header { font-size: 55pt; line-height: 1.5; font-weight: 900; margin: 0; }
-        .card.mini-card-layout.mini-card-centered #corner-tl, .card.mini-card-layout.mini-card-centered #corner-tr, .card.mini-card-layout.mini-card-centered #corner-bl, .card.mini-card-layout.mini-card-centered #corner-br { font-size: 24pt; }
-
         /* الكشف الماسي */
-        .final-statement-box { width: 95%; display: flex; flex-direction: column; margin: 0; background: transparent; border: none; gap: 0; }
-        .stmt-header-row { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; width: 100%; flex-wrap: wrap; margin-bottom: 25px; }
-        .stmt-header { text-align: right; font-size: 34pt; font-weight: 900; margin: 0; color: var(--text-main); transition: color 0.3s ease; line-height: 1.05; white-space: normal; word-break: break-word; flex: 1 1 60%; min-width: 0; }
-        .stmt-date { text-align: left; font-size: 18pt; font-weight: bold; margin: 0; color: var(--text-main); opacity: 0.8; direction: ltr; white-space: normal; word-break: break-word; flex: 0 0 auto; }
-        .stmt-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 18px 10px; background: transparent; border: none; border-bottom: 3px dashed var(--badge-border); min-height: 80px; flex-wrap: wrap; width: 100%; box-sizing: border-box; }
-        .stmt-row:last-child { border-bottom: none; }
-        .stmt-label { font-size: 26pt; font-weight: 900; color: var(--text-main); line-height: 1.25; overflow-wrap: anywhere; white-space: normal; word-break: break-word; flex: 1 1 45%; min-width: 180px; }
-        .stmt-value { font-size: 36pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; direction: ltr; line-height: 1; white-space: nowrap; overflow-wrap: normal; word-break: normal; flex: 1 1 45%; min-width: 180px; }
-        .stmt-row.final-row { border-bottom: none; border-top: 6px double var(--text-main); margin-top: 15px; padding-top: 25px; padding-bottom: 10px; box-shadow: none; background: transparent; }
-        .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 42pt; }
-        .masraweya-card { justify-content: flex-start; gap: 20px; padding: 30px 40px; }
-        .masraweya-card .final-statement-box { width: 100%; gap: 0; }
-        .masraweya-card .stmt-header { font-size: 46pt; }
-        .masraweya-card .stmt-date { font-size: 22pt; }
+        .final-statement-box { width: 95%; display: flex; flex-direction: column; margin: 10px 0; background: transparent; border: none; gap: 15px; }
+        .stmt-header { text-align: center; font-size: 34pt; font-weight: 900; margin-bottom: 5px; color: var(--text-main); transition: color 0.3s ease; }
+        .stmt-date { text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 20px; color: var(--text-main); opacity: 0.8; }
+        .stmt-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: var(--badge-bg); border-radius: 15px; border: none; }
+        .stmt-label { font-size: 24pt; font-weight: bold; color: var(--text-main); }
+        .stmt-value { font-size: 32pt; font-weight: 900; color: var(--text-main); text-align: left; font-family: 'Arial Black', Impact, sans-serif; border: none; }
+        .stmt-row.final-row { background: transparent; border: 3px dashed var(--badge-border); margin-top: 10px; }
+        .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 38pt; }
 
         /* كارت المشتريات */
-        .purchases-box { width: 95%; display: flex; flex-direction: column; gap: 0; margin: 0; background: transparent; border: none; }
-        .purchases-top-bar { display: flex; justify-content: space-between; align-items: center; font-size: 24pt; font-weight: 900; margin-bottom: 25px; transition: color 0.3s ease; color: var(--text-main); }
+        .purchases-box { width: 95%; display: flex; flex-direction: column; gap: 15px; margin: 10px 0; background: transparent; border: none; }
+        .purchases-top-bar { display: flex; justify-content: space-between; align-items: center; font-size: 22pt; font-weight: 900; margin-bottom: 10px; transition: color 0.3s ease; }
         .purchases-merchant-name { transition: filter 0.3s ease; }
-        .purchases-row { display: flex; justify-content: space-between; align-items: center; padding: 18px 10px; background: transparent; border: none; border-bottom: 3px dashed var(--badge-border); min-height: 80px; font-family: 'Arial Black', Impact, sans-serif; }
-        .purchases-row:last-child { border-bottom: none; }
-        .p-label { font-size: 26pt; font-weight: 900; color: var(--text-main); line-height: 1.25; }
-        .p-value { font-size: 36pt; font-weight: 900; color: var(--text-main); display: flex; align-items: center; gap: 15px; direction: ltr; line-height: 1; }
-        .p-currency { font-size: 20pt; font-weight: bold; opacity: 0.8; }
+        .purchases-row { background: #ffffff; border-radius: 15px; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; font-family: 'Arial Black', Impact, sans-serif; border-width: 3px; border-style: solid; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .p-label { font-size: 26pt; font-weight: bold; }
+        .p-value { font-size: 40pt; font-weight: 900; display: flex; align-items: center; gap: 15px; direction: ltr; }
+        .p-currency { font-size: 18pt; font-weight: bold; opacity: 0.6; }
         
-        .row-5 { border-bottom: none; border-top: 6px double var(--text-main); margin-top: 15px; padding-top: 25px; padding-bottom: 10px; }
-        .row-5 .p-label, .row-5 .p-value { font-size: 42pt; }
+        .row-1 { border-color: #bdc3c7; color: #2c3e50; }
+        .row-2 { border-color: #27ae60; color: #27ae60; }
+        .row-3 { border-color: #c0392b; color: #c0392b; }
+        .row-4 { border-color: #8b0000; color: #8b0000; }
+        .row-5 { border-color: #16a085; color: #16a085; }
 
-        .footer { font-size: 20pt; font-weight: 900; opacity: 0.95; white-space: normal; text-align: center; line-height: 1.25; max-width: 92%; margin-top: auto; }
+        .footer { font-size: 20pt; font-weight: 900; opacity: 0.95; white-space: nowrap; text-align: center; }
         .card-date { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 5px; opacity: 0.8; }
         .spacer { height: 35px; width: 100%; }
         .hidden-element { display: none !important; }
-
-        /* ======================================================== */
-        /* --- تصميم كارت أسعار الصرف الجديد (الذهب الصافي) --- */
-        /* ======================================================== */
-        .system-gold-card {
-            width: 800px !important;
-            height: 480px !important;
-            background: linear-gradient(135deg, #e6c27a 0%, #fceabb 20%, #d4af37 50%, #f8b500 80%, #aa771c 100%) !important;
-            border: 4px solid #8c6216 !important;
-            border-radius: 12px;
-            position: relative;
-            box-sizing: border-box;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            overflow: hidden;
-            font-family: 'Cairo', sans-serif;
-            direction: rtl;
-            margin: 0 auto;
-        }
-        .card-inner-line {
-            position: absolute; top: 15px; bottom: 15px; left: 15px; right: 15px;
-            border: 3px solid rgba(140, 98, 22, 0.5); border-radius: 8px; pointer-events: none;
-        }
-        .card-corner { position: absolute; width: 40px; height: 40px; border: 4px solid #5a3d0b; }
-        .card-corner.tl { top: 12px; left: 12px; border-right: none; border-bottom: none; }
-        .card-corner.tr { top: 12px; right: 12px; border-left: none; border-bottom: none; }
-        .card-corner.bl { bottom: 12px; left: 12px; border-right: none; border-top: none; }
-        .card-corner.br { bottom: 12px; right: 12px; border-left: none; border-top: none; }
-
-        .card-text-layer { position: absolute; left: 0; right: 0; text-align: center; color: #000; font-weight: 900; margin: 0; padding: 0; transition: color 0.3s ease; }
-        .card-line-1 { top: 40px; font-size: 44px; }
-        .card-line-2 { top: 95px; font-size: 44px; }
-        .card-price-value { top: 140px; font-size: 160px; line-height: 1; }
-        .card-footer-note { bottom: 45px; font-size: 28px; }
         
-        /* تنسيقات الواجهة المضيئة (Light Mode) */
-        .solid-input { background-color: #ffffff; border: 1px solid #d1d5db; color: #1f2937; padding: 10px; border-radius: 8px; width: 100%; outline: none; transition: 0.3s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .solid-input:focus { border-color: #16a34a; box-shadow: 0 0 0 2px rgba(22,163,74,0.2); } 
-        select option, datalist option { background-color: #ffffff; color: #1f2937; }
-        .inbox-item { background: #ffffff; border: 1px solid #e5e7eb; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-        .inbox-item:hover { background: #f3f4f6; border-color: #16a34a; }
+        .solid-input { background-color: #2a2a2a; border: 1px solid #444; color: #ffffff; padding: 10px; border-radius: 8px; width: 100%; outline: none; transition: 0.3s; }
+        .solid-input:focus { border-color: #f59e0b; }
+        select option, datalist option { background-color: #1a1a1a; color: #ffffff; }
+        .inbox-item { background: #2a2a2a; border: 1px solid #444; padding: 10px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .inbox-item:hover { background: #3a3a3a; border-color: #f59e0b; }
         
-        input[type="color"] { appearance: none; -webkit-appearance: none; padding: 0; border: none; border-radius: 8px; cursor: pointer; background: transparent; }
+        /* تنسيق زر اختيار اللون */
+        input[type="color"] { -webkit-appearance: none; padding: 0; border: none; border-radius: 8px; cursor: pointer; }
         input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; border: 1px solid #d1d5db; }
-
-        @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
-            .card { box-shadow: none !important; border-radius: 12px !important; }
-            .card * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .spacer, .hidden-element { display: none !important; }
-        }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 8px; border: 1px solid #444; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen font-sans p-4" onload="initDashboard()">
+<body class="bg-[#121212] text-white min-h-screen font-sans p-4" onload="initDashboard()">
 
-    <!-- 1. شريط الأقسام العلوي والأدوات -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-1 w-full" id="tiles-container"></div>
-        
-        <!-- أزرار التصدير والتفقيط في أعلى اليسار -->
-        <div class="flex gap-2 w-full md:w-auto">
-            <button type="button" onclick="generateTafqeet()" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all shadow-md text-sm">
-                🔠 تفقيط المبلغ
-            </button>
-            <button id="mainCopyBtn" onclick="copyCard(this)" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all shadow-md text-sm">
-                📋 تصدير ونسخ الكارت
-            </button>
-        </div>
-    </div>
+    <!-- 1. شريط الأقسام العلوي -->
+    <div class="flex gap-4 mb-6 overflow-x-auto pb-2 scrollbar-hide" id="tiles-container"></div>
 
-    <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-100px)] min-h-[calc(100vh-100px)]">
+    <div class="flex flex-col lg:flex-row gap-6 h-[calc(100vh-100px)]">
 
         <!-- 2. الشريط الأيمن (الاستقبال والرسائل) -->
-        <div class="w-full lg:w-[20%] bg-white border border-gray-200 shadow-sm rounded-2xl p-5 flex flex-col gap-4 lg:overflow-y-auto">
-            
-            <div id="inbox-container" style="display: none;"></div>
+        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-5 flex flex-col gap-4 overflow-y-auto">
+            <h3 class="text-xl font-bold text-amber-500 mb-2 border-b border-white/10 pb-2">📥 صندوق الاستقبال</h3>
+            <div id="inbox-container" class="flex flex-col gap-2 mb-4 overflow-y-auto max-h-[250px]"></div>
 
-            <h3 class="text-lg font-bold text-green-700 mb-2 border-b border-gray-100 pb-2">الرسائل الجاهزة</h3>
+            <h3 class="text-xl font-bold text-amber-500 mb-2 border-b border-white/10 pb-2 mt-auto">الرسائل الجاهزة</h3>
             <select id="templateSelect" onchange="loadTemplate()" class="solid-input mb-2">
                 <option value="">-- اختر رسالة جاهزة --</option>
                 <optgroup label="رسائل صلب الشغل">
@@ -222,118 +113,92 @@
                     <option value="trust_deposit">إيداع أمانة في الحساب</option>
                     <option value="clearance_note">مخالصة مالية نهائية</option>
                 </optgroup>
-                <optgroup label="تنبيهات الطوارئ والأسعار">
-                    <option value="price_drop_alert">تنبيه: انخفاض السعر</option>
-                    <option value="price_freeze_dollar">إيقاف التسعير (ارتفاع الدولار)</option>
-                    <option value="network_delay_alert">تأخير حوالات (مشكلة بالشبكة)</option>
-                </optgroup>
             </select>
             <textarea id="customNote" placeholder="اكتب ملاحظة حرة لتضاف للكارت..." class="w-full p-3 solid-input min-h-[100px] resize-none" oninput="updateCard()"></textarea>
         </div>
 
         <!-- 3. الكارت المركزي -->
-        <div id="preview-container" class="w-full lg:w-[60%] bg-white border border-gray-200 shadow-sm rounded-2xl p-4 md:p-6 flex justify-center items-start lg:items-center overflow-hidden relative min-h-[400px] lg:overflow-y-auto">
-            <div id="preview-wrapper" class="transition-transform duration-300" style="transform-origin: top center;">
+        <div class="w-full lg:w-[60%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 flex justify-center items-start overflow-y-auto">
+            <div class="card bg-gold" id="goldenCard">
+                <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
+                <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                <div class="client-name" id="display-name">اسم العميل</div>
+                <div class="label" id="status-label">إجمالي الديون المستحقة عليك:</div>
                 
-                <!-- الكارت الأساسي (لكل الأقسام ما عدا أسعار الصرف) -->
-                <div class="card bg-gold" id="goldenCard">
-                    <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
-                    <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
-                    <div class="client-name" id="display-name">اسم العميل</div>
-                    <div class="label" id="status-label">إجمالي الديون المستحقة عليك:</div>
-                    <div class="exchange-note hidden-element" id="exchange-note">الأسعار متغيرة بتغير سعر الصرف</div>
-                    
-                    <div class="amount-box-wrapper" id="amount-box-container">
-                        <div class="amount-box">
-                            <div class="amount-text" id="amount-container">
-                                <span id="display-amount">0</span> <span class="currency" id="currency-label">د.ل</span>
-                            </div>
+                <div class="amount-box-wrapper" id="amount-box-container">
+                    <div class="amount-box">
+                        <div class="amount-text" id="amount-container">
+                            <span id="display-amount">0</span> <span class="currency" id="currency-label">د.ل</span>
                         </div>
-                        <div id="tafqeet-display" class="tafqeet-text hidden-element"></div>
                     </div>
-
-                    <div class="final-statement-box hidden-element" id="final-statement-box">
-                        <div class="stmt-header-row">
-                            <div class="stmt-header" id="stmt-header-title">التقرير النهائى</div>
-                            <div class="stmt-date" id="stmt-date-display"></div>
-                        </div>
-                        <div class="stmt-row"><div class="stmt-label">القيمة السابقة:</div><div class="stmt-value" id="val-previous">0</div></div>
-                        <div class="stmt-row"><div class="stmt-label">المستلمة اليوم:</div><div class="stmt-value" id="val-received">0</div></div>
-                        <div class="stmt-row"><div class="stmt-label">إجمالي الشغل:</div><div class="stmt-value" id="val-total">0</div></div>
-                        <div class="stmt-row final-row"><div class="stmt-label">الباقي النهائي:</div><div class="stmt-value" id="val-remaining">0</div></div>
-                    </div>
-
-                    <div class="purchases-box hidden-element" id="purchases-box">
-                        <div class="purchases-top-bar" id="purchases-top-bar">
-                            <span id="purchases-date-display">2026-07-03</span>
-                            <span id="purchases-merchant-name" class="purchases-merchant-name">التاجر: ...</span>
-                        </div>
-                        <div class="purchases-row row-1"><div class="p-label">1. القيمة السابقة:</div><div class="p-value"><span id="p-val-1">0</span> <span class="p-currency">د.ل</span></div></div>
-                        <div class="purchases-row row-2"><div class="p-label">2. إجمالي شغل اليوم ⚡:</div><div class="p-value"><span id="p-val-2">0</span> <span class="p-currency">د.ل</span></div></div>
-                        <div class="purchases-row row-3"><div class="p-label">3. إجمالي المسددة 🔴:</div><div class="p-value"><span id="p-val-3">0</span> <span class="p-currency">د.ل</span></div></div>
-                        <div class="purchases-row row-4"><div class="p-label">4. إجمالي الديون 🩸:</div><div class="p-value"><span id="p-val-4">0</span> <span class="p-currency">د.ل</span></div></div>
-                        <div class="purchases-row row-5"><div class="p-label">5. الباقي المصري:</div><div class="p-value"><span id="p-val-5">0</span> <span class="p-currency">EGP</span></div></div>
-                    </div>
-
-                    <div class="price-badge hidden-element" id="price-badge">السعر: <span id="display-price">0</span></div>
-                    <div class="custom-note-box hidden-element" id="custom-note-box"></div>
-                    
-                    <div class="card-date hidden-element" id="card-date-display"></div>
-                    <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
-                    <div class="spacer" id="card-spacer"></div>
-                    
-                    <div id="corner-tl" style="position:absolute;top:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
-                    <div id="corner-tr" style="position:absolute;top:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
-                    <div id="corner-bl" style="position:absolute;bottom:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
-                    <div id="corner-br" style="position:absolute;bottom:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
-                    <div id="crown-top" style="position:absolute;top:5px;left:50%;transform:translateX(-50%);font-size:14pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;letter-spacing:8px;opacity:0.75;">◆ ◇ ◆ ◇ ◆</div>
+                    <div id="tafqeet-display" class="tafqeet-text hidden-element"></div>
                 </div>
 
-                <!-- الكارت الجديد (مخصص لقسم أسعار الصرف فقط) -->
-                <div class="system-gold-card hidden-element" id="exchangeCard">
-                    <div class="card-inner-line"></div>
-                    <div class="card-corner tl"></div>
-                    <div class="card-corner tr"></div>
-                    <div class="card-corner bl"></div>
-                    <div class="card-corner br"></div>
-                    <div class="card-text-layer card-line-1">شركة الأهرام للاتصالات وتقنية</div>
-                    <div class="card-text-layer card-line-2">المعلومات</div>
-                    <div class="card-text-layer card-price-value" id="exchangePriceDisplay">5.98</div>
-                    <div class="card-text-layer card-footer-note">الأسعار متغيرة بتغير سعر الصرف</div>
+                <!-- الكشف الماسي / المصراويه -->
+                <div class="final-statement-box hidden-element" id="final-statement-box">
+                    <div class="stmt-header" id="stmt-header-title">الكشف النهائي</div>
+                    <div class="stmt-date" id="stmt-date-display"></div>
+                    <div class="stmt-row"><div class="stmt-label">القيمة السابقة:</div><div class="stmt-value" id="val-previous">0</div></div>
+                    <div class="stmt-row"><div class="stmt-label">المستلمة اليوم:</div><div class="stmt-value" id="val-received">0</div></div>
+                    <div class="stmt-row"><div class="stmt-label">إجمالي الشغل:</div><div class="stmt-value" id="val-total">0</div></div>
+                    <div class="stmt-row final-row"><div class="stmt-label">الباقي النهائي:</div><div class="stmt-value" id="val-remaining">0</div></div>
                 </div>
 
+                <!-- كارت المشتريات -->
+                <div class="purchases-box hidden-element" id="purchases-box">
+                    <div class="purchases-top-bar" id="purchases-top-bar">
+                        <span id="purchases-date-display">2026-07-03</span>
+                        <span id="purchases-merchant-name" class="purchases-merchant-name">التاجر: ...</span>
+                    </div>
+                    <div class="purchases-row row-1"><div class="p-label">1. القيمة السابقة:</div><div class="p-value"><span id="p-val-1">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-2"><div class="p-label">2. إجمالي شغل اليوم ⚡:</div><div class="p-value"><span id="p-val-2">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-3"><div class="p-label">3. إجمالي المسددة 🔴:</div><div class="p-value"><span id="p-val-3">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-4"><div class="p-label">4. إجمالي الديون 🩸:</div><div class="p-value"><span id="p-val-4">0</span> <span class="p-currency">د.ل</span></div></div>
+                    <div class="purchases-row row-5"><div class="p-label">5. الباقي المصري:</div><div class="p-value"><span id="p-val-5">0</span> <span class="p-currency">EGP</span></div></div>
+                </div>
+
+                <div class="price-badge hidden-element" id="price-badge">السعر: <span id="display-price">0</span></div>
+                <div class="custom-note-box hidden-element" id="custom-note-box"></div>
+                
+                <div class="card-date hidden-element" id="card-date-display"></div>
+                <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                <div class="spacer" id="card-spacer"></div>
             </div>
         </div>
 
         <!-- 4. الشريط الأيسر (التحكم) -->
-        <div class="w-full lg:w-[20%] bg-white border border-gray-200 shadow-sm rounded-2xl p-5 flex flex-col lg:overflow-y-auto">
-            <h3 class="text-lg font-bold text-green-700 mb-4 border-b border-gray-100 pb-2">البيانات والتحكم</h3>
+        <div class="w-full lg:w-[20%] bg-[#1a1a1a] border border-white/10 rounded-2xl p-5 flex flex-col overflow-y-auto">
+            <h3 class="text-xl font-bold text-amber-500 mb-4 border-b border-white/10 pb-2">البيانات والتحكم</h3>
 
             <!-- زر التحكم في لون العنوان -->
-            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-                <label class="block text-sm text-gray-600 mb-2 font-bold">🎨 لون العنوان / الأسماء:</label>
+            <div class="bg-black/40 p-3 rounded-lg border border-amber-500/30 mb-4">
+                <label class="block text-sm text-amber-500 mb-2 font-bold">🎨 لون العنوان / الأسماء:</label>
                 <input type="color" id="titleColorPicker" value="#110c00" class="w-full h-10" oninput="updateCard()">
             </div>
 
-            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4" style="display: none;">
+            <!-- الأدوات الاحترافية -->
+            <div class="bg-black/40 p-3 rounded-lg border border-white/10 mb-4">
+                <label class="block text-sm text-gray-400 mb-2">⚙️ أدوات احترافية:</label>
                 <div class="flex flex-col gap-2">
-                    <button type="button" onclick="toggleCurrency()" style="display: none;">🔄 تبديل العملة سريعا</button>
-                    <button type="button" onclick="togglePrivacy()" id="privacy-btn" style="display: none;">👁️ السرية (إخفاء الأسماء)</button>
+                    <button type="button" onclick="toggleCurrency()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded font-bold transition text-sm">🔄 تبديل العملة سريعا</button>
+                    <button type="button" onclick="togglePrivacy()" id="privacy-btn" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded font-bold transition text-sm">👁️ السرية (إخفاء الأسماء)</button>
+                    <button type="button" onclick="generateTafqeet()" class="w-full py-2 bg-white/10 hover:bg-white/20 rounded font-bold transition text-sm">🔠 تفقيط المبلغ (حروف)</button>
                 </div>
             </div>
 
-            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-                <label class="block text-sm text-gray-600 mb-2 font-bold">🔍 حجم الخط:</label>
+            <div class="bg-black/40 p-3 rounded-lg border border-white/10 mb-4">
+                <label class="block text-sm text-gray-400 mb-2">🔍 حجم الخط:</label>
                 <div class="flex gap-2">
-                    <button type="button" onclick="changeFontSize('increase')" class="flex-1 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded font-bold transition">➕</button>
-                    <button type="button" onclick="changeFontSize('decrease')" class="flex-1 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded font-bold transition">➖</button>
-                    <button type="button" onclick="changeFontSize('reset')" class="flex-1 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition text-sm">🔄</button>
+                    <button type="button" onclick="changeFontSize('increase')" class="flex-1 py-1 bg-white/10 hover:bg-white/20 rounded font-bold transition">➕</button>
+                    <button type="button" onclick="changeFontSize('decrease')" class="flex-1 py-1 bg-white/10 hover:bg-white/20 rounded font-bold transition">➖</button>
+                    <button type="button" onclick="changeFontSize('reset')" class="flex-1 py-1 bg-gray-700 hover:bg-gray-600 rounded transition text-sm">🔄</button>
                 </div>
             </div>
 
             <div class="flex flex-col gap-4 mb-6">
+                <!-- الألوان -->
                 <div>
-                    <label class="block text-sm text-gray-600 font-bold mb-1">خلفية الكارت:</label>
+                    <label class="block text-sm text-amber-500 font-bold mb-1">خلفية الكارت:</label>
                     <select id="themeSelect" class="solid-input" onchange="updateCard()">
                         <optgroup label="✨ الألوان الأساسية">
                             <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>
@@ -349,40 +214,32 @@
                             <option value="bg-copper">النحاسي الكلاسيكي</option>
                             <option value="bg-purple">البنفسجي الملكي</option>
                         </optgroup>
-                        <optgroup label="💎 VIP حصرياً">
-                            <option value="bg-vip">الأسود الماسي VIP</option>
-                        </optgroup>
                     </select>
                 </div>
 
                 <div>
-                    <label class="flex justify-between text-sm text-gray-600 mb-1 font-bold">
+                    <label class="flex justify-between text-sm text-gray-400 mb-1">
                         <span id="name-input-label">الاسم / التاجر:</span>
-                        <span class="text-xs text-red-500 cursor-pointer underline" onclick="clearClientMemory()">مسح 🗑️</span>
+                        <span class="text-xs text-amber-500 cursor-pointer underline" onclick="clearClientMemory()">مسح 🗑️</span>
                     </label>
                     <input type="text" id="nameInput" class="solid-input" placeholder="الاسم..." list="clientNames" autocomplete="off" oninput="updateCard()">
                     <datalist id="clientNames"></datalist>
                 </div>
 
                 <div id="main-amount-group">
-                    <label class="block text-sm text-gray-600 mb-1 font-bold" id="amount-input-label">المبلغ الأساسي / السعر:</label>
+                    <label class="block text-sm text-gray-400 mb-1" id="amount-input-label">المبلغ الأساسي / السعر:</label>
                     <input type="text" id="amountInput" class="solid-input" placeholder="أدخل الرقم..." value="0" oninput="updateCard()">
                 </div>
 
                 <div id="secondary-price-group">
-                    <label class="block text-sm text-gray-600 mb-1 font-bold">السعر الإضافي (اختياري):</label>
+                    <label class="block text-sm text-gray-400 mb-1">السعر الإضافي (اختياري):</label>
                     <input type="text" id="priceInput" class="solid-input" placeholder="مثال: 6.25..." value="" oninput="updateCard()">
                 </div>
 
-                <div id="vip-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-bold">
-                        <input type="checkbox" id="vipLogoCheck" checked onchange="updateCard()" class="w-4 h-4 accent-green-600"> إظهار شعار VIP
-                    </label>
-                </div>
-
-                <div id="companies-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <!-- إعدادات الشركات -->
+                <div id="companies-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
                     <div>
-                        <label class="text-sm text-gray-600 font-bold">نوع الحساب:</label>
+                        <label class="text-sm text-amber-500">نوع الحساب:</label>
                         <select id="companyOrMerchant" class="solid-input" onchange="updateCard()">
                             <option value="company">شركة</option>
                             <option value="merchant">تاجر</option>
@@ -390,76 +247,41 @@
                     </div>
                 </div>
 
-                <div id="purchases-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <!-- مدخلات المشتريات -->
+                <div id="purchases-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
                     <div>
-                        <label class="text-sm text-gray-600 font-bold">نوع البيان:</label>
+                        <label class="text-sm text-amber-500">نوع البيان:</label>
                         <select id="purchasesMerchantType" class="solid-input" onchange="updateCard()">
                             <option value="البيان">البيان</option>
                             <option value="سمسم">سمسم</option>
                         </select>
                     </div>
-                    <div><label class="text-sm text-gray-600 font-bold">القيمة السابقة:</label><input type="text" id="p-in-1" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">إجمالي شغل اليوم:</label><input type="text" id="p-in-2" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">إجمالي المسددة:</label><input type="text" id="p-in-3" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">إجمالي الديون:</label><input type="text" id="p-in-4" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">الباقي المصري:</label><input type="text" id="p-in-5" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">القيمة السابقة:</label><input type="text" id="p-in-1" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي شغل اليوم:</label><input type="text" id="p-in-2" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي المسددة:</label><input type="text" id="p-in-3" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي الديون:</label><input type="text" id="p-in-4" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">الباقي المصري:</label><input type="text" id="p-in-5" class="solid-input" value="0" oninput="updateCard()"></div>
                 </div>
 
-                <div id="statement-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <div><label class="text-sm text-gray-600 font-bold">القيمة السابقة:</label><input type="text" id="input-prev" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">المستلمة اليوم:</label><input type="text" id="input-recv" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">إجمالي الشغل:</label><input type="text" id="input-total" class="solid-input" value="0" oninput="updateCard()"></div>
-                    <div><label class="text-sm text-gray-600 font-bold">الباقي النهائي:</label><input type="text" id="input-remain" class="solid-input" value="0" oninput="updateCard()"></div>
-                </div>
-
-                <div id="mini-card-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <div>
-                        <label class="text-sm text-gray-600 font-bold">نوع الكارت:</label>
-                        <select id="miniCardType" class="solid-input" onchange="updateCard()">
-                            <option value="تم الاستلام ✅">تم الاستلام ✅</option>
-                            <option value="تم الاستلام بالكامل، مع الشكر 🌹">تم الاستلام بالكامل، مع الشكر 🌹</option>
-                            <option value="تم التسليم 🚚">تم التسليم 🚚</option>
-                            <option value="تم التسليم بالكامل 📦">تم التسليم بالكامل 📦</option>
-                            <option value="كشف حساب 📊">كشف حساب 📊</option>
-                            <option value="مخالصة مالية 🤝">مخالصة مالية 🤝</option>
-                            <option value="تصفية حساب">تصفية حساب</option>
-                            <option value="الحساب خالص">الحساب خالص</option>
-                            <option value="الحساب خالص، مع الشكر 🌹">الحساب خالص، مع الشكر 🌹</option>
-                            <option value="تذكير 🔔">تذكير 🔔</option>
-                            <option value="مهم جداً ⚠️">مهم جداً ⚠️</option>
-                            <option value="توقف إعلان الأسعار مؤقتاً ⚠️">توقف إعلان الأسعار مؤقتاً ⚠️</option>
-                            <option value="تأخير في الحوالات بسبب الشبكة 📡">تأخير في الحوالات بسبب الشبكة 📡</option>
-                            <option value="خالص الشكر 🌹">خالص الشكر 🌹</option>
-                            <option value="ملاحظة 📌">ملاحظة 📌</option>
-                            <option value="custom">-- عنوان مخصص (اكتب بنفسك) --</option>
-                        </select>
-                    </div>
-                    <div id="miniCardCustomHeaderWrapper" class="hidden-element">
-                        <label class="text-sm text-gray-600 font-bold">العنوان المخصص:</label>
-                        <input type="text" id="miniCardCustomHeader" class="solid-input" placeholder="اكتب العنوان..." oninput="updateCard()">
-                    </div>
-                    <div>
-                        <label class="text-sm text-gray-600 font-bold">الاسم / الجهة:</label>
-                        <input type="text" id="miniCardName" class="solid-input" placeholder="الاسم..." oninput="updateCard()">
-                    </div>
-                    <div>
-                        <label class="text-sm text-gray-600 font-bold">القيمة (اختياري):</label>
-                        <input type="text" id="miniCardValue" class="solid-input" value="0" oninput="updateCard()">
-                    </div>
-                    <div>
-                        <label class="text-sm text-gray-600 font-bold">البيان / الملاحظة:</label>
-                        <textarea id="miniCardNote" class="solid-input resize-none" rows="2" placeholder="اكتب التفاصيل هنا..." oninput="updateCard()"></textarea>
-                    </div>
+                <!-- مدخلات المصراويه -->
+                <div id="statement-inputs-group" class="hidden-element flex flex-col gap-3 bg-black/40 p-3 rounded-lg border border-amber-500/30">
+                    <div><label class="text-sm text-amber-500">القيمة السابقة:</label><input type="text" id="input-prev" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">المستلمة اليوم:</label><input type="text" id="input-recv" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">إجمالي الشغل:</label><input type="text" id="input-total" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-amber-500">الباقي النهائي:</label><input type="text" id="input-remain" class="solid-input" value="0" oninput="updateCard()"></div>
                 </div>
             </div>
 
-            <div class="mt-auto border-t border-gray-200 pt-4 flex flex-col gap-3">
-                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-bold">
-                    <input type="checkbox" id="dateToggle" onchange="updateCard()" class="w-4 h-4 accent-green-600"> إظهار التاريخ
+            <div class="mt-auto border-t border-white/10 pt-4 flex flex-col gap-3">
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" id="dateToggle" onchange="updateCard()" class="w-4 h-4 accent-amber-500"> إظهار التاريخ
                 </label>
-                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-bold">
-                    <input type="checkbox" id="companyToggle" checked onchange="updateCard()" class="w-4 h-4 accent-green-600"> إظهار إسم الشركة بالأسفل
+                <label class="flex items-center gap-2 cursor-pointer text-sm">
+                    <input type="checkbox" id="companyToggle" checked onchange="updateCard()" class="w-4 h-4 accent-amber-500"> إظهار إسم الشركة بالأسفل
                 </label>
+                <button id="mainCopyBtn" onclick="copyCard(this)" class="w-full bg-amber-500 text-black font-bold py-3 rounded-lg hover:bg-amber-400 transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                    📋 تصدير ونسخ الكارت
+                </button>
             </div>
         </div>
     </div>
@@ -467,57 +289,30 @@
     <script>
         let currentType = 'debt'; 
 
+        // الأقسام المحدثة بكلمة "قسم" وتصغير سمك الأزرار
         const sections = [
             { id: 'debt', label: 'قسم ديون العملاء' },
             { id: 'companies', label: 'قسم الشركات والتجار' },
             { id: 'trust', label: 'قسم الامانات' },
-            { id: 'zero', label: 'تصفير الحساب' },
             { id: 'masraweya', label: 'قسم المصراويه' },
             { id: 'purchases', label: 'قسم المشتريات' },
             { id: 'alert', label: 'إشعار تنبيه 📢' },
-            { id: 'exchange_rate', label: 'أسعار صرف' },
-            { id: 'mini_card', label: 'كروت صغيرة 🎫' }
+            { id: 'exchange_rate', label: 'أسعار صرف' }
         ];
 
         const mockInboxData = {
             'debt': [{ name: 'أحمد حمادة', amount: '15000', note: 'متبقي من حساب سابق' }],
             'companies': [{ name: 'شركة الأهرام', amount: '150000', note: 'دفعة تحت الحساب' }],
             'trust': [{ name: 'خالد الزواوي', amount: '8000', note: 'أمانة مستلمة' }],
-            'vip': [{ name: 'عميل مميز', amount: '0', note: 'كارت VIP' }],
-            'zero': [{ name: 'حساب تم تصفيره', amount: '0', note: 'تم تصفير رصيد الحساب بنجاح' }],
             'masraweya': [{ name: 'حساب مصراويه', amount: '0', note: '' }],
             'purchases': [{ name: 'شراء بضاعة', amount: '0', note: '' }],
             'alert': [],
-            'exchange_rate': [],
-            'mini_card': []
+            'exchange_rate': []
         };
 
-        function initDashboard() { generateDate(); loadClientNames(); renderTiles(); renderInbox(); applyIncomingParams(); updateCard(); setTimeout(resizePreview, 100); }
+        function initDashboard() { generateDate(); loadClientNames(); renderTiles(); renderInbox(); applyIncomingParams(); updateCard(); }
 
-        function resizePreview() {
-            const wrapper = document.getElementById('preview-wrapper');
-            const container = document.getElementById('preview-container');
-            const isExchange = currentType === 'exchange_rate';
-            const card = isExchange ? document.getElementById('exchangeCard') : document.getElementById('goldenCard');
-            if (!wrapper || !container || !card) return;
-            
-            const containerWidth = container.clientWidth - 32;
-            const isMini = card.classList.contains('mini-card-layout');
-            const cardWidth = isExchange ? 800 : (isMini ? 600 : 1200);
-            
-            if (containerWidth < cardWidth) {
-                const scale = containerWidth / cardWidth;
-                wrapper.style.transform = `scale(${scale})`;
-                const cardHeight = card.offsetHeight;
-                const heightDiff = cardHeight * (1 - scale);
-                wrapper.style.marginBottom = `-${heightDiff}px`;
-            } else {
-                wrapper.style.transform = 'none';
-                wrapper.style.marginBottom = '0px';
-            }
-        }
-        window.addEventListener('resize', resizePreview);
-
+        // استقبال البيانات القادمة من المنظومة عبر رابط الصفحة (Prefill)
         function setStudioCurrency(value) {
             if (!value) return;
             const idx = currArray.indexOf(value);
@@ -537,11 +332,7 @@
             let type = params.get('type') || '';
             if (type === 'total_purchasing') type = 'purchases';
             const validTypes = sections.map(s => s.id);
-            if (type === 'vip') {
-                currentType = 'vip';
-                renderTiles();
-                renderInbox();
-            } else if (type && validTypes.includes(type)) {
+            if (type && validTypes.includes(type)) {
                 currentType = type;
                 renderTiles();
                 renderInbox();
@@ -562,11 +353,6 @@
                 setVal('input-recv', 'recv');
                 setVal('input-total', 'total');
                 setVal('input-remain', 'remain');
-                const incomingDate = params.get('date') || params.get('day');
-                if (incomingDate) {
-                    document.getElementById('stmt-date-display').innerText = incomingDate;
-                    document.getElementById('card-date-display').innerText = "التاريخ: " + incomingDate;
-                }
             } else if (currentType === 'purchases') {
                 setVal('purchasesMerchantType', 'merchant');
                 document.getElementById('p-in-1').value = params.get('p1') ?? params.get('prev') ?? '0';
@@ -588,21 +374,17 @@
             container.innerHTML = '';
             sections.forEach(sec => {
                 const btn = document.createElement('button');
-                btn.className = `px-4 py-1.5 text-sm rounded-xl transition-all duration-300 font-bold whitespace-nowrap ${
-                    currentType === sec.id 
-                    ? 'bg-green-700 text-white shadow-md border-2 border-green-400' 
-                    : 'bg-green-500 text-white border border-green-600 hover:bg-green-600 shadow-sm'
+                // تم تغيير py-3 إلى py-1.5 وتصغير الخط قليلاً لتكون الأزرار رفيعة وشيك
+                btn.className = `px-4 py-1.5 text-sm rounded-xl backdrop-blur-md transition-all duration-300 font-bold whitespace-nowrap ${
+                    currentType === sec.id ? 'bg-amber-500 text-black border border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-[#2a2a2a] border border-white/10 hover:bg-white/10 text-white'
                 }`;
                 btn.innerText = sec.label;
-                btn.onclick = () => {
-                    currentType = sec.id;
-                    renderTiles();
-                    renderInbox();
-                    document.getElementById('tafqeet-display').classList.add('hidden-element');
-                    if (sec.id === 'vip') {
-                        document.getElementById('themeSelect').value = 'bg-vip';
-                    }
-                    updateCard();
+                btn.onclick = () => { 
+                    currentType = sec.id; 
+                    renderTiles(); 
+                    renderInbox(); 
+                    document.getElementById('tafqeet-display').classList.add('hidden-element'); 
+                    updateCard(); 
                 };
                 container.appendChild(btn);
             });
@@ -619,7 +401,7 @@
             items.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'inbox-item';
-                div.innerHTML = `<div class="font-bold text-green-600">${item.name}</div><div class="text-sm flex justify-between mt-1 text-gray-500"><span>${item.amount}</span></div>`;
+                div.innerHTML = `<div class="font-bold text-amber-500">${item.name}</div><div class="text-sm flex justify-between mt-1"><span>${item.amount}</span></div>`;
                 div.onclick = () => { document.getElementById('nameInput').value = item.name; updateCard(); };
                 container.appendChild(div);
             });
@@ -627,10 +409,10 @@
 
         function generateDate() {
             let now = new Date();
-            currentFormattedDate = `${now.getFullYear()}-${("0" + (now.getMonth() + 1)).slice(-2)}-${("0" + now.getDate()).slice(-2)}`;
-            document.getElementById('stmt-date-display').innerText = currentFormattedDate;
-            document.getElementById('card-date-display').innerText = "التاريخ: " + currentFormattedDate;
-            document.getElementById('purchases-date-display').innerText = currentFormattedDate;
+            let formattedDate = `${now.getFullYear()}-${("0" + (now.getMonth() + 1)).slice(-2)}-${("0" + now.getDate()).slice(-2)}`;
+            document.getElementById('stmt-date-display').innerText = formattedDate;
+            document.getElementById('card-date-display').innerText = "التاريخ: " + formattedDate;
+            document.getElementById('purchases-date-display').innerText = formattedDate;
         }
 
         function loadClientNames() {
@@ -674,13 +456,13 @@
                 nameEl.style.filter = "blur(8px)";
                 merchantEl.style.filter = "blur(8px)";
                 btn.innerHTML = "👁️ إظهار الأطراف (إلغاء السرية)";
-                btn.classList.add('bg-green-600', 'text-white');
+                btn.classList.add('bg-amber-500', 'text-black');
                 btn.classList.remove('bg-white/10', 'text-white');
             } else {
                 nameEl.style.filter = "none";
                 merchantEl.style.filter = "none";
                 btn.innerHTML = "👁️ السرية (إخفاء الأسماء)";
-                btn.classList.remove('bg-green-600', 'text-white');
+                btn.classList.remove('bg-amber-500', 'text-black');
                 btn.classList.add('bg-white/10', 'text-white');
             }
         }
@@ -752,63 +534,28 @@
 
         let zoomLevel = 0;
         function changeFontSize(action) {
-            if (action === 'increase') zoomLevel = Math.min(6, zoomLevel + 1);
-            else if (action === 'decrease') zoomLevel = Math.max(-6, zoomLevel - 1);
-            else if (action === 'reset') zoomLevel = 0;
+            if (action === 'increase') zoomLevel += 1;
+            else if (action === 'decrease') zoomLevel -= 1;
+            else zoomLevel = 0;
 
-            const isMini = document.getElementById('goldenCard').classList.contains('mini-card-layout');
-            const isMiniCentered = document.getElementById('goldenCard').classList.contains('mini-card-centered');
-            const isExchange = currentType === 'exchange_rate';
-            
-            if (isExchange) {
-                document.getElementById('exchangeCard').querySelector('.card-line-1').style.fontSize = (44 + (zoomLevel * 3)) + 'px';
-                document.getElementById('exchangeCard').querySelector('.card-line-2').style.fontSize = (44 + (zoomLevel * 3)) + 'px';
-                document.getElementById('exchangePriceDisplay').style.fontSize = (160 + (zoomLevel * 12)) + 'px';
-                document.getElementById('exchangeCard').querySelector('.card-footer-note').style.fontSize = (28 + (zoomLevel * 2)) + 'px';
-            } 
-            else if (isMini) {
-                if (isMiniCentered) {
-                    document.getElementById('card-header').style.fontSize = (55 + (zoomLevel * 5)) + 'pt';
-                    document.getElementById('display-name').style.fontSize = '';
-                    document.getElementById('status-label').style.fontSize = '';
-                    let amountTextDiv = document.getElementById('amount-container');
-                    if(amountTextDiv) amountTextDiv.style.fontSize = '';
-                    let currencySpan = document.getElementById('currency-label');
-                    if(currencySpan) currencySpan.style.fontSize = '';
-                    document.getElementById('custom-note-box').style.fontSize = '';
-                } else {
-                    document.getElementById('card-header').style.fontSize = (24 + (zoomLevel * 2)) + 'pt';
-                    document.getElementById('display-name').style.fontSize = (32 + (zoomLevel * 3)) + 'pt';
-                    document.getElementById('status-label').style.fontSize = (16 + (zoomLevel * 1)) + 'pt';
-                    let amountTextDiv = document.getElementById('amount-container');
-                    if(amountTextDiv) amountTextDiv.style.fontSize = (48 + (zoomLevel * 4)) + 'pt';
-                    let currencySpan = document.getElementById('currency-label');
-                    if(currencySpan) currencySpan.style.fontSize = (18 + (zoomLevel * 2)) + 'pt';
-                    document.getElementById('custom-note-box').style.fontSize = (14 + (zoomLevel * 1)) + 'pt';
-                }
-            } else {
-                document.getElementById('card-header').style.fontSize = '';
-                document.getElementById('custom-note-box').style.fontSize = '';
-                document.getElementById('display-name').style.fontSize = (50 + (zoomLevel * 4)) + 'pt';
-                document.getElementById('status-label').style.fontSize = (22 + (zoomLevel * 2)) + 'pt';
-                let amountTextDiv = document.getElementById('amount-container');
-                if(amountTextDiv) amountTextDiv.style.fontSize = (100 + (zoomLevel * 6)) + 'pt';
-                let currencySpan = document.getElementById('currency-label');
-                if(currencySpan) currencySpan.style.fontSize = (32 + (zoomLevel * 2)) + 'pt';
-            }
+            document.getElementById('display-name').style.fontSize = (55 + (zoomLevel * 4)) + 'pt';
+            let amountTextDiv = document.getElementById('amount-container');
+            if(amountTextDiv) amountTextDiv.style.fontSize = (120 + (zoomLevel * 8)) + 'pt';
+            let currencySpan = document.getElementById('currency-label');
+            if(currencySpan) currencySpan.style.fontSize = (35 + (zoomLevel * 2)) + 'pt';
 
-            document.querySelectorAll('.stmt-label').forEach(el => el.style.fontSize = (22 + (zoomLevel * 2)) + 'pt');
-            document.querySelectorAll('.stmt-value').forEach(el => el.style.fontSize = (30 + (zoomLevel * 3)) + 'pt');
-            document.querySelectorAll('.final-row .stmt-label, .final-row .stmt-value').forEach(el => el.style.fontSize = (36 + (zoomLevel * 3)) + 'pt');
-            document.getElementById('stmt-header-title').style.fontSize = (32 + (zoomLevel * 3)) + 'pt';
+            document.querySelectorAll('.stmt-label').forEach(el => el.style.fontSize = (24 + (zoomLevel * 2)) + 'pt');
+            document.querySelectorAll('.stmt-value').forEach(el => el.style.fontSize = (32 + (zoomLevel * 3)) + 'pt');
+            document.querySelectorAll('.final-row .stmt-label, .final-row .stmt-value').forEach(el => el.style.fontSize = (38 + (zoomLevel * 3)) + 'pt');
+            document.getElementById('stmt-header-title').style.fontSize = (34 + (zoomLevel * 3)) + 'pt';
 
-            document.querySelectorAll('.p-label').forEach(el => el.style.fontSize = (24 + (zoomLevel * 2)) + 'pt');
-            document.querySelectorAll('.p-value').forEach(el => el.style.fontSize = (36 + (zoomLevel * 3)) + 'pt');
-            document.querySelectorAll('.p-currency').forEach(el => el.style.fontSize = (16 + (zoomLevel * 2)) + 'pt');
-            document.getElementById('purchases-top-bar').style.fontSize = (20 + (zoomLevel * 2)) + 'pt';
+            document.querySelectorAll('.p-label').forEach(el => el.style.fontSize = (26 + (zoomLevel * 2)) + 'pt');
+            document.querySelectorAll('.p-value').forEach(el => el.style.fontSize = (40 + (zoomLevel * 3)) + 'pt');
+            document.querySelectorAll('.p-currency').forEach(el => el.style.fontSize = (18 + (zoomLevel * 2)) + 'pt');
+            document.getElementById('purchases-top-bar').style.fontSize = (22 + (zoomLevel * 2)) + 'pt';
             
             let tafqeetDisplay = document.getElementById('tafqeet-display');
-            if(tafqeetDisplay) tafqeetDisplay.style.fontSize = (22 + (zoomLevel * 2)) + 'pt';
+            if(tafqeetDisplay) tafqeetDisplay.style.fontSize = (24 + (zoomLevel * 2)) + 'pt';
         }
 
         function loadTemplate() {
@@ -827,9 +574,6 @@
             else if (val === 'debt_reminder') noteBox.value = "نود تذكيركم بضرورة تسوية المديونية الموضحة أعلاه في أقرب وقت ممكن.\nنرجو سرعة الاستجابة لتحديث رصيدكم.";
             else if (val === 'trust_deposit') noteBox.value = "تم إيداع القيمة الموضحة كأمانة في حسابكم لدينا بنجاح.\nرصيدكم الآن محدث ومتاح للاستخدام في أي وقت.";
             else if (val === 'clearance_note') noteBox.value = "تم تصفية الحساب وعمل مخالصة مالية نهائية.\nرصيدكم الحالي (صفر) ولا توجد أي التزامات مالية بين الطرفين.";
-            else if (val === 'price_drop_alert') noteBox.value = "إشعار انخفاض السعر.\nنلفت انتباهكم إلى أنه سيتم تعديل الأسعار بناءً على المؤشرات الحالية.";
-            else if (val === 'price_freeze_dollar') noteBox.value = "الأسعار تشهد حالياً ارتفاعاً مستمراً في الدولار.\nلذا سنتوقف عن إعلان أسعار جديدة مؤقتاً لحين استقرار السوق.";
-            else if (val === 'network_delay_alert') noteBox.value = "تنبيه هام: توجد حالياً مشكلة في التغطية أو شبكة الاتصالات.\nنرجو الانتباه إلى أن الحوالات قد تتأخر عن موعدها المعتاد بسبب انقطاع الشبكة من المصدر.";
             else noteBox.value = ""; 
             
             updateCard();
@@ -860,9 +604,6 @@
             let themeValue = document.getElementById('themeSelect').value;
             let cardContainer = document.getElementById('goldenCard');
             cardContainer.className = "card " + themeValue;
-            if (currentType === 'masraweya' || currentType === 'final_statement') {
-                cardContainer.classList.add('masraweya-card');
-            }
 
             let titleColor = document.getElementById('titleColorPicker').value;
             document.getElementById('card-header').style.color = titleColor;
@@ -906,33 +647,18 @@
             document.getElementById('status-label').classList.add('hidden-element');
             document.getElementById('final-statement-box').classList.add('hidden-element');
             document.getElementById('purchases-box').classList.add('hidden-element');
-            document.getElementById('price-card-title').classList.add('hidden-element');
-            document.getElementById('exchange-note').classList.add('hidden-element');
             
             document.getElementById('statement-inputs-group').classList.add('hidden-element');
             document.getElementById('purchases-inputs-group').classList.add('hidden-element');
-            document.getElementById('vip-inputs-group').classList.add('hidden-element');
             document.getElementById('main-amount-group').classList.add('hidden-element');
             document.getElementById('secondary-price-group').classList.add('hidden-element');
             document.getElementById('companies-inputs-group').classList.add('hidden-element'); 
-            document.getElementById('mini-card-inputs-group').classList.add('hidden-element');
-            cardContainer.classList.remove('mini-card-layout');
-
-            // --- التحكم في إظهار وإخفاء الكارت الجديد ---
-            if (currentType === 'exchange_rate') {
-                document.getElementById('goldenCard').classList.add('hidden-element');
-                document.getElementById('exchangeCard').classList.remove('hidden-element');
-            } else {
-                document.getElementById('goldenCard').classList.remove('hidden-element');
-                document.getElementById('exchangeCard').classList.add('hidden-element');
-            }
 
             if (currentType === 'masraweya' || currentType === 'final_statement') {
                 document.getElementById('final-statement-box').classList.remove('hidden-element');
                 document.getElementById('statement-inputs-group').classList.remove('hidden-element');
                 document.getElementById('name-input-label').innerText = "عنوان الكشف / التاجر:";
-                document.getElementById('stmt-header-title').innerText = currentType === 'masraweya' ? 'التقرير النهائى' : (nameValue !== '...' ? nameValue : 'الكشف النهائي');
-                document.getElementById('stmt-date-display').innerText = 'التاريخ: ' + currentFormattedDate;
+                document.getElementById('stmt-header-title').innerText = nameValue !== '...' ? nameValue : (currentType === 'masraweya' ? 'كشف المصراويه' : 'الكشف النهائي');
                 document.getElementById('val-previous').innerText = formatInteger(document.getElementById('input-prev').value);
                 document.getElementById('val-received').innerText = formatInteger(document.getElementById('input-recv').value);
                 document.getElementById('val-total').innerText = formatInteger(document.getElementById('input-total').value);
@@ -946,11 +672,11 @@
                 let merchantType = document.getElementById('purchasesMerchantType').value;
                 document.getElementById('purchases-merchant-name').innerText = nameValue !== '...' ? (nameValue + " - " + merchantType) : ("التاجر " + merchantType);
                 
-                document.getElementById('p-val-1').innerText = formatDecimal(document.getElementById('p-in-1').value);
-                document.getElementById('p-val-2').innerText = formatDecimal(document.getElementById('p-in-2').value);
-                document.getElementById('p-val-3').innerText = formatDecimal(document.getElementById('p-in-3').value);
-                document.getElementById('p-val-4').innerText = formatDecimal(document.getElementById('p-in-4').value);
-                document.getElementById('p-val-5').innerText = formatDecimal(document.getElementById('p-in-5').value);
+                document.getElementById('p-val-1').innerText = formatInteger(document.getElementById('p-in-1').value);
+                document.getElementById('p-val-2').innerText = formatInteger(document.getElementById('p-in-2').value);
+                document.getElementById('p-val-3').innerText = formatInteger(document.getElementById('p-in-3').value);
+                document.getElementById('p-val-4').innerText = formatInteger(document.getElementById('p-in-4').value);
+                document.getElementById('p-val-5').innerText = formatInteger(document.getElementById('p-in-5').value);
             }
             else if (currentType === 'alert') {
                 document.getElementById('card-header').innerText = "❖ إشعار تنبيه ❖";
@@ -960,69 +686,13 @@
                 priceBadge.classList.add('hidden-element');
                 customNoteBox.classList.add('large-note');
             }
-            else if (currentType === 'mini_card') {
-                document.getElementById('mini-card-inputs-group').classList.remove('hidden-element');
-                cardContainer.classList.add('mini-card-layout');
-                
-                let mType = document.getElementById('miniCardType').value;
-                let mCustom = document.getElementById('miniCardCustomHeader').value;
-                let mName = document.getElementById('miniCardName').value.trim();
-                let mValue = document.getElementById('miniCardValue').value || '0';
-                let mNote = document.getElementById('miniCardNote').value.trim();
-
-                if (mType === 'custom') {
-                    document.getElementById('miniCardCustomHeaderWrapper').classList.remove('hidden-element');
-                    document.getElementById('card-header').innerText = mCustom || 'عنوان الكارت';
-                } else {
-                    document.getElementById('miniCardCustomHeaderWrapper').classList.add('hidden-element');
-                    document.getElementById('card-header').innerText = mType;
-                }
-
-                document.getElementById('card-header').classList.remove('hidden-element');
-                
-                if (mName !== '') {
-                    document.getElementById('display-name').innerText = mName;
-                    document.getElementById('display-name').classList.remove('hidden-element');
-                } else {
-                    document.getElementById('display-name').classList.add('hidden-element');
-                }
-
-                if (mValue !== '' && mValue !== '0') {
-                    document.getElementById('status-label').innerText = "القيمة:";
-                    document.getElementById('status-label').classList.remove('hidden-element');
-                    document.getElementById('display-amount').innerText = formatDecimal(mValue);
-                    document.getElementById('amount-box-container').classList.remove('hidden-element');
-                    document.getElementById('main-amount-group').classList.remove('hidden-element');
-                } else {
-                    document.getElementById('status-label').classList.add('hidden-element');
-                    document.getElementById('amount-box-container').classList.add('hidden-element');
-                    document.getElementById('main-amount-group').classList.add('hidden-element');
-                }
-
-                if (mNote !== '') {
-                    customNoteBox.innerText = mNote;
-                    customNoteBox.classList.remove('hidden-element');
-                } else {
-                    customNoteBox.classList.add('hidden-element');
-                }
-
-                if (mName === '' && (mValue === '' || mValue === '0') && mNote === '') {
-                    cardContainer.classList.add('mini-card-centered');
-                } else {
-                    cardContainer.classList.remove('mini-card-centered');
-                }
-            }
             else if (currentType === 'exchange_rate') {
-                // تفعيل خيارات الكارت الجديد لأسعار الصرف
+                document.getElementById('status-label').innerText = "أسعار الصرف اليوم:";
+                document.getElementById('display-amount').innerText = formattedAmountDecimal;
+                document.getElementById('amount-input-label').innerText = "السعر (يقبل الكسور):";
+                document.getElementById('status-label').classList.remove('hidden-element');
+                document.getElementById('amount-box-container').classList.remove('hidden-element');
                 document.getElementById('main-amount-group').classList.remove('hidden-element');
-                document.getElementById('amount-input-label').innerText = 'السعر (يقبل الكسور):';
-                
-                // تحديث السعر
-                document.getElementById('exchangePriceDisplay').innerText = formattedAmountDecimal;
-                
-                // تحديث ألوان العناوين
-                document.getElementById('exchangeCard').querySelector('.card-line-1').style.color = titleColor;
-                document.getElementById('exchangeCard').querySelector('.card-line-2').style.color = titleColor;
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -1040,169 +710,46 @@
                     document.getElementById('status-label').innerText = "إجمالي الديون المستحقة عليك:";
                     document.getElementById('card-header').innerText = "❖ إشعار مديونية ❖";
                 } 
-                else if (currentType === 'zero') {
-                    document.getElementById('status-label').innerText = "تم تصفير رصيد الحساب بنجاح";
-                    document.getElementById('card-header').innerText = "❖ تصفير حساب ❖";
-                    document.getElementById('display-amount').innerText = "0";
-                    document.getElementById('amount-input-label').innerText = "القيمة:";
-                    document.getElementById('amountInput').value = "0";
-                    document.getElementById('secondary-price-group').classList.add('hidden-element');
-                    try {
-                        const cardEl = document.getElementById('goldenCard');
-                        Array.from(cardEl.children).forEach(ch => {
-                            const txt = (ch.innerText || '').trim();
-                            if (/^[\.\u2022\u25CF\u00B7\*\s]{1,6}$/.test(txt)) {
-                                ch.classList.add('hidden-element');
-                            }
-                        });
-                    } catch (e) {}
-                    const statusEl = document.getElementById('status-label');
-                    statusEl.style.transform = 'translateY(-10px)';
-                    statusEl.style.marginBottom = '6px';
-                    const amountText = document.getElementById('amount-container');
-                    const displayAmount = document.getElementById('display-amount');
-                    const currencyLabel = document.getElementById('currency-label');
-                    if (amountText) amountText.style.alignItems = 'baseline';
-                    if (displayAmount) { displayAmount.style.position = 'relative'; displayAmount.style.top = '-8px'; }
-                    if (currencyLabel) currencyLabel.style.alignSelf = 'flex-end';
-                }
-                else if (currentType === 'vip') {
-                    document.getElementById('vip-inputs-group').classList.remove('hidden-element');
-                    const showLogo = document.getElementById('vipLogoCheck').checked;
-                    if (showLogo) {
-                        document.getElementById('status-label').innerText = "✦ عميل مميز ✦";
-                        document.getElementById('card-header').innerText = "👑 ❖ VIP ❖ 👑";
-                    } else {
-                        document.getElementById('status-label').innerText = "الرصيد الحالي:";
-                        document.getElementById('card-header').innerText = "❖ عميل مميز ❖";
-                    }
-                    document.getElementById('name-input-label').innerText = "اسم العميل الـ VIP:";
-                    document.getElementById('status-label').style.fontSize = '30pt';
-                    document.getElementById('status-label').style.letterSpacing = '6px';
-                    document.getElementById('display-amount').style.fontSize = '150pt';
-                    document.getElementById('display-amount').style.textShadow = '0 0 30px rgba(212,175,55,0.6)';
-                    document.getElementById('secondary-price-group').classList.add('hidden-element');
-                }
                 else if (currentType === 'companies') {
                     document.getElementById('companies-inputs-group').classList.remove('hidden-element');
                     let accType = document.getElementById('companyOrMerchant').value;
-                    let compRawAmount = document.getElementById('amountInput').value || '0';
-                    let isNegative = compRawAmount.trim().startsWith('-');
                     if (accType === 'merchant') {
-                        document.getElementById('status-label').innerText = isNegative ? "لكم رصيد مستحق لدينا:" : "عليكم ديون مستحقة:";
-                        document.getElementById('card-header').innerText = isNegative ? "❖ إشعار رصيد تاجر ❖" : "❖ إشعار مديونية تاجر ❖";
+                        document.getElementById('status-label').innerText = "حساب التاجر:";
+                        document.getElementById('card-header').innerText = "❖ إشعار تاجر ❖";
                         document.getElementById('name-input-label').innerText = "اسم التاجر:";
                     } else {
-                        document.getElementById('status-label').innerText = isNegative ? "لكم رصيد مستحق لدينا:" : "عليكم ديون مستحقة:";
-                        document.getElementById('card-header').innerText = isNegative ? "❖ إشعار رصيد شركة ❖" : "❖ إشعار مديونية شركة ❖";
+                        document.getElementById('status-label').innerText = "حساب الشركة:";
+                        document.getElementById('card-header').innerText = "❖ إشعار شركة ❖";
                         document.getElementById('name-input-label').innerText = "اسم الشركة:";
                     }
                 }
                 else if (currentType === 'trust') {
-                    let trustRawAmount = document.getElementById('amountInput').value || '0';
-                    let isNegative = trustRawAmount.trim().startsWith('-');
-                    document.getElementById('status-label').innerText = isNegative ? "عليك أمانة:" : "لديك أمانة لدينا:";
-                    document.getElementById('card-header').innerText = isNegative ? "❖ إشعار أمانة (مطلوب منك) ❖" : "❖ إشعار أمانة ❖";
+                    document.getElementById('status-label').innerText = "صافي لك عندنا أمانة:";
+                    document.getElementById('card-header').innerText = "❖ إشعار أمانة ❖";
                 }
-                
-                document.getElementById('display-amount').style.fontSize = '';
-                document.getElementById('currency-label').style.fontSize = '';
-                document.getElementById('display-price').style.fontSize = '';
-                document.getElementById('card-footer').style.fontSize = '';
-                document.getElementById('card-footer').style.fontWeight = '';
-                
-                const statusLabel = document.getElementById('status-label');
-                statusLabel.style.fontSize = '';
-                statusLabel.style.letterSpacing = '';
-                statusLabel.style.fontWeight = '';
-                statusLabel.style.marginTop = '';
-                
-                const damt = document.getElementById('display-amount');
-                damt.style.fontSize = '';
-                damt.style.textShadow = '';
-                
-                document.getElementById('price-card-title').classList.add('hidden-element');
-                document.getElementById('currency-label').classList.remove('hidden-element');
-                document.getElementById('corner-tl').classList.remove('hidden-element');
-                document.getElementById('corner-tr').classList.remove('hidden-element');
-                document.getElementById('corner-bl').classList.remove('hidden-element');
-                document.getElementById('corner-br').classList.remove('hidden-element');
-                document.getElementById('crown-top').classList.remove('hidden-element');
-                
-                try {
-                    const statusEl = document.getElementById('status-label'); if (statusEl) { statusEl.style.transform = ''; statusEl.style.marginBottom = ''; }
-                    const amountText = document.getElementById('amount-container'); if (amountText) amountText.style.alignItems = '';
-                    const displayAmount = document.getElementById('display-amount'); if (displayAmount) { displayAmount.style.position=''; displayAmount.style.top=''; }
-                    const currencyLabel = document.getElementById('currency-label'); if (currencyLabel) currencyLabel.style.alignSelf = '';
-                } catch (e) {}
             }
-            changeFontSize(null);
-            setTimeout(resizePreview, 50);
         }
 
         async function copyCard(btnElement) {
             saveClientName(document.getElementById('nameInput').value);
-            const isExchange = currentType === 'exchange_rate';
-            const card = isExchange ? document.getElementById('exchangeCard') : document.getElementById('goldenCard');
-            const wrapper = document.getElementById('preview-wrapper');
+            const card = document.getElementById('goldenCard');
             const originalText = btnElement.innerHTML;
             btnElement.innerHTML = "⚡ جاري النسخ...";
             btnElement.style.pointerEvents = "none";
-
-            const originalWidth = card.style.width;
-            const originalMaxWidth = card.style.maxWidth;
-            const originalTransform = card.style.transform;
-            
-            const isMini = card.classList.contains('mini-card-layout');
-            const targetWidth = isExchange ? '800px' : (isMini ? '600px' : '1200px');
-
-            const originalWrapperTransform = wrapper.style.transform;
-            const originalWrapperMargin = wrapper.style.marginBottom;
-            wrapper.style.transform = 'none';
-            wrapper.style.marginBottom = '0px';
-
-            card.style.width = targetWidth;
-            card.style.maxWidth = targetWidth;
-            card.style.transform = 'none';
-
             try {
-                const canvas = await html2canvas(card, { scale: 5, backgroundColor: null, dir: 'rtl', logging: false, useCORS: true });
-                
-                card.style.width = originalWidth;
-                card.style.maxWidth = originalMaxWidth;
-                card.style.transform = originalTransform;
-                
-                wrapper.style.transform = originalWrapperTransform;
-                wrapper.style.marginBottom = originalWrapperMargin;
-
+                const canvas = await html2canvas(card, { scale: 2.5, backgroundColor: null, dir: 'rtl', logging: false });
                 canvas.toBlob(async (blob) => {
                     try {
-                        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                        const file = new File([blob], "price_card.png", { type: "image/png" });
-
-                        if (isMobileDevice && navigator.canShare && navigator.canShare({ files: [file] })) {
-                            await navigator.share({ files: [file], title: 'كارت السعر' });
-                            btnElement.innerHTML = "✅ تمت المشاركة بنجاح!";
-                        } else {
-                            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                            btnElement.innerHTML = "✅ تم النسخ بنجاح!";
-                        }
-                        
+                        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                        btnElement.innerHTML = "✅ تم النسخ بنجاح!";
                         setTimeout(() => { btnElement.innerHTML = originalText; btnElement.style.pointerEvents = "auto"; }, 2000);
                     } catch (err) {
-                        alert("فشل النسخ أو المشاركة! تأكد من إعطاء الصلاحيات.");
+                        alert("فشل النسخ! تأكد من إعطاء الصلاحيات.");
                         btnElement.innerHTML = originalText;
                         btnElement.style.pointerEvents = "auto";
                     }
                 });
             } catch (error) {
-                card.style.width = originalWidth;
-                card.style.maxWidth = originalMaxWidth;
-                card.style.transform = originalTransform;
-                
-                wrapper.style.transform = originalWrapperTransform;
-                wrapper.style.marginBottom = originalWrapperMargin;
-                
                 alert("حدث خطأ.");
                 btnElement.innerHTML = originalText;
                 btnElement.style.pointerEvents = "auto";
