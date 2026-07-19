@@ -45,27 +45,7 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
         return;
       }
 
-      const authUser: UserType = {
-        id: firebaseUser.uid,
-        username: firebaseUser.email || '',
-        email: firebaseUser.email || '',
-        name: firebaseUser.displayName || firebaseUser.email || '',
-        role: 'admin',
-        password: undefined,
-        permissions: {
-          canViewDebts: true,
-          canViewCompanies: true,
-          canViewTreasury: true,
-          canViewPurchases: true,
-          canViewDeposits: true,
-          canViewArchive: true,
-          canViewBackup: true,
-          canViewAdvances: true,
-        },
-        createdAt: new Date().toISOString(),
-      };
-
-      onLoginSuccess(authUser);
+      setErrorMessage('الحساب ده مش مسجل في المنظومة. تواصل مع المدير علشان يضيفك للنظام.');
     } catch (error: any) {
       if (
         error.code === 'auth/user-not-found' ||
