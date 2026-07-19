@@ -1096,173 +1096,78 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
-      {/* 🦅 Debt Aging Alert — Center Screen Notification */}
-      {showDebtAlert && staleDebtCustomers.length > 0 && (
+
+      {/* القسم العلوي: كروت الملخص */}
+      {!selectionMode ? (
         <>
-          {/* خلفية داكنة شفافة */}
-          <div
-            className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[9997] transition-opacity duration-500 ${debtAlertFading ? 'opacity-0' : 'opacity-100'}`}
-            onClick={() => {
-              setDebtAlertFading(true);
-              setTimeout(() => {
-                setDebtAlertDismissed(true);
-                setShowDebtAlert(false);
-                setDebtAlertFading(false);
-              }, 500);
-            }}
-          />
-
-          {/* صندوق الإشعار في نص الشاشة */}
-          <div className={`fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none p-4`}>
-            <div className={`bg-slate-900 border-2 border-amber-500/60 rounded-3xl p-8 shadow-[0_0_60px_rgba(245,158,11,0.3)] max-w-md w-full pointer-events-auto debt-alert-popup text-center relative transition-all duration-500 ${debtAlertFading ? 'opacity-0 scale-90' : 'opacity-100 scale-100'}`}>
-              {/* زر الإغلاق */}
-              <button
-                onClick={() => {
-                  setDebtAlertFading(true);
-                  setTimeout(() => {
-                    setDebtAlertDismissed(true);
-                    setShowDebtAlert(false);
-                    setDebtAlertFading(false);
-                  }, 500);
-                }}
-                className="absolute top-3 right-3 text-slate-500 hover:text-white hover:bg-slate-800 p-2 rounded-full transition-colors z-10"
-                title="إغلاق"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              {/* الأيقونة */}
-              <div className="text-6xl mb-3 drop-shadow-lg">
-                🦅
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            {/* كارت الرصيد العام */}
+            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-lg relative overflow-hidden group hover:border-indigo-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-slate-700 font-extrabold text-sm">💰 الرصيد العام</span>
+                <div className="bg-indigo-50 p-2.5 rounded-xl">
+                  <Landmark className="w-5 h-5 text-indigo-600" />
+                </div>
               </div>
+              <div className="font-mono text-4xl font-black text-slate-900 tracking-wider">
+                {Math.round(totalOutstandingDebt).toLocaleString("en-US")}
+                <span className="text-lg font-bold text-slate-400 mr-1"> د.ل</span>
+              </div>
+              <div className="mt-3 text-xs text-slate-500 font-semibold bg-slate-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                {activeCustomersList.length} حساب مفتوح
+              </div>
+            </div>
 
-              {/* العنوان */}
-              <h2 className="text-xl font-black text-amber-400 mb-5 tracking-wide">
-                ⚠️ انتبه! ديون متأخرة
-              </h2>
-
-              {/* قائمة الأسماء */}
-              <div className="space-y-2.5 mb-3">
-                {debtAlertCurrentBatch.map((name, i) => (
-                  <div
-                    key={`${name}-${i}`}
-                    className="debt-alert-name text-white font-extrabold text-base bg-slate-800/80 rounded-2xl py-3 px-5 border border-slate-700/80 shadow-inner"
-                  >
-                    {name}
+            {/* كارت النشرة الإخبارية */}
+            <div className="bg-white border-2 border-slate-200 rounded-2xl p-6 shadow-lg relative overflow-hidden group hover:border-amber-300 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-slate-700 font-extrabold text-sm">📰 النشرة الإخبارية — ديون متأخرة</span>
+                <div className="bg-amber-50 p-2.5 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                </div>
+              </div>
+              {staleDebtCustomers.length > 0 ? (
+                <>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {staleDebtCustomers.map((name, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-amber-50/80 rounded-xl px-3 py-2 border border-amber-100">
+                        <span className="text-amber-500">⚠️</span>
+                        <span className="truncate flex-1">{name}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-
-              {/* عداد العملاء */}
-              <div className="flex items-center justify-center gap-2 mt-4">
-                <span className="text-slate-500 text-xs">
-                  {staleDebtCustomers.length} {staleDebtCustomers.length === 1 ? 'عميل' : 'عملاء'} عليهم ديون متأخرة
-                </span>
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 debt-alert-dot animate-pulse" />
-              </div>
-
-              {/* نقاط التقدم (pagination dots) */}
-              {Math.ceil(staleDebtCustomers.length / debtAlertBatchSize) > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-3">
-                  {Array.from({ length: Math.ceil(staleDebtCustomers.length / debtAlertBatchSize) }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        i === debtAlertBatchIndex
-                          ? 'bg-amber-400 w-4'
-                          : 'bg-slate-700'
-                      }`}
-                    />
-                  ))}
+                  <div className="mt-3 text-xs text-slate-500 font-semibold bg-slate-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    {staleDebtCustomers.length} {staleDebtCustomers.length === 1 ? 'عميل' : 'عملاء'} متأخرين
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-24 text-slate-400 font-bold text-sm">
+                  ✅ لا يوجد عملاء متأخرين — كل الديون حديثة
                 </div>
               )}
             </div>
           </div>
 
-          {/* CSS Animations */}
-          <style>{`
-            @keyframes debtAlertPopIn {
-              0% { transform: scale(0.7); opacity: 0; }
-              60% { transform: scale(1.05); opacity: 1; }
-              100% { transform: scale(1); opacity: 1; }
-            }
-            @keyframes debtNameSlideUp {
-              0% { transform: translateY(10px); opacity: 0; }
-              100% { transform: translateY(0); opacity: 1; }
-            }
-            .debt-alert-popup {
-              animation: debtAlertPopIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-            }
-            .debt-alert-name {
-              animation: debtNameSlideUp 0.4s ease-out forwards;
-            }
-          `}</style>
-        </>
-      )}
-
-      {/* القسم العلوي: إجمالي الديون وإجراءات الزبائن */}
-      {!selectionMode ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          
-          {/* صندوق إجمالي الديون */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Landmark className="w-24 h-24 text-white" />
-            </div>
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-white font-extrabold text-sm tracking-wide">
-                  إجمالي الديون المطلوبة
-                </span>
-                <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
-                  <Landmark className="w-5 h-5 text-white" />
-                </div>
-              </div>
-              <div className="mt-auto">
-                <div className="font-mono text-3xl font-black text-rose-500 tracking-widest drop-shadow-md block mb-1">
-                  {Math.round(totalOutstandingDebt).toLocaleString("en-US")}{" "}
-                  <span className="text-lg font-bold text-slate-300">د.ل</span>
-                </div>
-                <div className="text-[10px] text-slate-400 font-semibold bg-white/5 px-2 py-1 rounded-md inline-block">
-                  {activeCustomersList.length} حساب مفتوح
-                </div>
-              </div>
-            </div>
+          {/* أزرار سريعة */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => setShowAddCustomerModal(true)}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              إضافة عميل جديد
+            </button>
+            <button
+              onClick={() => setSelectionMode(true)}
+              className="bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-md transition-all"
+            >
+              <CheckSquare className="w-4 h-4" />
+              وضع الإرسال السريع
+            </button>
           </div>
-
-          {/* كرت إضافة عميل جديد */}
-          <button
-            onClick={() => setShowAddCustomerModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <UserPlus className="w-24 h-24 text-white" />
-            </div>
-            <div className="relative z-10 flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md text-white">
-                <UserPlus className="w-7 h-7" />
-              </div>
-              <span className="text-white font-extrabold text-xl tracking-wide">إضافة عميل جديد</span>
-            </div>
-          </button>
-
-          {/* كرت وضع الإرسال السريع */}
-          <button
-            onClick={() => setSelectionMode(true)}
-            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <CheckSquare className="w-24 h-24 text-white" />
-            </div>
-            <div className="relative z-10 flex items-center gap-4">
-              <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md text-white">
-                <CheckSquare className="w-7 h-7" />
-              </div>
-              <span className="text-white font-extrabold text-xl tracking-wide">وضع الإرسال السريع</span>
-            </div>
-          </button>
-
-        </div>
+        </>
       ) : (
         <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex justify-between items-center shadow-xs">
           <div>
@@ -1297,20 +1202,28 @@ export default function CustomerDebtsModule({
       )}
 
       {/* 3. شبكة كروت الزبائن */}
-      <div className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
+      <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 content-start">
           {sortedActiveCustomers.map((acc, i) => {
               const isSelected = selectedForRep.includes(acc.cust.id);
 
-            const colors = [
-              { bg: "bg-indigo-600", border: "border-indigo-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-rose-600", border: "border-rose-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-amber-600", border: "border-amber-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-emerald-600", border: "border-emerald-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-purple-600", border: "border-purple-500", text: "text-white", icon: "text-white" },
-              { bg: "bg-teal-600", border: "border-teal-500", text: "text-white", icon: "text-white" },
+            const borderColors = [
+              { border: "border-indigo-500", ring: "ring-indigo-200", accent: "border-indigo-700", icon: "text-indigo-500", badge: "bg-indigo-50 text-indigo-700" },
+              { border: "border-rose-500", ring: "ring-rose-200", accent: "border-rose-700", icon: "text-rose-500", badge: "bg-rose-50 text-rose-700" },
+              { border: "border-amber-500", ring: "ring-amber-200", accent: "border-amber-700", icon: "text-amber-500", badge: "bg-amber-50 text-amber-700" },
+              { border: "border-emerald-500", ring: "ring-emerald-200", accent: "border-emerald-700", icon: "text-emerald-500", badge: "bg-emerald-50 text-emerald-700" },
+              { border: "border-purple-500", ring: "ring-purple-200", accent: "border-purple-700", icon: "text-purple-500", badge: "bg-purple-50 text-purple-700" },
+              { border: "border-teal-500", ring: "ring-teal-200", accent: "border-teal-700", icon: "text-teal-500", badge: "bg-teal-50 text-teal-700" },
             ];
-            const clr = colors[i % colors.length];
+            const clr = borderColors[i % borderColors.length];
+
+            // 🧠 تقادم الدين — حساب عمر آخر إضافة دين
+            const debtOnlyTxs = acc.historicalTxs.filter((tx: any) => tx.type === 'debt' && !tx.isDeleted);
+            const lastDebtDate = debtOnlyTxs.length > 0 ? new Date(debtOnlyTxs.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date).getTime() : 0;
+            const debtAgeDays = lastDebtDate > 0 ? Math.floor((Date.now() - lastDebtDate) / (1000 * 60 * 60 * 24)) : 0;
+            const isStale = debtAgeDays >= 3 && acc.debtBalance > 0;
+            const isVeryStale = debtAgeDays >= 7 && acc.debtBalance > 0;
+            const isCritical = debtAgeDays >= 14 && acc.debtBalance > 0;
 
             return (
               <div
@@ -1329,8 +1242,29 @@ export default function CustomerDebtsModule({
                     setSelectedCustomerId(acc.cust.id);
                   }
                 }}
-                className={`${Number(acc.debtBalance) === 0 ? "bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1" : clr.bg + " " + clr.border} border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[64px] relative overflow-hidden flex flex-col items-center justify-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : ""} ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
+                className={`bg-white border-2 rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[80px] relative overflow-hidden flex flex-col items-center justify-center ${
+                  Number(acc.debtBalance) === 0
+                    ? "border-emerald-400 ring-2 ring-emerald-100"
+                    : isCritical
+                    ? "border-red-500 ring-2 ring-red-200 shadow-lg shadow-red-100"
+                    : isVeryStale
+                    ? "border-orange-500 ring-2 ring-orange-100"
+                    : isStale
+                    ? "border-amber-500 ring-1 ring-amber-100"
+                    : clr.border + " " + clr.ring
+                } ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : ""} ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}
               >
+                {/* شريط جانبي لتقادم الدين */}
+                {isCritical && acc.debtBalance > 0 && (
+                  <div className="absolute top-0 right-0 bottom-0 w-1.5 bg-red-500 rounded-r-full"></div>
+                )}
+                {isVeryStale && !isCritical && acc.debtBalance > 0 && (
+                  <div className="absolute top-0 right-0 bottom-0 w-1 bg-orange-500 rounded-r-full"></div>
+                )}
+                {isStale && !isVeryStale && acc.debtBalance > 0 && (
+                  <div className="absolute top-0 right-0 bottom-0 w-0.5 bg-amber-500 rounded-r-full"></div>
+                )}
+
                 {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
                 {selectionMode && isSelected && (
                   <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-md z-10 scale-90">
@@ -1347,7 +1281,7 @@ export default function CustomerDebtsModule({
                         e.preventDefault();
                         handleQuickDelete(acc.cust.id);
                       }}
-                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-white/80 hover:bg-white text-rose-600 p-1 rounded-full transition-all cursor-pointer z-10 border border-slate-200 shadow-sm"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-slate-100 hover:bg-slate-200 text-rose-600 p-1 rounded-full transition-all cursor-pointer z-10 border border-slate-200 shadow-sm"
                       title="أرشفة ❌"
                     >
                       <X className="w-3 h-3" />
@@ -1368,7 +1302,7 @@ export default function CustomerDebtsModule({
                           handleCopyDebtImage(acc.cust.name, acc.debtBalance);
                         }
                       }}
-                      className={`absolute top-1 left-6 opacity-0 group-hover:opacity-100 p-1 rounded-full transition-all cursor-pointer z-10 border border-white/20 bg-white/10 text-white shadow-sm ${Number(acc.debtBalance) === 0 ? 'bg-emerald-100/90 text-emerald-700 border-emerald-200' : ''}`}
+                      className={`absolute top-1 left-6 opacity-0 group-hover:opacity-100 p-1 rounded-full transition-all cursor-pointer z-10 border border-slate-200 shadow-sm ${Number(acc.debtBalance) === 0 ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                       title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
                     >
                       <Copy className="w-3 h-3" />
@@ -1376,24 +1310,37 @@ export default function CustomerDebtsModule({
                   </>
                 )}
 
-                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Landmark className="w-12 h-12 text-white" />
+                <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Landmark className={`w-12 h-12 ${clr.icon}`} />
                 </div>
 
-                <h4 className={`font-extrabold ${Number(acc.debtBalance) === 0 ? 'text-white' : 'text-white'} text-[11px] w-full px-2 truncate mb-1.5 drop-shadow-sm`}>
+                {/* أيقونة التقادم */}
+                {isCritical && (
+                  <div className="absolute top-1 left-1 text-[10px] z-10" title={`دين متأخر جداً — ${debtAgeDays} يوم`}>
+                    🚨
+                  </div>
+                )}
+                {isVeryStale && !isCritical && (
+                  <div className="absolute top-1 left-1 text-[10px] z-10" title={`دين متأخر — ${debtAgeDays} يوم`}>
+                    ⚠️
+                  </div>
+                )}
+
+                <h4 className={`font-extrabold text-slate-800 text-[11px] w-full px-2 truncate mb-1.5 ${isCritical ? 'pr-3' : isStale ? 'pr-2' : ''}`}>
                   {acc.cust.name}
                 </h4>
 
                 {acc.debtBalance > 0 ? (
-                  <span className={`font-mono font-black ${Number(acc.debtBalance) > 9999 ? 'text-[10px]' : 'text-xs'} text-white px-2 py-0.5 rounded-2xl border-white/20 shadow-sm`}>
+                  <span className={`font-mono font-black ${Number(acc.debtBalance) > 9999 ? 'text-[10px]' : 'text-xs'} ${isCritical ? 'text-red-600 bg-red-50' : isVeryStale ? 'text-orange-600 bg-orange-50' : isStale ? 'text-amber-700 bg-amber-50' : 'text-slate-700 bg-slate-50'} px-2 py-0.5 rounded-2xl shadow-sm`}>
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
+                    {isStale && <span className="mr-0.5 text-[9px] opacity-70"> · {debtAgeDays}ي</span>}
                   </span>
                 ) : acc.debtBalance < 0 ? (
-                  <span className={`font-mono font-black text-white text-xs px-2 py-0.5 rounded-2xl border-white/20 shadow-sm`} title="رصيد دائن لصالحه (أمانة)">
+                  <span className={`font-mono font-black text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-2xl shadow-sm`} title="رصيد دائن لصالحه (أمانة)">
                     {Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل
                   </span>
                 ) : (
-                  <span className={`font-sans font-black text-white text-[10px] px-2 py-0.5 rounded-2xl border-white/20 shadow-sm`}>
+                  <span className={`font-sans font-black text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-2xl shadow-sm`}>
                     مسدد ✓
                   </span>
                 )}
