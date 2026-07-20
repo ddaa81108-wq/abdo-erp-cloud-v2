@@ -449,33 +449,45 @@ export default function App() {
     };
   }, []);
 
-  const updateStateAndSync = async (newState: ERPState) => {
-    // Strip out any undefined properties that cause Firebase setDoc to fail
-    const cleanedState = JSON.parse(JSON.stringify(newState));
+// File: src/App.tsx
 
-    // Only save to Firebase, onSnapshot will update local state. Fast optimistic update ->
-    setState(cleanedState);
-    
-    // Save to LocalStorage as a fallback
-    try {
-      localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(cleanedState));
-    } catch (e) {
-      console.error("Local storage save failed", e);
+// 1. SECURE THE SYNC FUNCTION
+const updateStateAndSync = async (newState: ERPState) => {
+  const cleanedState = JSON.parse(JSON.stringify(newState));
+  setState(cleanedState);
+
+  try {
+    localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(cleanedState));
+  } catch (e) {
+    console.error("Local storage save failed", e);
+  }
+
+  if (db) {
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
     }
-    
-    if (db) {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
+    syncTimeoutRef.current = setTimeout(async () => {
+      try {
+        // 🛡️ CRITICAL SECURITY FIX: Added { merge: true } to prevent partial state from wiping existing fields
+        await setDoc(doc(db, "erp_system", "main_state"), cleanedState, { merge: true });
+      } catch (err) {
+        console.error("Failed to sync to Firebase", err);
       }
-      syncTimeoutRef.current = setTimeout(async () => {
-        try {
-          await setDoc(doc(db, "erp_system", "main_state"), cleanedState);
-        } catch (err) {
-          console.error("Failed to sync to Firebase", err);
-        }
-      }, 500);
-    }
-  };
+    }, 500);
+  }
+};
+
+// 2. SECURE THE LOGIN SCREEN RENDER
+// Replace the existing <LoginScreen /> rendering block with this:
+if (!currentUser) {
+  return (
+    <LoginScreen
+      state={state}
+      onUpdateState={updateStateAndSync}
+      onLoginSuccess={handleLoginSuccess}
+    />
+  );
+}
 
   const handleExportAllToExcel = () => {
     try {
