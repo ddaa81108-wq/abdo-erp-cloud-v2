@@ -41,11 +41,21 @@ import FinancialReportsModule from "./components/FinancialReportsModule";
 import PdfExportModule from "./components/PdfExportModule";
 
 export default function App() {
-  // 🔄 Multi-device sync: loading & error states
+  // 🔄 Multi-device sync: loading state only, localStorage as fallback
   const [isLoading, setIsLoading] = useState(true);
-  const [syncError, setSyncError] = useState<string | null>(null);
+  const [isOnlineMode, setIsOnlineMode] = useState(false); // Firestore connected successfully
 
-  const [state, setState] = useState<ERPState>(INITIAL_ERP_STATE);
+  const [state, setState] = useState<ERPState>(() => {
+    // Load from localStorage immediately so user can work offline
+    const tryLocal = localStorage.getItem("ABDO_ERP_V2_DATA");
+    if (tryLocal) {
+      try {
+        const parsed = JSON.parse(tryLocal);
+        if (parsed && typeof parsed === "object") return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_ERP_STATE;
+  });
 
   // 👥 Active session details
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -390,7 +400,7 @@ export default function App() {
 
           if (!unmounted) {
             setIsLoading(false);
-            setSyncError(null);
+            setIsOnlineMode(true);
             setState((current) => {
               if (JSON.stringify(current) === JSON.stringify(data)) {
                 return current;
@@ -418,7 +428,7 @@ export default function App() {
           await setDoc(docRef, initialData);
           if (!unmounted) {
             setIsLoading(false);
-            setSyncError(null);
+            setIsOnlineMode(true);
             setState(initialData);
           }
         }
@@ -427,7 +437,8 @@ export default function App() {
         console.error("Firebase sync error:", err);
         if (!unmounted) {
           setIsLoading(false);
-          setSyncError("فشل الاتصال بقاعدة البيانات. تحقق من اتصال الإنترنت.");
+          // Don't block user - keep working with localStorage data
+          console.warn("Working in offline mode with localStorage");
         }
       },
     );
@@ -729,30 +740,13 @@ export default function App() {
     );
   };
 
-  // 🌀 Loading screen while syncing with cloud database
-  if (isLoading) {
+  // 🌀 Loading screen while syncing with cloud database (only on first load)
+  if (isLoading && !isOnlineMode) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-6 font-sans" dir="rtl">
         <div className="animate-spin rounded-full h-16 w-16 border-4 border-slate-600 border-t-indigo-500"></div>
         <h2 className="text-white text-xl font-extrabold">جاري المزامنة مع قاعدة البيانات...</h2>
         <p className="text-slate-400 text-sm">يتم تحميل بياناتك من السحابة. يرجى الانتظار.</p>
-      </div>
-    );
-  }
-
-  // ⚠️ Firebase connection error screen
-  if (syncError) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-4 font-sans px-4" dir="rtl">
-        <div className="text-5xl mb-2">⚠️</div>
-        <h2 className="text-red-400 text-xl font-extrabold text-center">خطأ في الاتصال</h2>
-        <p className="text-slate-300 text-sm text-center max-w-md">{syncError}</p>
-        <button 
-          onClick={() => { setIsLoading(true); setSyncError(null); window.location.reload(); }}
-          className="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-6 py-3 rounded-xl transition-all"
-        >
-          🔄 إعادة المحاولة
-        </button>
       </div>
     );
   }
