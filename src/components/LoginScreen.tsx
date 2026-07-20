@@ -1,36 +1,55 @@
 import React, { useState } from 'react';
-import { User as UserType, ERPState } from '../types';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
+import { User as UserType } from '../types';
 
 interface LoginScreenProps {
-  state: ERPState;
-  onUpdateState: (newState: ERPState) => void;
   onLoginSuccess: (user: UserType) => void;
 }
 
-export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: LoginScreenProps) {
-  const [usernameInput, setUsernameInput] = useState('');
+export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
+    setIsLoading(true);
 
-    const targetUser = state.users.find(
-      u => u.username.toLowerCase() === usernameInput.trim().toLowerCase()
-    );
+    try {
+      // 1. المصادقة عبر Firebase Authentication
+      const userCredential = await signInWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
+      const fbUser = userCredential.user;
 
-    if (!targetUser) {
-      setErrorMessage('المستخدم غير موجود. الرجاء التحقق من البيانات.');
-      return;
+      // 2. جلب بيانات المستخدم المخصصة من Firestore (مجموعة users)
+      const userDocRef = doc(db, "users", fbUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const customUser = userDocSnap.data() as UserType;
+        onLoginSuccess(customUser);
+      } else {
+        setErrorMessage('تمت المصادقة بنجاح، لكن لم يتم العثور على صلاحيات المستخدم. الرجاء التواصل مع المدير.');
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      let msg = 'حدث خطأ أثناء تسجيل الدخول. الرجاء المحاولة مرة أخرى.';
+      
+      // معالجة أخطاء Firebase الشائعة
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        msg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+      } else if (error.code === 'auth/too-many-requests') {
+        msg = 'تم قفل الدخول مؤقتاً بسبب المحاولات المتكررة. الرجاء المحاولة لاحقاً.';
+      } else if (error.code === 'auth/network-request-failed') {
+        msg = 'خطأ في الاتصال بالإنترنت. الرجاء التحقق من الشبكة.';
+      }
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
     }
-
-    if (targetUser.password !== passwordInput.trim()) {
-      setErrorMessage('كلمة المرور غير صحيحة.');
-      return;
-    }
-
-    onLoginSuccess(targetUser);
   };
 
   return (
@@ -78,7 +97,7 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
 
         .brand-title {
             color: #d4af37;
-            fontSize: 34pt;
+            font-size: 34pt;
             font-weight: 900;
             margin: 0;
             letter-spacing: 1px;
@@ -141,13 +160,18 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
             transition: all 0.2s ease;
         }
 
-        .login-btn:hover {
+        .login-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 15px 25px rgba(212, 175, 55, 0.35);
         }
         
-        .login-btn:active {
+        .login-btn:active:not(:disabled) {
             transform: translateY(2px);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
       `}</style>
       <div className="royal-login-body">
@@ -163,11 +187,12 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
 
           <div className="input-group">
             <input 
-              type="text" 
-              placeholder="اسم المستخدم" 
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value)}
+              type="email" 
+              placeholder="البريد الإلكتروني" 
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
               required
+              autoComplete="username"
             />
           </div>
 
@@ -178,10 +203,13 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               required
+              autoComplete="current-password"
             />
           </div>
 
-          <button type="submit" className="login-btn">دخول المنظومة</button>
+          <button type="submit" className="login-btn" disabled={isLoading}>
+            {isLoading ? 'جاري التحقق...' : 'دخول المنظومة'}
+          </button>
         </form>
       </div>
     </>
