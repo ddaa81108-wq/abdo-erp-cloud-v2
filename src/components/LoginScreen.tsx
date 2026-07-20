@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User as UserType, ERPState, INITIAL_ERP_STATE } from '../types';
+import { User as UserType, ERPState } from '../types';
 
 interface LoginScreenProps {
   state: ERPState;
@@ -11,8 +11,6 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
-  const [restoreToast, setRestoreToast] = useState('');
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,13 +31,6 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
     }
 
     onLoginSuccess(targetUser);
-  };
-
-  const handleRestoreDefaultUsers = () => {
-    onUpdateState({ ...state, users: INITIAL_ERP_STATE.users });
-    setShowRestoreConfirm(false);
-    setRestoreToast('تمت استعادة الحسابات الافتراضية بنجاح. يمكنك الدخول الآن.');
-    setTimeout(() => setRestoreToast(''), 5000);
   };
 
   return (
@@ -87,7 +78,7 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
 
         .brand-title {
             color: #d4af37;
-            font-size: 34pt;
+            fontSize: 34pt;
             font-weight: 900;
             margin: 0;
             letter-spacing: 1px;
@@ -191,122 +182,8 @@ export default function LoginScreen({ state, onUpdateState, onLoginSuccess }: Lo
           </div>
 
           <button type="submit" className="login-btn">دخول المنظومة</button>
-
-          <button
-            type="button"
-            onClick={() => setShowRestoreConfirm(true)}
-            style={{
-              marginTop: '18px',
-              background: 'transparent',
-              border: '1px solid rgba(212, 175, 55, 0.3)',
-              color: '#d4af37',
-              padding: '10px 16px',
-              borderRadius: '10px',
-              fontSize: '11pt',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              transition: 'all 0.2s ease',
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(212, 175, 55, 0.08)')}
-            onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
-          >
-            استعادة الحسابات الافتراضية
-          </button>
         </form>
       </div>
-
-      {restoreToast && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#0b0f19',
-            color: '#d4af37',
-            border: '1px solid rgba(212, 175, 55, 0.3)',
-            padding: '12px 22px',
-            borderRadius: '12px',
-            fontSize: '12pt',
-            fontFamily: 'inherit',
-            zIndex: 99999,
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-          }}
-        >
-          {restoreToast}
-        </div>
-      )}
-
-      {showRestoreConfirm && (
-        <div
-          onClick={() => setShowRestoreConfirm(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.8)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#0b0f19',
-              border: '1px solid rgba(212, 175, 55, 0.25)',
-              borderRadius: '20px',
-              padding: '28px',
-              maxWidth: '420px',
-              width: '90%',
-              textAlign: 'right',
-              fontFamily: 'inherit',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.7)',
-            }}
-          >
-            <h3 style={{ color: '#d4af37', fontSize: '14pt', margin: '0 0 12px', fontWeight: 800 }}>
-              استعادة الحسابات الافتراضية
-            </h3>
-            <p style={{ color: '#cbd5e1', fontSize: '11pt', lineHeight: 1.7, margin: '0 0 22px' }}>
-              سيتم إعادة قائمة المستخدمين وكلمات المرور إلى الوضع الافتراضي. باقي بيانات المنظومة (العملاء، الشركات، الخزينة...) لن تتأثر.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowRestoreConfirm(false)}
-                style={{
-                  background: '#1e293b',
-                  color: '#cbd5e1',
-                  border: 'none',
-                  padding: '10px 18px',
-                  borderRadius: '10px',
-                  fontSize: '11pt',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                إلغاء
-              </button>
-              <button
-                onClick={handleRestoreDefaultUsers}
-                style={{
-                  background: 'linear-gradient(135deg, #fceabb 0%, #d4af37 100%)',
-                  color: '#0a0a0a',
-                  border: 'none',
-                  padding: '10px 18px',
-                  borderRadius: '10px',
-                  fontSize: '11pt',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                }}
-              >
-                تأكيد الاستعادة
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
