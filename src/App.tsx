@@ -19,23 +19,26 @@ import { db } from "./firebase";
 import AlertCenter from "./components/AlertCenter";
 import { VoiceInputButton } from "./components/VoiceInputButton";
 import GlobalSearch from "./components/GlobalSearch";
+import BackupCenter from "./components/BackupCenter";
 import ExcelImporter from "./components/ExcelImporter";
 import ImageExporter from "./components/ImageExporter";
 import LoginScreen from "./components/LoginScreen";
+import SettingsModule from "./components/SettingsModule";
 import { copyCustomCardImage } from "./utils/imageExporterUtils";
 
 // Import modules
-import ComprehensiveSettings from "./components/ComprehensiveSettings";
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
 import CompaniesModule from "./components/CompaniesModule";
 import TreasuryModule from "./components/TreasuryModule";
 import PurchasesModule from "./components/PurchasesModule";
 import DepositsModule from "./components/DepositsModule";
+import AdvancesModule from "./components/AdvancesModule";
 import MerchantsModule from "./components/MerchantsModule";
 import TransactionLogModule from "./components/TransactionLogModule";
 import TrashCanModule from "./components/TrashCanModule";
 import MailManualModule from "./components/MailManualModule";
 import FinancialReportsModule from "./components/FinancialReportsModule";
+import PdfExportModule from "./components/PdfExportModule";
 
 export default function App() {
   const [state, setState] = useState<ERPState>(() => {
@@ -345,10 +348,6 @@ export default function App() {
           const data = docSnap.data() as ERPState;
 
           // Backfill new properties
-          // ⚠️ أمني: حذف كلمات السر من بيانات Firestore
-          if (data.users && Array.isArray(data.users)) {
-            data.users = data.users.map((u: any) => { const { password, ...clean } = u; return clean; });
-          }
           if (!data.users || data.users.length === 0)
             data.users = INITIAL_ERP_STATE.users;
           if (!data.merchants)
@@ -581,7 +580,33 @@ export default function App() {
     }
   };
 
-  // 2. Safe posting handlers from Alert center
+  // 2. State Actions forwarded from subpanels
+  const handleRestoreState = (newState: ERPState) => {
+    updateStateAndSync(newState);
+  };
+
+  const handleSaveBackupPoint = (name: string, description: string) => {
+    const newPoint = {
+      id: `point_${Date.now()}`,
+      name,
+      date: new Date().toISOString(),
+      description,
+      dataJson: JSON.stringify(state),
+    };
+    updateStateAndSync({
+      ...state,
+      backupPoints: [...state.backupPoints, newPoint],
+    });
+  };
+
+  const handleDeleteBackupPoint = (id: string) => {
+    updateStateAndSync({
+      ...state,
+      backupPoints: state.backupPoints.filter((p) => p.id !== id),
+    });
+  };
+
+  // Safe posting handlers from Alert center
   const postUnpostedPurchaseFromAlert = (purchaseId: string) => {
     const purchase = state.purchases.find((p) => p.id === purchaseId);
     if (!purchase) return;
@@ -654,12 +679,13 @@ export default function App() {
       { id: "purchases", enabled: user.permissions.canViewPurchases },
       { id: "deposits", enabled: user.permissions.canViewDeposits },
       { id: "backup", enabled: user.permissions.canViewBackup },
+      { id: "settings", enabled: true },
     ];
     const firstTab = allowed.find((t) => t.enabled);
     if (firstTab) {
       setActiveTab(firstTab.id);
     } else {
-      setActiveTab("backup");
+      setActiveTab("settings");
     }
 
   };
@@ -943,55 +969,70 @@ export default function App() {
                 {[
                   {
                     id: "debts",
-                    label: (state as any).sectionLabels?.debts || "1. قسم ديون العملاء 👥",
+                    label: "1. قسم ديون العملاء 👥",
                     enabled: currentUser.permissions.canViewDebts,
                   },
                   {
                     id: "companies",
-                    label: (state as any).sectionLabels?.companies || "2. حسابات الشركات والتجار 🏭",
+                    label: "2. حسابات الشركات والتجار 🏭",
                     enabled:
                       currentUser.permissions.canViewCompanies ||
                       currentUser.permissions.canViewDebts,
                   },
                   {
                     id: "deposits",
-                    label: (state as any).sectionLabels?.deposits || "3. قسم الأمانات 🛡️",
+                    label: "3. قسم الأمانات 🛡️",
                     enabled: currentUser.permissions.canViewDeposits,
                   },
                   {
+                    id: "advances",
+                    label: "4. العهد والسلفيات واليوميات 💸",
+                    enabled: currentUser.permissions.canViewAdvances !== false, // fallback true
+                  },
+                  {
                     id: "mail_manual",
-                    label: (state as any).sectionLabels?.mail_manual || "4. المصراوية 🇪🇬",
+                    label: "5. المصراوية 🇪🇬",
                     enabled: true,
                   },
                   {
                     id: "purchases",
-                    label: (state as any).sectionLabels?.purchases || "5. قسم المشتريات 🛒",
+                    label: "6. قسم المشتريات 🛒",
                     enabled: currentUser.permissions.canViewPurchases,
                   },
                   {
                     id: "treasury",
-                    label: (state as any).sectionLabels?.treasury || "6. قسم الخزنة 💰",
+                    label: "7. قسم الخزنة 💰",
                     enabled: currentUser.permissions.canViewTreasury,
                   },
                   {
                     id: "financial_reports",
-                    label: (state as any).sectionLabels?.financial_reports || "7. قسم التقارير المالية 📊",
+                    label: "8. قسم التقارير المالية 📊",
                     enabled: true,
                   },
                   {
                     id: "transaction_log",
-                    label: (state as any).sectionLabels?.transaction_log || "8. سجل المعاملات الشامل 📝",
+                    label: "9. سجل المعاملات الشامل 📝",
                     enabled: true,
                   },
                   {
                     id: "trash_can",
-                    label: (state as any).sectionLabels?.trash_can || "9. سلة المهملات 🗑️",
+                    label: "10. سلة المهملات 🗑️",
+                    enabled: true,
+                  },
+                  {
+                    id: "settings",
+                    label: "11. صلاحيات الموظفين ⚙️",
                     enabled: true,
                   },
                   {
                     id: "backup",
-                    label: (state as any).sectionLabels?.backup || "10. الاعدادات الشامله 📦",
+                    label: "12. الاعدادات الشامله 📦",
                     enabled: currentUser.permissions.canViewBackup,
+                  },
+                  {
+                    id: "export_pdf",
+                    label: "13. تصدير بي دي اف 📤",
+                    enabled: true,
                   },
                 ]
                   .filter((t) => t.enabled)
@@ -1167,6 +1208,14 @@ export default function App() {
                     />
                   )}
 
+                  {activeTab === "advances" && (
+                    <AdvancesModule
+                      state={state}
+                      onUpdateState={updateStateAndSync}
+                      searchQuery={globalSearchQuery}
+                    />
+                  )}
+
                   {activeTab === "transaction_log" && (
                     <TransactionLogModule
                       state={state}
@@ -1183,7 +1232,16 @@ export default function App() {
                   )}
 
                   {activeTab === "backup" && (
-                    <ComprehensiveSettings
+                    <BackupCenter
+                      state={state}
+                      onRestoreState={handleRestoreState}
+                      onSaveBackupPoint={handleSaveBackupPoint}
+                      onDeleteBackupPoint={handleDeleteBackupPoint}
+                    />
+                  )}
+
+                  {activeTab === "settings" && (
+                    <SettingsModule
                       state={state}
                       currentUser={currentUser}
                       onUpdateState={updateStateAndSync}
@@ -1191,6 +1249,9 @@ export default function App() {
                     />
                   )}
 
+                  {activeTab === "export_pdf" && (
+                    <PdfExportModule state={state} />
+                  )}
                 </motion.div>
               </AnimatePresence>
             </div>

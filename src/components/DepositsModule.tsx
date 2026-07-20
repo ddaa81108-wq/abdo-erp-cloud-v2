@@ -39,15 +39,15 @@ export default function DepositsModule({
 
   // Floating Calculator Logic
   const handleAddCalcRow = () => {
-    setCalcRows(prevRows => [...prevRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
+    setCalcRows([...calcRows, { id: Math.random().toString(), value: '', price: '', operator: 'multiply' }]);
   };
 
   const handleUpdateCalcRow = (id: string, field: string, val: string) => {
-    setCalcRows(prevRows => prevRows.map(r => r.id === id ? { ...r, [field]: val } : r));
+    setCalcRows(calcRows.map(r => r.id === id ? { ...r, [field]: val } : r));
   };
 
   const handleRemoveCalcRow = (id: string) => {
-    setCalcRows(prevRows => prevRows.filter(r => r.id !== id));
+    setCalcRows(calcRows.filter(r => r.id !== id));
   };
 
   const calculateRowResult = (row: typeof calcRows[0]) => {
@@ -623,7 +623,7 @@ export default function DepositsModule({
   // Direct complete delete - upgraded to soft delete to trash can without confirm trigger
   const handleDeleteDeposit = (id: string) => {
     const deposit = state.trustDeposits.find(d => d.id === id);
-    const displayName = deposit ? deposit.customerName : "أمانة";
+    const displayName = deposit ? deposit.name : "أمانة";
 
     if (onScheduleDeletion) {
       onScheduleDeletion('deposit', id, displayName, () => {
@@ -648,45 +648,6 @@ export default function DepositsModule({
     setDeleteConfirmId(null);
   };
 
-  // حذف عملية مفردة من أرشيف الأمانة
-  const handleDeleteArchiveTx = (depositId: string, txId: string) => {
-    const deposit = state.trustDeposits.find(d => d.id === depositId);
-    if (!deposit) return;
-    if (!deposit.history || deposit.history.length === 0) return;
-
-    // إزالة العملية من السجل
-    const updatedHistory = deposit.history.filter(tx => tx.id !== txId);
-
-    // إعادة حساب الأرصدة من السجل المتبقي
-    let newLyd = 0;
-    let newEgp = 0;
-    updatedHistory.forEach(tx => {
-      if (tx.type === 'deposit_lyd') newLyd += tx.amountLyd;
-      else if (tx.type === 'withdraw_lyd') newLyd -= tx.amountLyd;
-      else if (tx.type === 'convert_to_egp') { newLyd -= tx.amountLyd; newEgp += tx.amountEgp; }
-      else if (tx.type === 'withdraw_egp') newEgp -= tx.amountEgp;
-      else if (tx.type === 'deposit_egp') newEgp += tx.amountEgp;
-      else if (tx.type === 'transfer_egypt') newLyd -= tx.amountLyd;
-      else if (tx.type === 'settlement') newLyd -= tx.amountLyd;
-    });
-
-    const updatedDeposits = state.trustDeposits.map(d => {
-      if (d.id === depositId) {
-        return {
-          ...d,
-          amount: newLyd,
-          amountLyd: newLyd,
-          amountEgp: newEgp,
-          history: updatedHistory.length > 0 ? updatedHistory : undefined,
-        };
-      }
-      return d;
-    });
-
-    onUpdateState({ ...state, trustDeposits: updatedDeposits });
-    setShowSuccessToast("🗑️ تم حذف العملية وتحديث الرصيد.");
-  };
-
   const resetActionForm = () => {
     setActionType(null);
     setActionAmountLyd('');
@@ -694,26 +655,6 @@ export default function DepositsModule({
     setActionExchangeRate('1.0');
     setActionNote('');
     setActionTargetId('');
-  };
-
-  const handleCloseExpandedCard = () => {
-    setExpandedCardId(null);
-    resetActionForm();
-  };
-
-  const handleToggleExpandedCard = (cardId: string, isExpanded: boolean) => {
-    if (isExpanded) {
-      handleCloseExpandedCard();
-      return;
-    }
-
-    setExpandedCardId(cardId);
-    resetActionForm();
-  };
-
-  const handleModalBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    handleCloseExpandedCard();
   };
 
   // Generate Image-Report inside the card for WhatsApp sharing
@@ -789,10 +730,6 @@ export default function DepositsModule({
     d.status === 'held'
   ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const expandedDeposit = activeHeldDeposits.find(d => d.id === expandedCardId) ?? null;
-  const expandedDepositLyd = expandedDeposit ? getAmountLyd(expandedDeposit) : 0;
-  const expandedDepositEgp = expandedDeposit ? getAmountEgp(expandedDeposit) : 0;
-
   const archivedDeposits = state.trustDeposits.filter(d => 
     !d.isDeleted &&
     (d.status === 'refunded' || d.status === 'released_to_debt' || (getAmountLyd(d) === 0 && getAmountEgp(d) === 0))
@@ -832,7 +769,7 @@ export default function DepositsModule({
     openSmartCardStudio({
       type: "trust",
       name: d.customerName,
-      amount: isEgp ? egp : lyd,
+      amount: Math.abs(isEgp ? egp : lyd),
       currency: isEgp ? "ج.م" : "د.ل",
     });
     setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");
@@ -938,53 +875,522 @@ export default function DepositsModule({
               const customerLyd = getAmountLyd(d);
               const customerEgp = getAmountEgp(d);
               const isExpanded = expandedCardId === d.id;
-              const isCleared = Number(customerLyd) === 0 && Number(customerEgp) === 0;
-              const isEgpOnly = Number(customerLyd) === 0 && Number(customerEgp) !== 0;
 
               return (
-                <div
-                  key={d.id}
-                  onClick={(e) => {
-                    if ((e.target as Element).closest("button")) return;
-                    handleToggleExpandedCard(d.id, isExpanded);
+                <div 
+                  key={d.id} 
+                  onClick={() => {
+                    setExpandedCardId(isExpanded ? null : d.id);
+                    if (!isExpanded) resetActionForm();
                   }}
-                  className={`${isCleared ? 'bg-emerald-600 border-emerald-400 ring-2 ring-emerald-300 ring-offset-1' : isEgpOnly ? 'bg-amber-600 border-amber-500' : 'bg-indigo-600 border-indigo-500'} text-white border rounded-xl p-2 cursor-pointer transition-all hover:scale-[1.02] shadow-md group min-h-[72px] relative text-center overflow-visible`}
+                  className={`bg-white border-y border-l border-r-4 border-slate-200 p-3 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs hover:shadow-md group min-h-[90px] relative text-center ${(Number(customerLyd) === 0 && Number(customerEgp) === 0) ? 'border-r-emerald-500 bg-emerald-50/40 ring-1 ring-emerald-300' : (customerLyd < 0 || customerEgp < 0) ? 'border-r-rose-500' : 'border-r-indigo-500'}`}
                 >
                   {/* CARD TILE BODY */}
-                  <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <Landmark className="w-12 h-12 text-white" />
-                  </div>
-                  <div className="flex items-center justify-between mb-1 relative z-10">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleCopyDepositImage(d); }}
-                        className="bg-white/10 hover:bg-white/30 text-white p-1 rounded-md transition-all cursor-pointer"
-                        title="نسخ كارت الصورة 📸"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteDeposit(d.id); }}
-                        className="bg-white/10 hover:bg-rose-500/80 text-white p-1 rounded-md transition-all cursor-pointer"
-                        title="حذف وأرشفة ❌"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                  <h4 className="font-extrabold text-white text-[11px] mb-1 w-full truncate px-1 drop-shadow-sm">{d.customerName}</h4>
+                  <h4 className="font-black text-slate-900 text-base mb-1.5 w-full truncate px-1">{d.customerName}</h4>
                   <div className="flex flex-col items-center">
-                    <span className={`font-mono text-sm font-black ${customerLyd < 0 ? 'text-rose-100' : 'text-white'}`}>
+                    <span className={`font-mono text-lg font-black ${customerLyd < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
                       {Math.round(customerLyd).toLocaleString('en-US')} د.ل
                     </span>
                     {customerEgp !== 0 && (
-                      <span className={`font-mono text-xs font-black mt-1 ${customerEgp < 0 ? 'text-rose-100' : 'text-white'}`}>
+                      <span className={`font-mono text-base font-black mt-1 ${customerEgp < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                         {Math.round(customerEgp).toLocaleString('en-US')} ج.م
                       </span>
                     )}
                   </div>
+
+                  {/* EXPANDABLE WORKSPACE DRAWER AS MODAL */}
+                  {isExpanded && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto cursor-default">
+                      <div 
+                        className="relative w-full max-w-4xl bg-white border border-slate-200 shadow-2xl rounded-2xl flex flex-col max-h-[95vh] my-auto"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        
+                        {/* THE EXACT OLD CARD DESIGN HEADER */}
+                        <div className={`border-t-[6px] rounded-t-2xl px-5 pt-5 pb-4 ${(customerLyd > 0 || customerEgp > 0) ? 'border-amber-500' : 'border-emerald-500'}`}>
+                          <div className="flex items-start justify-between border-b border-slate-100 pb-3 mb-3">
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDeposit(d.id);
+                                  }}
+                                  className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1.5 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
+                                  title="حذف ونقل للأرشيف ❌"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExportSingleDepositDraft(d);
+                                  }}
+                                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 p-1.5 rounded-md transition-all cursor-pointer shrink-0 hover:scale-105"
+                                  title="طباعة سجل الأمانة الكامل 🖨️"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                </button>
+                                <div className="w-2 h-2 rounded-full bg-indigo-600 mr-1" />
+                                <h4 className="font-extrabold text-slate-900 text-base">{d.customerName}</h4>
+                              </div>
+                              <div className="flex gap-2 items-center mt-3">
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (Number(customerLyd) === 0 && Number(customerEgp) === 0) {
+                                      const success = await copySettledImage(d.customerName);
+                                      if (success) {
+                                        alert("تم مشاركة كارت المخالصة بنجاح 📋");
+                                      }
+                                    } else {
+                                      handleCopyDepositImage(d);
+                                    }
+                                  }}
+                                  className={`p-2 px-4 rounded-xl transition-all cursor-pointer flex items-center gap-2 text-xs font-bold shadow-md text-white ${Number(customerLyd) === 0 && Number(customerEgp) === 0 ? 'bg-emerald-600 hover:bg-emerald-700 border border-emerald-500' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20'}`}
+                                  title={Number(customerLyd) === 0 && Number(customerEgp) === 0 ? "نسخ كارت المخالصة 📋" : "نسخ كارت الصورة 📸"}
+                                >
+                                  <Copy className="w-4 h-4" />
+                                  {Number(customerLyd) === 0 && Number(customerEgp) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}
+                                </button>
+                              </div>
+                              <span className="text-xs text-slate-500 block mt-2 font-mono">
+                                مستند: {d.referenceNo} • {new Date(d.date).toLocaleDateString('en-US')}
+                              </span>
+                            </div>
+
+                            <div className="text-left">
+                              <div className="font-mono text-base font-black text-slate-900 block">
+                                {Math.round(customerLyd).toLocaleString('en-US')} <span className="text-[11px] text-slate-400">د.ل</span>
+                              </div>
+                              {customerEgp !== 0 && (
+                                <div className="font-mono text-sm font-black text-emerald-600 block mt-0.5">
+                                  {Math.round(customerEgp).toLocaleString('en-US')} <span className="text-[10px] text-emerald-500 font-bold">جنيه مصري</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 rounded-lg p-3 mb-3">
+                            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                              &quot;{d.note}&quot;
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex gap-2">
+                              <span className="bg-indigo-50 border border-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-black text-xs">
+                                🇱🇾 {customerLyd.toLocaleString('en-US')} د.ل
+                              </span>
+                              {customerEgp !== 0 ? (
+                                <span className="bg-emerald-50 border border-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-black text-xs">
+                                  🇪🇬 {customerEgp.toLocaleString('en-US')} ج.م
+                                </span>
+                              ) : (
+                                <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-semibold text-[11px]">
+                                  رصيد مصري مصفر
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setExpandedCardId(null);
+                                resetActionForm();
+                              }}
+                              className="text-xs font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 cursor-pointer bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              <span>إغلاق النافذة</span>
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* OLD WORKSPACE DRAWER CONTENT */}
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 custom-scrollbar rounded-b-2xl">
+                      
+                      {/* Sub-Actions Tabs bar */}
+                      <div className="grid grid-cols-3 sm:grid-cols-7 gap-1 text-center bg-slate-200/50 p-1 rounded-lg">
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('deposit'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'deposit' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          ➕ إيداع ليبي
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('withdraw'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'withdraw' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          💸 سحب ليبي
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('deposit_egp'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'deposit_egp' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          🇪🇬 إيداع مصري
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('withdraw_egp'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'withdraw_egp' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          🇪🇬 سحب مصري
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('convert'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'convert' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          🔄 تحويل مصري
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('transfer_egypt'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'transfer_egypt' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          ✈️ حوالة لمصر
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { resetActionForm(); setActionType('settlement'); }}
+                          className={`py-1.5 text-[10.5px] font-bold rounded cursor-pointer transition ${actionType === 'settlement' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-700 hover:bg-white/50'}`}
+                        >
+                          🤝 مقاصة ديون
+                        </button>
+                      </div>
+
+                      {/* WORKSPACE OPERATIONS CONTAINER */}
+                      {actionType && (
+                        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs animate-fade">
+                          <h5 className="text-[11px] font-black text-slate-800 mb-2 border-b pb-1.5 flex items-center justify-between">
+                            <span>
+                              {actionType === 'deposit' && 'إيداع إضافي بالدينار الليبي لحساب الأمانة'}
+                              {actionType === 'withdraw' && 'سحب واسترجاع نقدي بالدينار الليبي'}
+                              {actionType === 'deposit_egp' && 'إيداع نقدي مباشر بالجنيه المصري'}
+                              {actionType === 'convert' && 'معادلة تحويل جزء من الأمانة بالليبي إلى أمانة مصري'}
+                              {actionType === 'withdraw_egp' && 'سحب واسترداد نقدي بالجنيه المصري'}
+                              {actionType === 'transfer_egypt' && 'إرسال حوالة مباشرة لمصر (خصماً من الأمانة)'}
+                              {actionType === 'settlement' && 'مقاصة وتحويل الأمانة لتسديد ديون الدورة النشطة'}
+                            </span>
+                            <button onClick={() => setActionType(null)} className="text-[10px] text-rose-500 font-bold hover:underline">إغلاق</button>
+                          </h5>
+
+                          <div className="space-y-3">
+                            {/* Standard inputs switcher */}
+                            {actionType === 'deposit' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">مبلغ الإيداع د.ل *</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={actionAmountLyd}
+                                    onChange={(e) => setActionAmountLyd(e.target.value)}
+                                    placeholder="مثال: 1500"
+                                    className="w-full text-right p-2 border rounded font-mono text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">البيان/شرح الاستلام</label>
+                                  <input
+                                    type="text"
+                                    value={actionNote}
+                                    onChange={(e) => setActionNote(e.target.value)}
+                                    placeholder="إيداع إضافي نقدي لزيادة الأمانة بالخزينة"
+                                    className="w-full text-right p-2 border rounded text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {actionType === 'withdraw' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">مبلغ السحب د.ل *</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={actionAmountLyd}
+                                    onChange={(e) => setActionAmountLyd(e.target.value)}
+                                    placeholder={`الرصيد المتاح: ${customerLyd}`}
+                                    className="w-full text-right p-2 border rounded font-mono text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">البيان/السبب للإثبات</label>
+                                  <input
+                                    type="text"
+                                    value={actionNote}
+                                    onChange={(e) => setActionNote(e.target.value)}
+                                    placeholder="استرجاع جزء من وديعة الأمانة"
+                                    className="w-full text-right p-2 border rounded text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {actionType === 'deposit_egp' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-emerald-600 mb-1">قيمة الإيداع بالجنيه المصري *</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={actionAmountEgp}
+                                    onChange={(e) => setActionAmountEgp(e.target.value)}
+                                    placeholder="أدخل القيمة بالمصري ج.م..."
+                                    className="w-full text-right p-2 border rounded font-mono text-xs text-emerald-600 font-bold bg-emerald-50/10"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">البيان/شرح الاستلام</label>
+                                  <input
+                                    type="text"
+                                    value={actionNote}
+                                    onChange={(e) => setActionNote(e.target.value)}
+                                    placeholder="إيداع نقدي مباشر بالأمانة بالمصري"
+                                    className="w-full text-right p-2 border rounded text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* DYNAMIC CONVERTER AS REQUESTED IN LITERAL ALIGNMENT */}
+                            {actionType === 'convert' && (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-indigo-600 mb-1">القيمة المراد تحويلها (من رصيد الليبي) *</label>
+                                    <input
+                                      type="number"
+                                      required
+                                      value={actionAmountLyd}
+                                      onChange={(e) => setActionAmountLyd(e.target.value)}
+                                      placeholder={`الرصيد المتاح: ${customerLyd} د.ل`}
+                                      className="w-full text-right p-2 border rounded font-mono text-xs text-indigo-600 font-bold"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-emerald-600 mb-1">سعر صرف اليوم (الدينار كم جنيه؟) *</label>
+                                    <input
+                                      type="number"
+                                      step="1"
+                                      required
+                                      value={actionExchangeRate}
+                                      onChange={(e) => setActionExchangeRate(e.target.value)}
+                                      placeholder="مثلاً: 10.0"
+                                      className="w-full text-right p-2 border border-emerald-300 rounded font-mono text-xs text-emerald-600 font-bold bg-emerald-50/20"
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Dynamic calculations box */}
+                                {parseFloat(actionAmountLyd) > 0 && parseFloat(actionExchangeRate) > 0 && (
+                                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-right">
+                                    <span className="text-[10px] text-indigo-600 font-extrabold block">📐 معادلة الاحتساب المباشرة للمستند:</span>
+                                    <div className="mt-1 font-mono text-xs text-indigo-900 flex items-center justify-between">
+                                      <span>
+                                        {parseFloat(actionAmountLyd).toLocaleString()} د.ل × {parseFloat(actionExchangeRate).toLocaleString()} = 
+                                      </span>
+                                      <span className="font-black text-sm text-emerald-600 bg-white px-2 py-0.5 rounded shadow-xs">
+                                        {(parseFloat(actionAmountLyd) * parseFloat(actionExchangeRate)).toLocaleString()} جنيه مصري
+                                      </span>
+                                    </div>
+                                    <p className="text-[9.5px] text-slate-500 mt-2 font-semibold">
+                                      * سينزل المبلغ المحول من وديعة الليبي، وتقيد بالخزينة بقيمة سالبة، ويضاف المكافئ بالمصري كأمانة جديدة للزبون
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {actionType === 'withdraw_egp' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-emerald-600 mb-1">المبلغ المراد سحبه بالجنيه المصري *</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={actionAmountEgp}
+                                    onChange={(e) => setActionAmountEgp(e.target.value)}
+                                    placeholder={`الرصيد المتاح: ${customerEgp} جنيه`}
+                                    className="w-full text-right p-2 border rounded font-mono text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">شرح وبيان السحب</label>
+                                  <input
+                                    type="text"
+                                    value={actionNote}
+                                    onChange={(e) => setActionNote(e.target.value)}
+                                    placeholder="سحب واسترداد من أمانة المصري"
+                                    className="w-full text-right p-2 border rounded text-xs"
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {actionType === 'transfer_egypt' && (
+                              <div className="space-y-3">
+                                <div className="bg-amber-50/50 border border-amber-200 rounded-lg p-2 text-[10px] text-amber-800 text-right">
+                                  💡 يمكنك خصم الحوالة من رصيد الأمانة بالليبي د.ل (وسيتم تسجيل حركة بالخزينة) أو مباشرة من رصيد الأمانة المصري الجاري.
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-slate-500 mb-1">الخصم من رصيد الأمانة بالليبي (د.ل)</label>
+                                    <input
+                                      type="number"
+                                      value={actionAmountLyd}
+                                      onChange={(e) => {
+                                        setActionAmountLyd(e.target.value);
+                                        setActionAmountEgp(''); // clear opponent
+                                      }}
+                                      placeholder={`الرصيد المتاح: ${customerLyd} د.ل`}
+                                      className="w-full text-right p-2 border rounded font-mono text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[10px] font-bold text-emerald-600 mb-1">الخصم من رصيد الأمانة بالمصري (جنيه)</label>
+                                    <input
+                                      type="number"
+                                      value={actionAmountEgp}
+                                      onChange={(e) => {
+                                        setActionAmountEgp(e.target.value);
+                                        setActionAmountLyd(''); // clear opponent
+                                      }}
+                                      placeholder={`الرصيد المتاح: ${customerEgp} جنيه`}
+                                      className="w-full text-right p-2 border rounded font-mono text-xs text-emerald-600 font-bold bg-emerald-50/10"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">تفاصيل الحوالة (اسم المستلم بمصر ورقم Vodafone Cash أو التفاصيل) *</label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      required
+                                      value={actionNote}
+                                      onChange={(e) => setActionNote(e.target.value)}
+                                      placeholder="مثال: حوالة باسم صلاح أحمد - فودافون كاش 010xxxxxxxx"
+                                      className="w-full text-right pr-9 p-2 border rounded text-xs"
+                                    />
+                                    <div className="absolute right-1 top-1">
+                                      <VoiceInputButton onResult={(text) => setActionNote(prev => (prev ? prev + ' ' + text : text))} className="scale-90" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {actionType === 'settlement' && (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">القيمة المراد ترحيلها لديون الزبون د.ل *</label>
+                                  <input
+                                    type="number"
+                                    required
+                                    value={actionAmountLyd}
+                                    onChange={(e) => setActionAmountLyd(e.target.value)}
+                                    placeholder={`الرصيد المتاح: ${customerLyd}`}
+                                    className="w-full text-right p-2 border rounded font-mono text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-slate-500 mb-1">ملاحظة المقاصة</label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      value={actionNote}
+                                      onChange={(e) => setActionNote(e.target.value)}
+                                      placeholder="سداد حساب تحت التسوية لملف الديون الجاري"
+                                      className="w-full text-right pr-9 p-2 border rounded text-xs"
+                                    />
+                                    <div className="absolute right-1 top-1">
+                                      <VoiceInputButton onResult={(text) => setActionNote(prev => (prev ? prev + ' ' + text : text))} className="scale-90" />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* General confirm action trigger */}
+                            <div className="flex justify-end gap-1.5 pt-2 border-t text-xs">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (actionType === 'deposit') handleAddLydCustody(d.id);
+                                  if (actionType === 'withdraw') handleWithdrawLydCustody(d.id);
+                                  if (actionType === 'deposit_egp') handleDepositEgpCustody(d.id);
+                                  if (actionType === 'convert') handleConvertToEgpCustody(d.id);
+                                  if (actionType === 'withdraw_egp') handleWithdrawEgpCustody(d.id);
+                                  if (actionType === 'transfer_egypt') handleTransferToEgypt(d.id);
+                                  if (actionType === 'settlement') handleReleaseToDebtWithLyd(d.id);
+                                }}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded cursor-pointer transition shadow-xs"
+                              >
+                                تأكيد وقيد العملية بالمنظومة
+                              </button>
+                            </div>
+
+                          </div>
+                        </div>
+                      )}
+
+                      {/* DETAILED TRANSACTION LOG / ARCHIVE FOR CUSTOMER */}
+                      <div className="bg-slate-100/70 border border-slate-200 rounded-xl p-3 text-right">
+                        <div className="flex items-center justify-between border-b pb-1.5 mb-2">
+                          <span className="text-[11px] font-black text-slate-700 flex items-center gap-1">
+                            <Receipt className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>الأرشيف ودفتر قيود العميل: {d.customerName}</span>
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-[10.5px] text-right font-sans relative">
+                            <thead>
+                              <tr className="border-b border-slate-300 text-slate-500">
+                                <th className="pb-1">التاريخ</th>
+                                <th className="pb-1">الحركة</th>
+                                <th className="pb-1 text-center">أمانة ليبي (د.ل)</th>
+                                <th className="pb-1 text-center">أمانة مصري (جنيه)</th>
+                                <th className="pb-1 pr-2">البيان والتفاصيل</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {[...getHistory(d)].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
+                                <tr key={tx.id} className="border-b border-slate-200 hover:bg-slate-200/40 text-slate-700">
+                                  <td className="py-1 font-mono text-slate-500">{new Date(tx.date).toLocaleDateString('ar-LY')}</td>
+                                  <td className="py-1 font-semibold text-slate-900">
+                                    {tx.type === 'deposit_lyd' && <span className="text-blue-600">➕ إيداع د.ل</span>}
+                                    {tx.type === 'withdraw_lyd' && <span className="text-orange-500">💸 رد د.ل</span>}
+                                    {tx.type === 'convert_to_egp' && <span className="text-purple-600">🔁 تحويل مصري</span>}
+                                    {tx.type === 'withdraw_egp' && <span className="text-emerald-600">🇪🇬 سحب ج.م</span>}
+                                    {tx.type === 'deposit_egp' && <span className="text-emerald-500">➕ إيداع ج.م</span>}
+                                  </td>
+                                  <td className="py-1 font-mono text-center font-bold text-slate-800">
+                                    {tx.amountLyd > 0 ? `${tx.amountLyd.toLocaleString()} د.ل` : '-'}
+                                  </td>
+                                  <td className="py-1 font-mono text-center font-bold text-emerald-700">
+                                    {tx.amountEgp > 0 ? `${tx.amountEgp.toLocaleString()} ج.م` : '-'}
+                                  </td>
+                                  <td className="py-1 pr-2 text-slate-500 max-w-[150px] truncate" title={tx.note}>{tx.note}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                    </div>
+                    </div>
+                    </div>
+                  )}
 
                 </div>
               );
@@ -992,250 +1398,6 @@ export default function DepositsModule({
           </div>
         )}
       </div>
-
-      {expandedDeposit && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto cursor-default"
-          onClick={handleModalBackdropClick}
-        >
-          <div
-            className="relative w-full max-w-4xl bg-white border border-slate-200 shadow-2xl rounded-2xl flex flex-col max-h-[95vh] my-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* رأس البطاقة */}
-            <div className={`border-t-[6px] rounded-t-2xl px-5 pt-4 pb-3 ${(expandedDepositLyd > 0 || expandedDepositEgp > 0) ? (expandedDepositLyd === 0 && expandedDepositEgp > 0 ? 'border-amber-500' : 'border-indigo-500') : 'border-emerald-500'}`}>
-              {/* الصف الأول: جميع الأزرار - من اليمين لليسار، تلتف على الموبايل */}
-              <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 pb-3 mb-2 md:flex-nowrap">
-                <button
-                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit'); }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                >
-                  ➕ إيداع ليبي
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw'); }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                >
-                  💸 سحب ليبي
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleExportSingleDepositDraft(expandedDeposit); }}
-                  className="bg-slate-700 hover:bg-slate-800 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                >
-                  🖨️ طباعة PDF
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('deposit_egp'); }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                >
-                  🇪🇬 إيداع مصري
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('withdraw_egp'); }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                >
-                  🇪🇬 سحب مصري
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); resetActionForm(); setActionType('convert'); }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition shadow-sm whitespace-nowrap"
-                >
-                  🔄 تحويل مصري
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleCloseExpandedCard(); }}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold text-[11px] px-3 py-1.5 rounded-lg transition whitespace-nowrap shrink-0"
-                >
-                  ✕ إغلاق
-                </button>
-              </div>
-
-              {/* اسم العميل */}
-              <h4 className="font-extrabold text-slate-900 text-base text-right mb-1">{expandedDeposit.customerName}</h4>
-
-              {/* الرصيد */}
-              <div className="flex items-center gap-4 text-right">
-                <div className="font-mono text-lg font-black text-slate-900">
-                  {Math.round(expandedDepositLyd).toLocaleString('en-US')} <span className="text-xs text-slate-400">د.ل</span>
-                </div>
-                {expandedDepositEgp !== 0 && (
-                  <div className="font-mono text-base font-black text-emerald-600">
-                    {Math.round(expandedDepositEgp).toLocaleString('en-US')} <span className="text-[10px] text-emerald-500">ج.م</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 custom-scrollbar rounded-b-2xl">
-              {actionType && (
-                <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs animate-fade">
-                  <h5 className="text-[11px] font-black text-slate-800 mb-2 border-b pb-1.5 flex items-center justify-between">
-                    <span>
-                      {actionType === 'deposit' && 'إيداع إضافي بالدينار الليبي لحساب الأمانة'}
-                      {actionType === 'withdraw' && 'سحب واسترجاع نقدي بالدينار الليبي'}
-                      {actionType === 'deposit_egp' && 'إيداع نقدي مباشر بالجنيه المصري'}
-                      {actionType === 'convert' && 'معادلة تحويل جزء من الأمانة بالليبي إلى أمانة مصري'}
-                      {actionType === 'withdraw_egp' && 'سحب واسترداد نقدي بالجنيه المصري'}
-                    </span>
-                    <button onClick={(e) => { e.stopPropagation(); setActionType(null); }} className="text-[10px] text-rose-500 font-bold hover:underline">إغلاق</button>
-                  </h5>
-
-                  <div className="space-y-3">
-                    {actionType === 'deposit' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">مبلغ الإيداع د.ل *</label>
-                          <input type="number" required value={actionAmountLyd} onChange={(e) => setActionAmountLyd(e.target.value)} placeholder="مثال: 1500" className="w-full text-right p-2 border rounded font-mono text-xs" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">البيان/شرح الاستلام</label>
-                          <input type="text" value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder="إيداع إضافي نقدي لزيادة الأمانة بالخزينة" className="w-full text-right p-2 border rounded text-xs" />
-                        </div>
-                      </div>
-                    )}
-
-                    {actionType === 'withdraw' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">مبلغ السحب د.ل *</label>
-                          <input type="number" required value={actionAmountLyd} onChange={(e) => setActionAmountLyd(e.target.value)} placeholder={`الرصيد المتاح: ${expandedDepositLyd}`} className="w-full text-right p-2 border rounded font-mono text-xs" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">البيان/السبب للإثبات</label>
-                          <input type="text" value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder="استرجاع جزء من وديعة الأمانة" className="w-full text-right p-2 border rounded text-xs" />
-                        </div>
-                      </div>
-                    )}
-
-                    {actionType === 'deposit_egp' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <label className="block text-[10px] font-bold text-emerald-600 mb-1">قيمة الإيداع بالجنيه المصري *</label>
-                          <input type="number" required value={actionAmountEgp} onChange={(e) => setActionAmountEgp(e.target.value)} placeholder="أدخل القيمة بالمصري ج.م..." className="w-full text-right p-2 border rounded font-mono text-xs text-emerald-600 font-bold bg-emerald-50/10" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">البيان/شرح الاستلام</label>
-                          <input type="text" value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder="إيداع نقدي مباشر بالأمانة بالمصري" className="w-full text-right p-2 border rounded text-xs" />
-                        </div>
-                      </div>
-                    )}
-
-                    {actionType === 'convert' && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <label className="block text-[10px] font-bold text-indigo-600 mb-1">القيمة المراد تحويلها (من رصيد الليبي) *</label>
-                            <input type="number" required value={actionAmountLyd} onChange={(e) => setActionAmountLyd(e.target.value)} placeholder={`الرصيد المتاح: ${expandedDepositLyd} د.ل`} className="w-full text-right p-2 border rounded font-mono text-xs text-indigo-600 font-bold" />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-emerald-600 mb-1">سعر صرف اليوم (الدينار كم جنيه؟) *</label>
-                            <input type="number" step="1" required value={actionExchangeRate} onChange={(e) => setActionExchangeRate(e.target.value)} placeholder="مثلاً: 10.0" className="w-full text-right p-2 border border-emerald-300 rounded font-mono text-xs text-emerald-600 font-bold bg-emerald-50/20" />
-                          </div>
-                        </div>
-                        {parseFloat(actionAmountLyd) > 0 && parseFloat(actionExchangeRate) > 0 && (
-                          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-right">
-                            <span className="text-[10px] text-indigo-600 font-extrabold block">📐 معادلة الاحتساب المباشرة للمستند:</span>
-                            <div className="mt-1 font-mono text-xs text-indigo-900 flex items-center justify-between">
-                              <span>{parseFloat(actionAmountLyd).toLocaleString()} د.ل × {parseFloat(actionExchangeRate).toLocaleString()} = </span>
-                              <span className="font-black text-sm text-emerald-600 bg-white px-2 py-0.5 rounded shadow-xs">{(parseFloat(actionAmountLyd) * parseFloat(actionExchangeRate)).toLocaleString()} جنيه مصري</span>
-                            </div>
-                            <p className="text-[9.5px] text-slate-500 mt-2 font-semibold">* سينزل المبلغ المحول من وديعة الليبي، وتقيد بالخزينة بقيمة سالبة، ويضاف المكافئ بالمصري كأمانة جديدة للزبون</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {actionType === 'withdraw_egp' && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <label className="block text-[10px] font-bold text-emerald-600 mb-1">المبلغ المراد سحبه بالجنيه المصري *</label>
-                          <input type="number" required value={actionAmountEgp} onChange={(e) => setActionAmountEgp(e.target.value)} placeholder={`الرصيد المتاح: ${expandedDepositEgp} جنيه`} className="w-full text-right p-2 border rounded font-mono text-xs" />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-slate-500 mb-1">شرح وبيان السحب</label>
-                          <input type="text" value={actionNote} onChange={(e) => setActionNote(e.target.value)} placeholder="سحب واسترداد من أمانة المصري" className="w-full text-right p-2 border rounded text-xs" />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex justify-end gap-1.5 pt-2 border-t text-xs">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (actionType === 'deposit') handleAddLydCustody(expandedDeposit.id);
-                          if (actionType === 'withdraw') handleWithdrawLydCustody(expandedDeposit.id);
-                          if (actionType === 'deposit_egp') handleDepositEgpCustody(expandedDeposit.id);
-                          if (actionType === 'convert') handleConvertToEgpCustody(expandedDeposit.id);
-                          if (actionType === 'withdraw_egp') handleWithdrawEgpCustody(expandedDeposit.id);
-                        }}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-1.5 rounded cursor-pointer transition shadow-xs"
-                      >
-                        تأكيد وقيد العملية بالمنظومة
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-slate-100/70 border border-slate-200 rounded-xl p-3 text-right">
-                <div className="flex items-center justify-between border-b pb-1.5 mb-2">
-                  <span className="text-[11px] font-black text-slate-700 flex items-center gap-1">
-                    <Receipt className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>أرشيف العمليات ({getHistory(expandedDeposit).length})</span>
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[10.5px] text-right font-sans relative">
-                    <thead>
-                      <tr className="border-b border-slate-300 text-slate-500">
-                        <th className="pb-1">التاريخ</th>
-                        <th className="pb-1">الحركة</th>
-                        <th className="pb-1 text-center">ليبي (د.ل)</th>
-                        <th className="pb-1 text-center">مصري (ج.م)</th>
-                        <th className="pb-1 pr-2">البيان</th>
-                        <th className="pb-1 text-center w-8">حذف</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...getHistory(expandedDeposit)].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(tx => (
-                        <tr key={tx.id} className="border-b border-slate-200 hover:bg-slate-200/40 text-slate-700 group">
-                          <td className="py-1 font-mono text-slate-500">{new Date(tx.date).toLocaleDateString('ar-LY')}</td>
-                          <td className="py-1 font-semibold text-slate-900">
-                            {tx.type === 'deposit_lyd' && <span className="text-blue-600">➕ إيداع د.ل</span>}
-                            {tx.type === 'withdraw_lyd' && <span className="text-orange-500">💸 رد د.ل</span>}
-                            {tx.type === 'convert_to_egp' && <span className="text-purple-600">🔁 تحويل مصري</span>}
-                            {tx.type === 'withdraw_egp' && <span className="text-emerald-600">🇪🇬 سحب ج.م</span>}
-                            {tx.type === 'deposit_egp' && <span className="text-emerald-500">➕ إيداع ج.م</span>}
-                          </td>
-                          <td className="py-1 font-mono text-center font-bold text-slate-800">
-                            {tx.amountLyd > 0 ? `${tx.amountLyd.toLocaleString()} د.ل` : '-'}
-                          </td>
-                          <td className="py-1 font-mono text-center font-bold text-emerald-700">
-                            {tx.amountEgp > 0 ? `${tx.amountEgp.toLocaleString()} ج.م` : '-'}
-                          </td>
-                          <td className="py-1 pr-2 text-slate-500 max-w-[100px] truncate" title={tx.note}>{tx.note}</td>
-                          <td className="py-1 text-center">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDeleteArchiveTx(expandedDeposit.id, tx.id); }}
-                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 p-0.5 rounded transition-all cursor-pointer"
-                              title="حذف هذه العملية"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ADD CUSTOMER MODAL */}
       {isAddModalOpen && (

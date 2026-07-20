@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Save, Users, Check, AlertCircle, RefreshCw, UserPlus, Trash2, X } from 'lucide-react';
+import { Shield, Lock, Save, Users, Check, AlertCircle, RefreshCw, Key, Eye, EyeOff, UserPlus, Trash2, X } from 'lucide-react';
 import { User, ERPState, UserPermissions } from '../types';
 
 interface SettingsModuleProps {
@@ -15,10 +15,24 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
   // Single selected user concept (kept for delegating or detail focus if needed, but table handles all)
   const [selectedUserId, setSelectedUserId] = useState<string>(state.users[0]?.id || '');
   
+  // Local password inputs per user
+  const [passwordsState, setPasswordsState] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    state.users.forEach(u => {
+      map[u.id] = u.password;
+    });
+    return map;
+  });
+
+  // Password visibility states per user
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+
   // Form states for creating a new user
   const [regFullName, setRegFullName] = useState('');
   const [regUsername, setRegUsername] = useState('');
+  const [regPassword, setRegPassword] = useState('');
   const [regRole, setRegRole] = useState<'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant'>('accountant');
+  const [isRegPasswordShown, setIsRegPasswordShown] = useState(false);
 
   // Custom modal states to avoid synchronous iframe blocks
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -97,6 +111,33 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
     triggerToast('⚙️ تم تحديث مستويات الوصول للموظف بنجاح.');
   };
 
+  // Change user password
+  const handleSavePassword = (userId: string) => {
+    const rawPass = passwordsState[userId];
+    if (!rawPass || !rawPass.trim()) {
+      triggerToast('⚠️ كلمة المرور لا يمكن أن تكون فارغة!');
+      return;
+    }
+
+    const updatedUsers = state.users.map(u => {
+      if (u.id === userId) {
+        const updated = { ...u, password: rawPass.trim() };
+        if (currentUser && u.id === currentUser.id) {
+          onUpdateCurrentSession(updated);
+        }
+        return updated;
+      }
+      return u;
+    });
+
+    onUpdateState({
+      ...state,
+      users: updatedUsers
+    });
+
+    triggerToast('🔒 تم تعيين كلمة المرور الجديدة وتحديث حساب الأمان بنجاح.');
+  };
+
   // Reset users to defaults
   const executeResetUsers = () => {
     const defaultUsersList: User[] = [
@@ -105,7 +146,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         username: 'abdo',
         name: 'المدير عبدو (المالك)',
         role: 'admin',
-                permissions: {
+        password: 'abdo',
+        permissions: {
           canViewDebts: true,
           canViewCompanies: true,
           canViewTreasury: true,
@@ -122,7 +164,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         username: 'tareq',
         name: 'المحاسب طارق (المالية)',
         role: 'accountant',
-                permissions: {
+        password: '1111',
+        permissions: {
           canViewDebts: true,
           canViewCompanies: true,
           canViewTreasury: true,
@@ -139,7 +182,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         username: 'mohamed',
         name: 'الكاشير محمد (المبيعات)',
         role: 'cashier',
-                permissions: {
+        password: '2222',
+        permissions: {
           canViewDebts: true,
           canViewCompanies: false,
           canViewTreasury: true,
@@ -156,7 +200,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         username: 'ali',
         name: 'أمين المخزن علي (التجهيز)',
         role: 'warehouse',
-                permissions: {
+        password: '3333',
+        permissions: {
           canViewDebts: false,
           canViewCompanies: false,
           canViewTreasury: false,
@@ -173,7 +218,8 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         username: 'salem',
         name: 'المساعد سالم (المتابعة)',
         role: 'assistant',
-                permissions: {
+        password: '4444',
+        permissions: {
           canViewDebts: true,
           canViewCompanies: false,
           canViewTreasury: false,
@@ -192,6 +238,13 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
       users: defaultUsersList
     });
 
+    // Reset password temp state
+    const map: Record<string, string> = {};
+    defaultUsersList.forEach(u => {
+      map[u.id] = u.password;
+    });
+    setPasswordsState(map);
+
     const matchingActive = defaultUsersList.find(u => u.username === currentUser?.username);
     if (matchingActive) {
       onUpdateCurrentSession(matchingActive);
@@ -204,7 +257,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
   // Add / Create Employee Account on Settings UI
   const handleCreateNewUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regFullName.trim() || !regUsername.trim() ) {
+    if (!regFullName.trim() || !regUsername.trim() || !regPassword.trim()) {
       triggerToast('⚠️ يرجى ملء كافة البيانات لإنشاء حساب الموظف الجديد.');
       return;
     }
@@ -225,7 +278,6 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: true,
         canViewPurchases: true,
         canViewDeposits: true,
-        canViewAdvances: true,
         canViewArchive: true,
         canViewBackup: true
       },
@@ -235,7 +287,6 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: true,
         canViewPurchases: true,
         canViewDeposits: true,
-        canViewAdvances: true,
         canViewArchive: true,
         canViewBackup: false
       },
@@ -245,7 +296,6 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: true,
         canViewPurchases: false,
         canViewDeposits: true,
-        canViewAdvances: false,
         canViewArchive: false,
         canViewBackup: false
       },
@@ -255,7 +305,6 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: false,
         canViewPurchases: true,
         canViewDeposits: false,
-        canViewAdvances: false,
         canViewArchive: true,
         canViewBackup: false
       },
@@ -265,7 +314,6 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewTreasury: false,
         canViewPurchases: false,
         canViewDeposits: false,
-        canViewAdvances: false,
         canViewArchive: true,
         canViewBackup: false
       }
@@ -276,6 +324,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
       username: regUsername.trim().toLowerCase(),
       name: regFullName.trim(),
       role: regRole,
+      password: regPassword.trim(),
       permissions: presetPermissions[regRole],
       createdAt: new Date().toISOString()
     };
@@ -287,9 +336,17 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
       users: updatedUsers
     });
 
+    // Sync input password state
+    setPasswordsState(prev => ({
+      ...prev,
+      [newUser.id]: newUser.password
+    }));
+
     // Reset fields
     setRegFullName('');
     setRegUsername('');
+    setRegPassword('');
+    setIsRegPasswordShown(false);
 
     triggerToast(`👤 تم تسجيل حساب الموظف الجديد "${newUser.name}" بنظام الصلاحيات.`);
   };
@@ -377,6 +434,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
                 <th className="border border-[#808080] p-1.5 text-center w-8">م</th>
                 <th className="border border-[#808080] p-1.5">الاسم والوظيفة ميكانيكياً</th>
                 <th className="border border-[#808080] p-1.5 text-center">المعرّف</th>
+                <th className="border border-[#808080] p-1.5 w-[205px]">تغيير كلمة المرور المؤمّنة (Password)</th>
                 {permColumns.map((col) => (
                   <th key={col.key} className="border border-[#808080] p-1.5 text-center whitespace-nowrap bg-[#d4d0c8]/60 w-[64px]" title={col.label}>
                     {col.label}
@@ -390,6 +448,11 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
                 const isSelected = u.id === selectedUserId;
                 const isMe = u.id === currentUser?.id;
                 const isUserAdmin = u.role === 'admin';
+                const isTargetPassShown = !!visiblePasswords[u.id];
+                
+                // Allow admin or self to adjust password input
+                const canModifyPassword = isAdmin || isMe;
+                const showPasswordMask = canModifyPassword;
 
                 return (
                   <tr 
@@ -422,6 +485,59 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
                       {u.username}
                     </td>
 
+                    {/* Password change control with eye visibility */}
+                    <td className="border border-[#808080] p-1 w-[205px]">
+                      {showPasswordMask ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type={isTargetPassShown ? 'text' : 'password'}
+                            dir="ltr"
+                            value={passwordsState[u.id] ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPasswordsState(prev => ({
+                                ...prev,
+                                [u.id]: val
+                              }));
+                            }}
+                            className="w-full px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-xs font-bold text-slate-800 text-center"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setVisiblePasswords(prev => ({
+                                ...prev,
+                                [u.id]: !prev[u.id]
+                              }));
+                            }}
+                            className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-1 hover:bg-[#d0cfe3] shrink-0"
+                            title={isTargetPassShown ? 'تشفير وحجب' : 'إظهار كلمة المرور'}
+                          >
+                            {isTargetPassShown ? <EyeOff className="w-3 h-3 text-slate-650" /> : <Eye className="w-3 h-3 text-slate-650" />}
+                          </button>
+                          
+                          {/* Save Inline */}
+                          {passwordsState[u.id] !== u.password && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSavePassword(u.id);
+                              }}
+                              className="bg-emerald-600 font-extrabold text-[10px] text-white px-1.5 py-1 border border-t-emerald-400 border-l-emerald-400 border-r-emerald-850 border-b-emerald-850 shadow-sm shrink-0 flex items-center justify-center"
+                              title="حفظ الكلمة الجديدة"
+                            >
+                              <Save className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center text-slate-400 text-[10.5px] select-none py-1 bg-slate-150/40">
+                          🔒 محجوب بالكامل للأمان
+                        </div>
+                      )}
+                    </td>
 
                     {/* Interactive Checkboxes Grid for permissions */}
                     {permColumns.map((col) => {
@@ -519,6 +635,30 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
               </div>
             </div>
 
+            <div>
+              <label className="block text-slate-800 text-xs font-bold mb-1">كلمة مرور الحساب المؤمنة *</label>
+              <div className="flex gap-1">
+                <input
+                  type={isRegPasswordShown ? 'text' : 'password'}
+                  required
+                  value={regPassword}
+                  onChange={(e) => setRegPassword(e.target.value)}
+                  placeholder="أدخل الرمز"
+                  className="flex-1 px-2.5 py-1.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white text-slate-800 font-mono text-xs text-center font-bold focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsRegPasswordShown(!isRegPasswordShown)}
+                  className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] px-2 py-1.5 hover:bg-[#d0cfe3] shrink-0"
+                  title="عرض/حجب كلمة المرور"
+                >
+                  {isRegPasswordShown ? <EyeOff className="w-4 h-4 text-slate-700" /> : <Eye className="w-4 h-4 text-slate-700" />}
+                </button>
+              </div>
+              <span className="text-[10px] text-slate-500 mt-1 block">
+                تنبيه: يتم تعيين حزم الصلاحيات تلقائياً، وبعد الإنشاء يمكنك تغييرها لكل تطبيق بالجدول العلوي.
+              </span>
+            </div>
 
             <button
               type="submit"
