@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth'; // السطر الجديد الخاص بنظام المصادقة
 
 // Firebase config embedded directly - no external JSON import needed
 const firebaseConfig = {
@@ -14,3 +15,6 @@ const firebaseConfig = {
 export let db: Firestore | null = null;
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 db = getFirestore(app);
+
+// السطر الجديد لتصدير المصادقة لباقي ملفات المنظومة
+export const auth = getAuth(app);
