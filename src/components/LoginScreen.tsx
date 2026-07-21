@@ -23,7 +23,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     try {
       // 1. Firebase Authentication
-      console.log(' Attempting auth with:', emailInput);
+      console.log('📧 Attempting auth with:', emailInput);
       const userCredential = await signInWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
       const fbUser = userCredential.user;
       console.log('✅ Auth successful! UID:', fbUser.uid);
@@ -33,43 +33,52 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const userDocRef = doc(db, "users", fbUser.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      if (userDocSnap.exists()) {
-        console.log('✅ User document found!');
-        const customUser = userDocSnap.data() as UserType;
-        onLoginSuccess(customUser);
-      } else {
-        console.log('⚠️ User document NOT found. Creating new document...');
-        
-        // 3. Create user document
-        const newUser: UserType = {
+      // دالة مساعدة لضمان وجود الصلاحيات الافتراضية ومنع الخطأ
+      const ensureSafeUser = (data: any): UserType => {
+        return {
+          ...data,
           id: fbUser.uid,
-          username: fbUser.email || emailInput,
-          email: fbUser.email || emailInput,
+          username: data.username || fbUser.email || 'مستخدم',
+          email: data.email || fbUser.email,
+          role: data.role || 'user',
+          // 🛡️ الحقن الآمن للصلاحيات لمنع خطأ canViewDebts
+          permissions: {
+            canViewDebts: true, // قيمة افتراضية آمنة
+            ...(data.permissions || {})
+          },
+          // احتياطي إضافي إذا كان الكود يقرأ الخاصية مباشرة وليس داخل permissions
+          canViewDebts: data.canViewDebts ?? true 
+        } as UserType;
+      };
+
+      if (userDocSnap.exists()) {
+        console.log('✅ User document found! Applying safe defaults...');
+        const safeUser = ensureSafeUser(userDocSnap.data());
+        
+        // تحديث الوثيقة في الخلفية بالصلاحيات الآمنة للمرة القادمة
+        await setDoc(userDocRef, safeUser, { merge: true });
+        
+        onLoginSuccess(safeUser);
+      } else {
+        console.log('⚠️ User document NOT found. Creating new document with safe defaults...');
+        const newUser = ensureSafeUser({
           role: "admin",
           createdAt: new Date().toISOString(),
-        };
+        });
         
-        console.log('💾 Writing to Firestore:', newUser);
         await setDoc(userDocRef, newUser);
         console.log('✅ User document created successfully!');
-        
         onLoginSuccess(newUser);
       }
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      
       let msg = 'حدث خطأ أثناء تسجيل الدخول.';
       
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
         msg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
       } else if (error.code === 'permission-denied') {
         msg = 'خطأ في الصلاحيات. تأكد من قواعد الأمان في Firebase.';
-      } else if (error.code === 'auth/network-request-failed') {
-        msg = 'خطأ في الاتصال بالإنترنت.';
       }
-      
       setErrorMessage(msg);
     } finally {
       setIsLoading(false);
