@@ -542,18 +542,36 @@ export default function App() {
     setShowGlobSearch(false);
   };
 
-  const handleLoginSuccess = (user: User) => {
-    setCurrentUser(user);
-    sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(user));
+const handleLoginSuccess = (user: User) => {
+    // 🛡️ درع الحماية: ضمان وجود كائن permissions بكل الصلاحيات المطلوبة لتجنب الشاشة البيضاء
+    const secureUser: User = {
+      ...user,
+      permissions: {
+        canViewDebts: true,
+        canViewCompanies: true,
+        canViewTreasury: true,
+        canViewPurchases: true,
+        canViewDeposits: true,
+        canViewBackup: true,
+        canViewAdvances: true,
+        canViewArchive: true,
+        ...(user.permissions || {})
+      }
+    };
+
+    setCurrentUser(secureUser);
+    sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(secureUser));
+    
     const allowed = [
-      { id: "debts", enabled: user.permissions.canViewDebts },
-      { id: "companies", enabled: user.permissions.canViewCompanies },
-      { id: "treasury", enabled: user.permissions.canViewTreasury },
-      { id: "purchases", enabled: user.permissions.canViewPurchases },
-      { id: "deposits", enabled: user.permissions.canViewDeposits },
-      { id: "backup", enabled: user.permissions.canViewBackup },
+      { id: "debts", enabled: secureUser.permissions.canViewDebts },
+      { id: "companies", enabled: secureUser.permissions.canViewCompanies },
+      { id: "treasury", enabled: secureUser.permissions.canViewTreasury },
+      { id: "purchases", enabled: secureUser.permissions.canViewPurchases },
+      { id: "deposits", enabled: secureUser.permissions.canViewDeposits },
+      { id: "backup", enabled: secureUser.permissions.canViewBackup },
       { id: "settings", enabled: true },
     ];
+    
     const firstTab = allowed.find((t) => t.enabled);
     setActiveTab(firstTab ? firstTab.id : "settings");
   };
