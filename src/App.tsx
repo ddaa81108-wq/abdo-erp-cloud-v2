@@ -286,7 +286,65 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const syncTimeoutRef = useRef<any>(null);
+const syncTimeoutRef = useRef<any>(null);
+
+  // 🔄 Auto Backup Logic (درع النسخ التلقائي المحصن كل 12 ساعة)
+  const stateRef = useRef(state);
+  // تحديث المرجع باستمرار لضمان التقاط أحدث بيانات وعدم ضياع أي حرف
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const performAutoBackup = async () => {
+      const currentState = stateRef.current; // 🛡️ السر هنا: جلب أحدث بيانات فورية وليست قديمة
+      const now = Date.now();
+      const twelveHoursMs = 12 * 60 * 60 * 1000; 
+      
+      // نعتمد على المتصفح لحفظ وقت آخر نسخة لتجنب تعديل ملفات الأنواع (Types)
+      const lastBackupTime = parseInt(localStorage.getItem("ABDO_LAST_AUTO_BACKUP") || "0", 10);
+
+      if (now - lastBackupTime >= twelveHoursMs) {
+        console.log("⏰ حان وقت النسخة التلقائية المجانية...");
+
+        const backupName = `نسخة تلقائية - ${new Date().toLocaleString('ar-LY', { 
+          dateStyle: 'short', timeStyle: 'short' 
+        })}`;
+        
+        const newBackup = {
+          id: `auto_backup_${now}`,
+          name: backupName,
+          date: new Date().toISOString(),
+          description: "تم الإنشاء تلقائياً لحماية بياناتك (نظام الـ 12 ساعة)",
+          dataJson: JSON.stringify(currentState)
+        };
+
+        try {
+          // حفظ وقت النسخة فوراً لمنع التكرار المجنون
+          localStorage.setItem("ABDO_LAST_AUTO_BACKUP", now.toString());
+          
+          await updateStateAndSync({
+            ...currentState,
+            backupPoints: [...(currentState.backupPoints || []), newBackup]
+          });
+          
+          console.log("✅ تم حفظ النسخة الاحتياطية التلقائية بنجاح في قسم الإعدادات");
+        } catch (error) {
+          console.error("❌ فشل إنشاء النسخة التلقائية:", error);
+        }
+      }
+    };
+
+    // 1. فحص فوري عند فتح التطبيق
+    performAutoBackup();
+
+    // 2. فحص دوري كل ساعة في الخلفية
+    const intervalId = setInterval(performAutoBackup, 60 * 60 * 1000);
+
+    return () => clearInterval(intervalId);
+  }, [currentUser]);
 
   // 1. Firebase Synchronization Core
   useEffect(() => {
