@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 // File: src/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+=======
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+>>>>>>> 121a74f (Update Firebase config for AbdoNew)
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfLx_TXLJHgcWAzAXk0bzAcqhWoAuIYUk",
@@ -13,5 +19,10 @@ const firebaseConfig = {
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+<<<<<<< HEAD
 export const db: Firestore = getFirestore(app);
 export const auth = getAuth(app);
+=======
+db = getFirestore(app);
+export const auth = getAuth(app);
+>>>>>>> 121a74f (Update Firebase config for AbdoNew)
