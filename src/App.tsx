@@ -543,25 +543,26 @@ export default function App() {
   };
 
 const handleLoginSuccess = (user: User) => {
-    // 🛡️ درع الحماية: ضمان وجود كائن permissions بكل الصلاحيات المطلوبة لتجنب الشاشة البيضاء
+    // 🛡️ درع الحماية المعكوس: نجلب بيانات الفايربيس أولاً، ثم نفرض سيطرتنا بالقيم الآمنة
     const secureUser: User = {
       ...user,
       permissions: {
-        canViewDebts: true,
+        ...(user.permissions || {}),        // 1. نقرأ ما في الفايربيس أولاً
+        canViewDebts: true,                 // 2. نفرض سيطرتنا ونضمن ظهور الأقسام
         canViewCompanies: true,
-        canViewTreasury: true,
-        canViewPurchases: true,
+        canViewTreasury: true,              // ✅ الخزنة مضمونة الظهور
+        canViewPurchases: true,             // ✅ المشتريات مضمونة الظهور
         canViewDeposits: true,
-        canViewBackup: true,
         canViewAdvances: true,
+        canViewBackup: true,
         canViewArchive: true,
-        ...(user.permissions || {})
       }
     };
 
     setCurrentUser(secureUser);
     sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(secureUser));
     
+    // تحديد أول قسم مسموح به للفتح تلقائياً
     const allowed = [
       { id: "debts", enabled: secureUser.permissions.canViewDebts },
       { id: "companies", enabled: secureUser.permissions.canViewCompanies },
