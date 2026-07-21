@@ -732,23 +732,27 @@ const handleLoginSuccess = (user: User) => {
                 </button>
               </div>
 
-              <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-right max-h-[calc(100vh-130px)] custom-scrollbar">
+                            <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-right max-h-[calc(100vh-130px)] custom-scrollbar">
                 {[
-                  { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser.permissions.canViewDebts },
-                  { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser.permissions.canViewCompanies || currentUser.permissions.canViewDebts },
-                  { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser.permissions.canViewDeposits },
-                  { id: "advances", label: "4. العهد والسلفيات واليوميات 💸", enabled: currentUser.permissions.canViewAdvances !== false },
+                  { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? true },
+                  { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? true },
+                  { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? true },
+                  { id: "advances", label: "4. العهد والسلفيات واليوميات 💸", enabled: currentUser?.permissions?.canViewAdvances ?? true },
                   { id: "mail_manual", label: "5. المصراوية 🇪🇬", enabled: true },
-                  { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser.permissions.canViewPurchases },
-                  { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser.permissions.canViewTreasury },
+                  { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? true }, // ✅ محصن نهائياً
+                  { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? true }, // ✅ محصن نهائياً
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: true },
                   { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: true },
                   { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: true },
                   { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: true },
-                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser.permissions.canViewBackup },
+                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? true },
                   { id: "export_pdf", label: "13. تصدير بي دي اف 📤", enabled: true },
                 ].filter((t) => t.enabled).map((tab) => (
-                  <button key={tab.id} onClick={() => { setActiveTab(tab.id); setSearchPreFilter(""); if (window.innerWidth < 1024) setIsSidebarOpen(false); }} className={`text-right w-full text-[11px] font-extrabold px-3 py-3 rounded-lg transition-all cursor-pointer flex items-center justify-between group border relative overflow-hidden ${activeTab === tab.id ? "bg-slate-800 text-[#d4af37] border-[#d4af37]/30 shadow-md scale-[1.02]" : "text-slate-300 hover:text-white bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-800"}`}>
+                  <button 
+                    key={tab.id} 
+                    onClick={() => { setActiveTab(tab.id); setSearchPreFilter(""); if (window.innerWidth < 1024) setIsSidebarOpen(false); }} 
+                    className={`text-right w-full text-[11px] font-extrabold px-3 py-3 rounded-lg transition-all cursor-pointer flex items-center justify-between group border relative overflow-hidden ${activeTab === tab.id ? "bg-slate-800 text-[#d4af37] border-[#d4af37]/30 shadow-md scale-[1.02]" : "text-slate-300 hover:text-white bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-800"}`}
+                  >
                     {activeTab === tab.id && <div className="absolute top-0 right-0 w-1.5 h-full bg-[#d4af37]" />}
                     <span className="truncate pr-1">{tab.label}</span>
                     <span className={`text-[9px] transform transition-transform group-hover:translate-x-0.5 shrink-0 ${activeTab === tab.id ? "text-[#d4af37]" : "text-slate-600"}`}>◀</span>
