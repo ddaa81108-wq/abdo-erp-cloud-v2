@@ -1,16 +1,16 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import config from "../../firebase-applet-config.json";
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore, Firestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: config.apiKey,
-  authDomain: config.authDomain,
-  projectId: config.projectId,
-  storageBucket: config.storageBucket,
-  messagingSenderId: config.messagingSenderId,
-  appId: config.appId,
-  measurementId: (config as any).measurementId,
+  apiKey: "AIzaSyBfLx_TXLJHgcWAzAXk0bzAcqhWoAuIYUk",
+  authDomain: "abdonew-3dd25.firebaseapp.com",
+  projectId: "abdonew-3dd25",
+  storageBucket: "abdonew-3dd25.firebasestorage.app",
+  messagingSenderId: "471040967252",
+  appId: "1:471040967252:web:afb98f2cb735acf2caa3c1"
 };
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+export let db: Firestore = getFirestore(app);
+export const auth = getAuth(app);
