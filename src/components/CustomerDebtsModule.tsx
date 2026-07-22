@@ -11,6 +11,41 @@ import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUti
 
 import { VoiceInputButton } from "./VoiceInputButton";
 
+// Overdue Debt Ticker Component with fade in/out animation
+const OverdueDebtTicker = ({ customers }: { customers: any[] }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  const overdueCustomers = customers.filter(acc => {
+    const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+    return daysSinceCreation > 2 && acc.debtBalance > 0;
+  });
+
+  useEffect(() => {
+    if (overdueCustomers.length === 0) return;
+    
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % overdueCustomers.length);
+    }, 5000); // Change every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [overdueCustomers.length]);
+
+  if (overdueCustomers.length === 0) {
+    return <span className="text-white/80 font-bold text-xs">لا توجد ديون متأخرة</span>;
+  }
+
+  const currentCustomer = overdueCustomers[currentIndex];
+  const daysSinceCreation = Math.floor((Date.now() - new Date(currentCustomer.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+
+  return (
+    <div className="flex items-center gap-2 animate-fade-in-out">
+      <span className="text-white font-bold text-xs">{currentCustomer.cust.name}</span>
+      <span className="text-white/80 font-mono text-xs">{Math.round(currentCustomer.debtBalance).toLocaleString("en-US")} د.ل</span>
+      <span className="text-white/60 font-bold text-xs">({daysSinceCreation} يوم)</span>
+    </div>
+  );
+};
+
 interface CustomerDebtsModuleProps {
   state: ERPState;
   onUpdateState: (newState: ERPState) => void;
@@ -840,99 +875,77 @@ export default function CustomerDebtsModule({
 
       {/* القسم العلوي: إجمالي الديون وإجراءات الزبائن */}
       {!selectionMode ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           
-          {/* صندوق إجمالي الديون */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Landmark className="w-24 h-24 text-white" />
+          {/* صندوق إجمالي الديون - مصغر وأخضر */}
+          <div className="bg-emerald-600 border border-emerald-500 rounded-xl p-3 shadow-lg relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Landmark className="w-16 h-16 text-white" />
             </div>
             <div className="relative z-10 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-white font-extrabold text-sm tracking-wide">
-                  إجمالي الديون المطلوبة
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white font-extrabold text-xs tracking-wide">
+                  إجمالي الديون
                 </span>
-                <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
-                  <Landmark className="w-5 h-5 text-white" />
+                <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
+                  <Landmark className="w-4 h-4 text-white" />
                 </div>
               </div>
               <div className="mt-auto">
-                <div className="font-mono text-3xl font-black text-rose-500 tracking-widest drop-shadow-md block mb-1">
+                <div className="font-mono text-xl font-black text-white tracking-widest drop-shadow-md block mb-1">
                   {Math.round(totalOutstandingDebt).toLocaleString("en-US")}{" "}
-                  <span className="text-lg font-bold text-slate-300">د.ل</span>
+                  <span className="text-sm font-bold text-white/80">د.ل</span>
                 </div>
-                <div className="text-[10px] text-slate-400 font-semibold bg-white/5 px-2 py-1 rounded-md inline-block">
-                  {activeCustomersList.length} حساب مفتوح
+                <div className="text-[9px] text-white/70 font-semibold bg-white/10 px-2 py-0.5 rounded-md inline-block">
+                  {activeCustomersList.length} حساب
                 </div>
               </div>
             </div>
           </div>
 
-          {/* كرت مدمج: إضافة عميل جديد + وضع الإرسال السريع */}
-          <div className="bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <UserPlus className="w-24 h-24 text-white" />
+          {/* كرت مدمج: إضافة عميل جديد + وضع الإرسال السريع - مصغر وأخضر */}
+          <div className="bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 rounded-xl p-3 shadow-lg relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+              <UserPlus className="w-16 h-16 text-white" />
             </div>
-            <div className="relative z-10 flex flex-col gap-3">
+            <div className="relative z-10 flex flex-col gap-2">
               <button
                 onClick={() => setShowAddCustomerModal(true)}
-                className="flex items-center gap-3 text-right w-full bg-white/20 hover:bg-white/30 p-3 rounded-xl backdrop-blur-md transition-all"
+                className="flex items-center gap-2 text-right w-full bg-white/20 hover:bg-white/30 p-2 rounded-lg backdrop-blur-md transition-all"
               >
-                <div className="bg-white p-2 rounded-xl">
-                  <UserPlus className="w-6 h-6 text-emerald-600" />
+                <div className="bg-white p-1.5 rounded-lg">
+                  <UserPlus className="w-4 h-4 text-emerald-600" />
                 </div>
-                <span className="text-white font-extrabold text-lg tracking-wide">إضافة عميل جديد</span>
+                <span className="text-white font-extrabold text-sm tracking-wide">إضافة عميل</span>
               </button>
               <button
                 onClick={() => setSelectionMode(true)}
-                className="flex items-center gap-3 text-right w-full bg-white/20 hover:bg-white/30 p-3 rounded-xl backdrop-blur-md transition-all"
+                className="flex items-center gap-2 text-right w-full bg-white/20 hover:bg-white/30 p-2 rounded-lg backdrop-blur-md transition-all"
               >
-                <div className="bg-white p-2 rounded-xl">
-                  <CheckSquare className="w-6 h-6 text-emerald-600" />
+                <div className="bg-white p-1.5 rounded-lg">
+                  <CheckSquare className="w-4 h-4 text-emerald-600" />
                 </div>
-                <span className="text-white font-extrabold text-lg tracking-wide">وضع الإرسال السريع</span>
+                <span className="text-white font-extrabold text-sm tracking-wide">وضع الإرسال</span>
               </button>
             </div>
           </div>
 
-          {/* بطاقة شريط الأخبار المتحرك للديون المتأخرة */}
-          <div className="bg-amber-500 border border-amber-400 rounded-2xl p-5 shadow-2xl relative overflow-hidden lg:col-span-2">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <AlertCircle className="w-24 h-24 text-white" />
+          {/* بطاقة شريط الأخبار المتحرك للديون المتأخرة - أخضر */}
+          <div className="bg-emerald-600 border border-emerald-500 rounded-xl p-3 shadow-lg relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-2 opacity-10">
+              <AlertCircle className="w-16 h-16 text-white" />
             </div>
             <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
-                  <AlertCircle className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2 mb-2">
+                <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md">
+                  <AlertCircle className="w-4 h-4 text-white" />
                 </div>
-                <span className="text-white font-extrabold text-sm tracking-wide">
-                  تنبيه الديون المتأخرة (أكثر من يومين)
+                <span className="text-white font-extrabold text-xs tracking-wide">
+                  تنبيه الديون المتأخرة
                 </span>
               </div>
-              <div className="bg-white/10 rounded-xl p-3 overflow-hidden">
-                <div className="flex gap-4 animate-marquee whitespace-nowrap">
-                  {[...activeCustomersList]
-                    .filter(acc => {
-                      const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                      return daysSinceCreation > 2 && acc.debtBalance > 0;
-                    })
-                    .map(acc => {
-                      const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={acc.cust.id} className="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg">
-                          <span className="text-white font-bold text-xs">{acc.cust.name}</span>
-                          <span className="text-white/80 font-mono text-xs">{Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل</span>
-                          <span className="text-amber-200 font-bold text-xs">({daysSinceCreation} يوم)</span>
-                        </div>
-                      );
-                    })}
-                  {[...activeCustomersList].filter(acc => {
-                    const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-                    return daysSinceCreation > 2 && acc.debtBalance > 0;
-                  }).length === 0 && (
-                    <span className="text-white/80 font-bold text-xs">لا توجد ديون متأخرة</span>
-                  )}
-                </div>
+              <div className="bg-white/10 rounded-lg p-2 overflow-hidden h-12 flex items-center justify-center">
+                <OverdueDebtTicker customers={activeCustomersList} />
               </div>
             </div>
           </div>

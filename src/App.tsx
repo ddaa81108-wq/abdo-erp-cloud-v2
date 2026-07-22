@@ -694,11 +694,11 @@ const handleLoginSuccess = (user: User) => {
 
   return (
     <div className={`min-h-screen font-sans selection:bg-indigo-600 selection:text-white transition-colors duration-300`} dir="rtl">
-      <header className={`bg-slate-900 text-white shadow-xl sticky top-0 z-40 border-b border-indigo-950 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}>
+      <header className={`bg-white text-slate-900 shadow-xl sticky top-0 z-40 border-b border-slate-200 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}>
         <div className="w-full px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3 shrink-0">
             <div className="text-right">
-              <h1 className="font-extrabold text-sm tracking-tight text-white flex items-center gap-1.5 leading-none">
+              <h1 className="font-extrabold text-sm tracking-tight text-slate-900 flex items-center gap-1.5 leading-none">
                 <span>نظام الإدارة الشامل 📊</span>
                 <span className="text-[9px] bg-emerald-600 text-white font-bold font-mono px-1.5 py-0.2 rounded-full leading-normal">مستقر ✓</span>
               </h1>
@@ -711,14 +711,14 @@ const handleLoginSuccess = (user: User) => {
               placeholder="🔍 البحث الشامل..."
               value={globalSearchQuery}
               onChange={(e) => setGlobalSearchQuery(e.target.value)}
-              className="w-full text-right text-xs pr-9 pl-8 py-2 bg-slate-800 hover:bg-slate-750/90 focus:bg-slate-750 border border-slate-700 hover:border-slate-600 focus:border-indigo-550 rounded-xl text-white font-sans placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-bold"
+              className="w-full text-right text-xs pr-9 pl-8 py-2 bg-slate-100 hover:bg-slate-200 focus:bg-slate-200 border border-slate-300 hover:border-emerald-400 focus:border-emerald-500 rounded-xl text-slate-900 font-sans placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all font-bold"
               dir="rtl"
             />
-            <Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" />
+            <Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-500" />
             <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
-              <VoiceInputButton onResult={(text) => setGlobalSearchQuery(text)} className="bg-slate-700 text-slate-300 hover:bg-slate-600 border-none scale-90" />
+              <VoiceInputButton onResult={(text) => setGlobalSearchQuery(text)} className="bg-emerald-100 text-emerald-600 hover:bg-emerald-200 border-none scale-90" />
               {globalSearchQuery && (
-                <button onClick={() => setGlobalSearchQuery("")} className="text-slate-400 hover:text-white rounded-full hover:bg-slate-700 p-1 flex items-center justify-center" title="تصفير البحث ✕">
+                <button onClick={() => setGlobalSearchQuery("")} className="text-slate-500 hover:text-emerald-600 rounded-full hover:bg-emerald-100 p-1 flex items-center justify-center" title="تصفير البحث ✕">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -730,18 +730,18 @@ const handleLoginSuccess = (user: User) => {
             )}
           </div>
 
-          <button onClick={() => window.open("/card-generator.html", "_blank")} className="bg-amber-500 hover:bg-amber-600 text-white border border-amber-400 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0" title="منظومة توليد الكروت الشاملة">
+          <button onClick={() => window.open("/card-generator.html", "_blank")} className="bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0" title="منظومة توليد الكروت الشاملة">
             <span className="text-sm">👑</span><span>منظومة الكروت الذكية</span>
           </button>
 
           <div className="flex items-center gap-1.5 flex-wrap">
-            <button onClick={handleToggleTheme} className={`font-black text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer border ${themeBtnData.bg}`} title="تغيير مظهر المنظومة">
+            <button onClick={handleToggleTheme} className={`font-black text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer border border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700`} title="تغيير مظهر المنظومة">
               <span className="text-sm">{themeBtnData.icon}</span><span>{themeBtnData.label}</span>
             </button>
           </div>
 
-          <div className="bg-slate-800/80 border border-slate-700/80 rounded-xl p-1 px-1.5 flex items-center justify-end">
-            <button id="header_exit_button" onClick={handleLogout} className="p-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-sm border border-rose-500" title="تسجيل الخروج والعودة لبوابة الدخول ✕">
+          <div className="bg-slate-100 border border-slate-300 rounded-xl p-1 px-1.5 flex items-center justify-end">
+            <button id="header_exit_button" onClick={handleLogout} className="p-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg transition-all flex items-center justify-center cursor-pointer shadow-sm border border-emerald-500" title="تسجيل الخروج والعودة لبوابة الدخول ✕">
               <LogOut className="w-4 h-4 text-white" />
             </button>
           </div>
@@ -776,13 +776,13 @@ const handleLoginSuccess = (user: User) => {
       <div className={`w-full p-4 flex flex-col gap-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`} dir="rtl">
         <AnimatePresence>
           {isSidebarOpen && (
-            <motion.aside initial={{ x: "100%", opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }} transition={{ type: "spring", damping: 28, stiffness: 220 }} className="fixed top-0 right-0 h-screen w-[210px] bg-slate-950 shadow-2xl overflow-hidden flex flex-col justify-between border-l border-slate-900 z-50" dir="rtl">
-              <div className="p-3.5 border-b border-slate-900 flex items-center justify-between bg-slate-950 shrink-0">
+            <motion.aside initial={{ x: "100%", opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: "100%", opacity: 0 }} transition={{ type: "spring", damping: 28, stiffness: 220 }} className="fixed top-0 right-0 h-screen w-[210px] bg-white shadow-2xl overflow-hidden flex flex-col justify-between border-l border-slate-200 z-50" dir="rtl">
+              <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
                 <div className="text-right">
-                  <span className="text-[9px] text-indigo-400 font-extrabold block uppercase tracking-widest leading-none font-mono">الدوائر المالية والمحاسبية</span>
-                  <h3 className="font-extrabold text-white text-[11.5px] mt-1 leading-none">الإدارة العامة 📋</h3>
+                  <span className="text-[9px] text-emerald-600 font-extrabold block uppercase tracking-widest leading-none font-mono">الدوائر المالية والمحاسبية</span>
+                  <h3 className="font-extrabold text-slate-900 text-[11.5px] mt-1 leading-none">الإدارة العامة 📋</h3>
                 </div>
-                <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all cursor-pointer border border-slate-800" title="طي الأقسام">
+                <button onClick={() => setIsSidebarOpen(false)} className="p-1.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 hover:text-emerald-700 rounded-lg transition-all cursor-pointer border border-emerald-300" title="طي الأقسام">
                   <Menu className="w-4 h-4" />
                 </button>
               </div>
@@ -805,20 +805,20 @@ const handleLoginSuccess = (user: User) => {
                   <button 
                     key={tab.id} 
                     onClick={() => { setActiveTab(tab.id); setSearchPreFilter(""); if (window.innerWidth < 1024) setIsSidebarOpen(false); }} 
-                    className={`text-right w-full text-[11px] font-extrabold px-3 py-3 rounded-lg transition-all cursor-pointer flex items-center justify-between group border relative overflow-hidden ${activeTab === tab.id ? "bg-slate-800 text-[#d4af37] border-[#d4af37]/30 shadow-md scale-[1.02]" : "text-slate-300 hover:text-white bg-slate-900 border-slate-800 hover:border-slate-700 hover:bg-slate-800"}`}
+                    className={`text-right w-full text-[11px] font-extrabold px-3 py-3 rounded-lg transition-all cursor-pointer flex items-center justify-between group border relative overflow-hidden ${activeTab === tab.id ? "bg-emerald-600 text-white border-emerald-500 shadow-md scale-[1.02]" : "text-slate-700 hover:text-emerald-600 bg-white border-slate-300 hover:border-emerald-400 hover:bg-emerald-50"}`}
                   >
-                    {activeTab === tab.id && <div className="absolute top-0 right-0 w-1.5 h-full bg-[#d4af37]" />}
+                    {activeTab === tab.id && <div className="absolute top-0 right-0 w-1.5 h-full bg-white" />}
                     <span className="truncate pr-1">{tab.label}</span>
-                    <span className={`text-[9px] transform transition-transform group-hover:translate-x-0.5 shrink-0 ${activeTab === tab.id ? "text-[#d4af37]" : "text-slate-600"}`}>◀</span>
+                    <span className={`text-[9px] transform transition-transform group-hover:translate-x-0.5 shrink-0 ${activeTab === tab.id ? "text-white" : "text-emerald-600"}`}>◀</span>
                   </button>
                 ))}
               </div>
 
-              <div className="p-2.5 border-t border-slate-900 bg-slate-950/40 space-y-1.5 shrink-0" dir="rtl">
+              <div className="p-2.5 border-t border-slate-200 bg-white space-y-1.5 shrink-0" dir="rtl">
                 <button type="button" onClick={() => setShowExcelImportModal(true)} className="w-full bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-emerald-600 shrink-0 cursor-pointer" title="تحميل كشوفات وحسابات من ملف Excel">
                   <FileSpreadsheet className="w-3.5 h-3.5 text-white" /><span>استيراد كشوفات من Excel 📥</span>
                 </button>
-                <button type="button" onClick={handleExportAllToExcel} className="w-full bg-slate-900 hover:bg-slate-800 active:scale-98 text-indigo-400 hover:text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-slate-800 shrink-0 cursor-pointer" title="تصدير نسخة كاملة من المنظومة كملف Excel">
+                <button type="button" onClick={handleExportAllToExcel} className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-emerald-500 shrink-0 cursor-pointer" title="تصدير نسخة كاملة من المنظومة كملف Excel">
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /><span>تصدير الحسابات Excel 📤</span>
                 </button>
               </div>
