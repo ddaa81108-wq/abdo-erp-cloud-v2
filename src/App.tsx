@@ -609,7 +609,6 @@ const handleLoginSuccess = (user: User) => {
         canViewTreasury: true,              // ✅ الخزنة مضمونة الظهور
         canViewPurchases: true,             // ✅ المشتريات مضمونة الظهور
         canViewDeposits: true,
-        canViewAdvances: true,
         canViewBackup: true,
         canViewArchive: true,
       }
@@ -793,8 +792,7 @@ const handleLoginSuccess = (user: User) => {
                   { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? true },
                   { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? true },
                   { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? true },
-                  { id: "advances", label: "4. العهد والسلفيات واليوميات 💸", enabled: currentUser?.permissions?.canViewAdvances ?? true },
-                  { id: "mail_manual", label: "5. المصراوية 🇪🇬", enabled: true },
+                  { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: true },
                   { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? true }, // ✅ محصن نهائياً
                   { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? true }, // ✅ محصن نهائياً
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: true },
