@@ -730,10 +730,20 @@ export default function PurchasesModuleArchivedDays({
       color: DAY_COLORS[colorIndex],
     }));
 
-    // Create new day
+    // Create new day with unique date (check for duplicates)
     const newDate = new Date().toISOString().split('T')[0];
+    
+    // Check if a day with this date already exists
+    const dayExists = currentData.days.some(d => d.date === newDate);
+    let finalDate = newDate;
+    
+    if (dayExists) {
+      // If day exists, append timestamp to make it unique
+      finalDate = `${newDate}_${Date.now()}`;
+    }
+    
     const newDay: DayData = {
-      date: newDate,
+      date: finalDate,
       isArchived: false,
       isReadOnly: false,
       rows: [],
@@ -750,7 +760,7 @@ export default function PurchasesModuleArchivedDays({
 
     updateCurrentMerchantState((prev) => ({
       ...prev,
-      currentDayDate: newDate,
+      currentDayDate: finalDate,
       days: [newDay, ...prev.days],
       previousBalance: remainingTotalOwed,
       egyptianPreviousBalance: remainingEgyptianValue,
@@ -771,10 +781,12 @@ export default function PurchasesModuleArchivedDays({
   // NEW: Save editing for archived day
   const handleSaveDayEdit = (dayDate: string) => {
     setEditingDayDate(null);
-    updateDayState(dayDate, (prev) => ({
-      ...prev,
-      isReadOnly: true,
-    }));
+    updateCurrentMerchantState((prev) => {
+      const updatedDays = prev.days.map(day => 
+        day.date === dayDate ? { ...day, isReadOnly: true } : day
+      );
+      return { ...prev, days: updatedDays };
+    });
   };
 
   // NEW: Switch to specific day
