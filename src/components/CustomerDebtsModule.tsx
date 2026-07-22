@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UserPlus, Calendar, Trash2, CircleCheck as CheckCircle, Clock, CircleAlert as AlertCircle, Camera, Search, X, Check, Landmark, SquareCheck as CheckSquare, Send, FileText, CircleCheck as CheckCircle2, Copy, Calculator, Plus, Minus } from "lucide-react";
 import {
   ERPState,
@@ -840,7 +840,7 @@ export default function CustomerDebtsModule({
 
       {/* القسم العلوي: إجمالي الديون وإجراءات الزبائن */}
       {!selectionMode ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
           
           {/* صندوق إجمالي الديون */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
@@ -868,37 +868,74 @@ export default function CustomerDebtsModule({
             </div>
           </div>
 
-          {/* كرت إضافة عميل جديد */}
-          <button
-            onClick={() => setShowAddCustomerModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 border border-indigo-500 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
-          >
+          {/* كرت مدمج: إضافة عميل جديد + وضع الإرسال السريع */}
+          <div className="bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
               <UserPlus className="w-24 h-24 text-white" />
             </div>
-            <div className="relative z-10 flex items-center gap-4">
-              <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md text-white">
-                <UserPlus className="w-7 h-7" />
-              </div>
-              <span className="text-white font-extrabold text-xl tracking-wide">إضافة عميل جديد</span>
+            <div className="relative z-10 flex flex-col gap-3">
+              <button
+                onClick={() => setShowAddCustomerModal(true)}
+                className="flex items-center gap-3 text-right w-full bg-white/20 hover:bg-white/30 p-3 rounded-xl backdrop-blur-md transition-all"
+              >
+                <div className="bg-white p-2 rounded-xl">
+                  <UserPlus className="w-6 h-6 text-emerald-600" />
+                </div>
+                <span className="text-white font-extrabold text-lg tracking-wide">إضافة عميل جديد</span>
+              </button>
+              <button
+                onClick={() => setSelectionMode(true)}
+                className="flex items-center gap-3 text-right w-full bg-white/20 hover:bg-white/30 p-3 rounded-xl backdrop-blur-md transition-all"
+              >
+                <div className="bg-white p-2 rounded-xl">
+                  <CheckSquare className="w-6 h-6 text-emerald-600" />
+                </div>
+                <span className="text-white font-extrabold text-lg tracking-wide">وضع الإرسال السريع</span>
+              </button>
             </div>
-          </button>
+          </div>
 
-          {/* كرت وضع الإرسال السريع */}
-          <button
-            onClick={() => setSelectionMode(true)}
-            className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-2xl p-5 shadow-2xl relative overflow-hidden group cursor-pointer transition-all flex items-center justify-center gap-3 text-right"
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <CheckSquare className="w-24 h-24 text-white" />
+          {/* بطاقة شريط الأخبار المتحرك للديون المتأخرة */}
+          <div className="bg-amber-500 border border-amber-400 rounded-2xl p-5 shadow-2xl relative overflow-hidden lg:col-span-2">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <AlertCircle className="w-24 h-24 text-white" />
             </div>
-            <div className="relative z-10 flex items-center gap-4">
-              <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md text-white">
-                <CheckSquare className="w-7 h-7" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="bg-white/20 p-2 rounded-xl backdrop-blur-md">
+                  <AlertCircle className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-white font-extrabold text-sm tracking-wide">
+                  تنبيه الديون المتأخرة (أكثر من يومين)
+                </span>
               </div>
-              <span className="text-white font-extrabold text-xl tracking-wide">وضع الإرسال السريع</span>
+              <div className="bg-white/10 rounded-xl p-3 overflow-hidden">
+                <div className="flex gap-4 animate-marquee whitespace-nowrap">
+                  {[...activeCustomersList]
+                    .filter(acc => {
+                      const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                      return daysSinceCreation > 2 && acc.debtBalance > 0;
+                    })
+                    .map(acc => {
+                      const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={acc.cust.id} className="inline-flex items-center gap-2 bg-white/20 px-3 py-1.5 rounded-lg">
+                          <span className="text-white font-bold text-xs">{acc.cust.name}</span>
+                          <span className="text-white/80 font-mono text-xs">{Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل</span>
+                          <span className="text-amber-200 font-bold text-xs">({daysSinceCreation} يوم)</span>
+                        </div>
+                      );
+                    })}
+                  {[...activeCustomersList].filter(acc => {
+                    const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+                    return daysSinceCreation > 2 && acc.debtBalance > 0;
+                  }).length === 0 && (
+                    <span className="text-white/80 font-bold text-xs">لا توجد ديون متأخرة</span>
+                  )}
+                </div>
+              </div>
             </div>
-          </button>
+          </div>
 
         </div>
       ) : (
@@ -940,15 +977,53 @@ export default function CustomerDebtsModule({
           {[...activeCustomersList].reverse().map((acc, i) => {
             const isSelected = selectedForRep.includes(acc.cust.id);
             
-            const colors = [
-              { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
-              { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" },
-              { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" },
-              { borderT: "border-t-emerald-500", text: "text-emerald-600", bgBadge: "bg-emerald-50" },
-              { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
-              { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
-            ];
-            const clr = colors[i % colors.length];
+            // Calculate days since creation
+            const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+            
+            // Determine card color based on days since creation
+            let cardColorClass = "border-t-indigo-500";
+            let textColorClass = "text-indigo-600";
+            let bgBadgeClass = "bg-indigo-50";
+            
+            if (daysSinceCreation > 2 && acc.debtBalance > 0) {
+              if (daysSinceCreation <= 5) {
+                cardColorClass = "border-t-amber-500";
+                textColorClass = "text-amber-600";
+                bgBadgeClass = "bg-amber-50";
+              } else if (daysSinceCreation <= 10) {
+                cardColorClass = "border-t-orange-500";
+                textColorClass = "text-orange-600";
+                bgBadgeClass = "bg-orange-50";
+              } else if (daysSinceCreation <= 15) {
+                cardColorClass = "border-t-rose-500";
+                textColorClass = "text-rose-600";
+                bgBadgeClass = "bg-rose-50";
+              } else {
+                cardColorClass = "border-t-red-600";
+                textColorClass = "text-red-600";
+                bgBadgeClass = "bg-red-50";
+              }
+            } else if (Number(acc.debtBalance) === 0) {
+              cardColorClass = "border-t-emerald-400";
+              textColorClass = "text-emerald-600";
+              bgBadgeClass = "bg-emerald-50";
+            } else {
+              // Default colors for new customers (≤ 2 days)
+              const defaultColors = [
+                { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
+                { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
+                { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
+                { borderT: "border-t-blue-500", text: "text-blue-600", bgBadge: "bg-blue-50" },
+                { borderT: "border-t-teal-500", text: "text-teal-600", bgBadge: "bg-teal-50" },
+                { borderT: "border-t-sky-500", text: "text-sky-600", bgBadge: "bg-sky-50" },
+              ];
+              const defaultClr = defaultColors[i % defaultColors.length];
+              cardColorClass = defaultClr.borderT;
+              textColorClass = defaultClr.text;
+              bgBadgeClass = defaultClr.bgBadge;
+            }
+            
+            const clr = { borderT: cardColorClass, text: textColorClass, bgBadge: bgBadgeClass };
 
             return (
               <div
