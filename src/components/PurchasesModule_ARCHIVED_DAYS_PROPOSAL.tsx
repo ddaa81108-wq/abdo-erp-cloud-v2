@@ -827,22 +827,21 @@ export default function PurchasesModuleArchivedDays({
       // Delta in egyptian previous balance = deltaVodafoneBase - deltaConsumerValue
       const deltaEgyptianPreviousBalance = deltaVodafoneBase - deltaConsumerValue;
       
-      // Update both days in a single operation using map only (no push, no duplication)
+      // Update both days in a single operation
       updateCurrentMerchantState((prev) => {
         const updatedDays = prev.days.map(day => {
-          // 1. This is the archived day being edited: return its updated data
+          // Update the archived day with new data and set to read-only
           if (day.date === dayDate) {
             return { ...current, isReadOnly: true };
           }
-          // 2. This is the active day: update previous balance with deltas only
+          // Update the active day's previous balances with deltas
           if (!day.isArchived) {
             return {
               ...day,
               previousBalance: (Number(day.previousBalance) || 0) + deltaPreviousBalance,
-              egyptianPreviousBalance: (Number(day.egyptianPreviousBalance) || 0) + deltaEgyptianPreviousBalance
+              egyptianPreviousBalance: (Number(day.egyptianPreviousBalance) || 0) + deltaEgyptianPreviousBalance,
             };
           }
-          // 3. Any other day: leave it as is
           return day;
         });
         
