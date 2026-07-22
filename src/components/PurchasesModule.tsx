@@ -547,7 +547,7 @@ export default function PurchasesModule({
   };
 
   // 1. القيمة السابقة
-  const prevBalance = Math.round(currentData.previousBalance || 0);
+  const prevBalance = Math.round(Number(currentData.previousBalance) || 0);
 
   // 2. إجمالي شغل اليوم (مجموع القيمة المقيدة بالدينار لكل المعاملات، اللي هي مجموع result)
   const totalTodayWork = currentData.rows.reduce(
