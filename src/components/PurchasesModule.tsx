@@ -105,6 +105,11 @@ export default function PurchasesModule({
   const [birdDismissed, setBirdDismissed] = useState(false);
   const [isFlyingOut, setIsFlyingOut] = useState(false);
 
+  // Daily Review Alerts States
+  const [showReviewAlert, setShowReviewAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertDismissed, setAlertDismissed] = useState(false);
+
   const confirmResetPurchases = () => {
     setMerchStates({
       baqy: {
@@ -595,6 +600,36 @@ export default function PurchasesModule({
     }
     return () => clearTimeout(timer);
   }, [totalPurchasesDebt, birdDismissed, showBird]);
+
+  // Daily Review Alerts - Check every minute after 3:00 AM
+  useEffect(() => {
+    const checkTimeAndShowAlert = () => {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+
+      // Check if it's 3:00 AM or later
+      if (hours >= 3 && !alertDismissed) {
+        const messages = [
+          "هل نسيت إضافة عملية؟",
+          "هل يوجد مبلغ مسدد لم يتم تسجيله؟",
+          "هل الحسابات مكتملة؟",
+          "هل راجعت جميع معاملات اليوم؟",
+        ];
+        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+        setAlertMessage(randomMessage);
+        setShowReviewAlert(true);
+      }
+    };
+
+    // Check immediately
+    checkTimeAndShowAlert();
+
+    // Check every 5 minutes
+    const interval = setInterval(checkTimeAndShowAlert, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [alertDismissed]);
 
   const handleExportToPdf = () => {
     const merchTitle = activeMerch === "baqy" ? "التاجر الباقي" : "التاجر سمسم";
@@ -1787,6 +1822,38 @@ export default function PurchasesModule({
                 جميع القيود مؤرشفة ولا يمكن تعديلها أو حذفها للحفاظ على شفافية
                 النظام المحاسبي.
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Daily Review Alert */}
+      {showReviewAlert && (
+        <div className="fixed top-4 right-4 z-[10000] animate-in fade-in slide-in-from-right duration-300">
+          <div className="bg-amber-500 border-2 border-amber-600 rounded-2xl shadow-2xl p-4 max-w-sm text-white">
+            <div className="flex items-start gap-3">
+              <div className="text-3xl animate-pulse">⏰</div>
+              <div className="flex-1">
+                <h4 className="font-black text-sm mb-1">تنبيه مراجعة الحسابات</h4>
+                <p className="text-xs font-bold mb-3">{alertMessage}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowReviewAlert(false)}
+                    className="flex-1 bg-white text-amber-600 font-bold text-xs py-2 px-3 rounded-lg hover:bg-amber-50 transition"
+                  >
+                    حسناً، سأراجع
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowReviewAlert(false);
+                      setAlertDismissed(true);
+                    }}
+                    className="bg-amber-600 text-white font-bold text-xs py-2 px-3 rounded-lg hover:bg-amber-700 transition"
+                  >
+                    إخفاء للكامل
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
