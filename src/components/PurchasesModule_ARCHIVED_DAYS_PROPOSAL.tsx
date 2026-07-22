@@ -443,25 +443,26 @@ export default function PurchasesModuleArchivedDays({
 
   const currentDay = getCurrentDay();
 
-  // NEW: Calculate totals across all days
+  // NEW: Calculate totals for current active day only (NOT all days)
   const calculateAllDaysTotals = () => {
     let totalWork = 0;
     let totalPaid = 0;
     let totalVodafoneBase = 0;
     let totalConsumerValue = 0;
 
-    currentData.days.forEach(day => {
-      day.rows.forEach(row => {
+    // Only calculate from the current active day, not archived days
+    if (currentDay) {
+      currentDay.rows.forEach(row => {
         totalWork += Number(row.result) || 0;
         totalPaid += Number(row.paid) || 0;
         if (row.type && (row.type.includes("فودافون") || row.type.toLowerCase().includes("vodafone"))) {
           totalVodafoneBase += Number(row.value) || 0;
         }
       });
-      day.consumerRows?.forEach(cr => {
+      currentDay.consumerRows?.forEach(cr => {
         totalConsumerValue += Number(cr.amount) || 0;
       });
-    });
+    }
 
     return { totalWork, totalPaid, totalVodafoneBase, totalConsumerValue };
   };
@@ -653,8 +654,10 @@ export default function PurchasesModuleArchivedDays({
 
   const totalPurchasesDebt: number = Object.values(merchStates).reduce((sum: number, merch: any) => {
     const p = Math.round(Number(merch.previousBalance) || 0);
-    const w = merch.days?.reduce((s: number, day: any) => s + day.rows?.reduce((ds: number, r: any) => ds + (Number(r.result) || 0), 0) || 0, 0) || 0;
-    const pd = merch.days?.reduce((s: number, day: any) => s + day.rows?.reduce((ds: number, r: any) => ds + (Number(r.paid) || 0), 0) || 0, 0) || 0;
+    // Only calculate from the current active day, not all archived days
+    const currentDayData = merch.days?.find((d: any) => d.date === merch.currentDayDate) || merch.days?.[0];
+    const w = currentDayData?.rows?.reduce((ds: number, r: any) => ds + (Number(r.result) || 0), 0) || 0;
+    const pd = currentDayData?.rows?.reduce((ds: number, r: any) => ds + (Number(r.paid) || 0), 0) || 0;
     return sum + (p + w - pd);
   }, 0 as number) as number;
 
