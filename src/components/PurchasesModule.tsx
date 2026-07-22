@@ -935,212 +935,251 @@ export default function PurchasesModule({
 
   return (
     <div className="space-y-4 text-right font-sans" dir="rtl">
-      {/* Tab Switcher & Global Actions - Consolidated Toolbar */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-2 bg-slate-50 border border-slate-200/60 rounded-2xl shadow-sm">
-        {/* Toggle Switch */}
-        <div className="inline-flex items-center bg-slate-200/60 p-1 rounded-xl border border-slate-300/50">
-          <button
-            type="button"
-            onClick={() => setActiveMerch("baqy")}
-            className={`px-6 py-2 rounded-lg font-bold text-xs transition-all duration-300 w-32 cursor-pointer ${
-              activeMerch === "baqy"
-                ? "bg-white text-indigo-700 shadow-sm"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/50"
-            }`}
-          >
-            البيان (Baqy)
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveMerch("semsem")}
-            className={`px-6 py-2 rounded-lg font-bold text-xs transition-all duration-300 w-32 cursor-pointer ${
-              activeMerch === "semsem"
-                ? "bg-white text-indigo-700 shadow-sm"
-                : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/50"
-            }`}
-          >
-            سمسم (Semsem)
-          </button>
+      {/* Main Layout Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        {/* Top Section: 5 Cards + Buttons */}
+        <div className="xl:col-span-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {/* Card 1 */}
+            <div className="bg-white border border-slate-200/70 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-500 font-bold text-[11px]">
+                  📝 1. القيمة السابقة
+                </span>
+              </div>
+              <div className="flex items-end gap-1.5">
+                <input
+                  type="number"
+                  step="1"
+                  value={prevBalance}
+                  onChange={(e) => handleUpdatePreviousBalance(e.target.value)}
+                  className="font-mono text-2xl font-black text-slate-800 w-full border-none focus:ring-0 focus:outline-none p-0 bg-transparent text-right placeholder-slate-300 transition-colors focus:text-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="0"
+                />
+                <span className="text-xs font-bold text-slate-400 mb-1">د.ل</span>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="bg-white border border-emerald-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow border-t-2 border-t-emerald-400 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-emerald-700/80 font-bold text-[11px]">
+                  ⚡ 2. إجمالي شغل اليوم
+                </span>
+              </div>
+              <div>
+                <span className="font-mono text-xl font-black text-emerald-600 leading-none">
+                  {totalTodayWork.toLocaleString()}{" "}
+                  <span className="text-xs font-bold text-emerald-400">د.ل</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="bg-white border border-rose-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow border-t-2 border-t-rose-400 relative overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-rose-700/80 font-bold text-[11px]">
+                  🟢 3. إجمالي المسددة
+                </span>
+              </div>
+              <div>
+                <span className="font-mono text-xl font-black text-rose-600 leading-none">
+                  {totalPaidToday.toLocaleString()}{" "}
+                  <span className="text-xs font-bold text-rose-400">د.ل</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Card 4 - Highlighted */}
+            <div className={`bg-white border rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 ${remainingTotalOwed > 0 ? "border-indigo-100 border-t-rose-500" : remainingTotalOwed < 0 ? "border-indigo-100 border-t-emerald-500" : "border-indigo-100 border-t-indigo-500"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`font-bold text-[11px] ${remainingTotalOwed > 0 ? "text-rose-700/80" : remainingTotalOwed < 0 ? "text-emerald-700/80" : "text-indigo-700/80"}`}>
+                  🎒 4. إجمالي الديون
+                </span>
+              </div>
+              <div className="relative z-10">
+                <span className={`font-mono text-xl font-black leading-none ${remainingTotalOwed > 0 ? "text-rose-600" : remainingTotalOwed < 0 ? "text-emerald-600" : "text-indigo-900"}`}>
+                  {remainingTotalOwed.toLocaleString()}{" "}
+                  <span className={`text-xs font-bold ${remainingTotalOwed > 0 ? "text-rose-400" : remainingTotalOwed < 0 ? "text-emerald-400" : "text-indigo-400"}`}>د.ل</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Card 5 - Highlighted Egypt */}
+            <div className={`bg-white border rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 ${remainingEgyptianValue > 0 ? "border-purple-100 border-t-emerald-500" : remainingEgyptianValue < 0 ? "border-purple-100 border-t-rose-500" : "border-purple-100 border-t-purple-500"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`font-bold text-[11px] ${remainingEgyptianValue > 0 ? "text-emerald-700/80" : remainingEgyptianValue < 0 ? "text-rose-700/80" : "text-purple-700/80"}`}>
+                  🇪🇬 5. الباقي المصري
+                </span>
+              </div>
+              <div>
+                <span
+                  className={`font-mono text-xl font-black leading-none ${remainingEgyptianValue > 0 ? "text-emerald-600" : remainingEgyptianValue < 0 ? "text-rose-600" : "text-purple-600"}`}
+                >
+                  {remainingEgyptianValue.toLocaleString()}{" "}
+                  <span className={`text-xs font-bold ${remainingEgyptianValue > 0 ? "text-emerald-400" : remainingEgyptianValue < 0 ? "text-rose-400" : "text-purple-400"}`}>EGP</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Buttons Column */}
+            <div className="flex flex-col gap-2">
+              {/* Toggle Switch (Simsim) */}
+              <div className="inline-flex items-center bg-slate-200/60 p-1 rounded-xl border border-slate-300/50">
+                <button
+                  type="button"
+                  onClick={() => setActiveMerch("baqy")}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all duration-300 flex-1 cursor-pointer ${
+                    activeMerch === "baqy"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/50"
+                  }`}
+                >
+                  البيان
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveMerch("semsem")}
+                  className={`px-4 py-2 rounded-lg font-bold text-xs transition-all duration-300 flex-1 cursor-pointer ${
+                    activeMerch === "semsem"
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-50/50"
+                  }`}
+                >
+                  سمسم
+                </button>
+              </div>
+
+              {/* Change Data Button */}
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-sm border border-emerald-500"
+              >
+                <Calculator className="w-4 h-4" />
+                <span>تغيير البيانات</span>
+              </button>
+
+              {/* Rollover Button */}
+              <button
+                type="button"
+                onClick={handlePerformRollover}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-all shadow-sm border border-emerald-500"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>ترحيل الحساب</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Global Action Buttons - All merged here */}
-        <div className="flex flex-col xl:flex-row xl:items-center justify-end gap-2.5">
-          <div className="flex flex-wrap items-center gap-2.5 justify-end">
+        {/* Middle Section: Cash Discount + Action Buttons */}
+        <div className="xl:col-span-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Cash Discount Table (Horizontal) */}
+            <div className="bg-white p-3 rounded-xl border border-purple-200 shadow-sm">
+              <span className="text-[11px] font-bold text-purple-700 block mb-2">
+                خصم كاش
+              </span>
+              <div className="flex gap-2">
+                {consumerRows.map((row, idx) => (
+                  <input
+                    key={row.id}
+                    type="text"
+                    inputMode="numeric"
+                    value={row.amount || ""}
+                    onChange={(e) =>
+                      handleUpdateConsumerRow(row.id, e.target.value)
+                    }
+                    className="flex-1 text-center bg-slate-50 border border-slate-200 rounded px-2 py-2 outline-none font-extrabold text-[13px] text-slate-900 focus:bg-purple-50 focus:border-purple-300 transition-colors"
+                    placeholder="0"
+                    title={`الخصم ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* Transfer Egypt to Treasury Section */}
-            <div className="flex items-center gap-1.5 bg-indigo-50 p-1.5 rounded-lg border border-indigo-100">
+            <div className="flex items-center gap-2 bg-emerald-50 p-2 rounded-xl border border-emerald-200">
               <input
                 type="text"
                 value={egTransferRate}
                 onChange={(e) => setEgTransferRate(e.target.value)}
                 placeholder="سعر الصرف"
-                className="w-16 h-7 text-center bg-white border border-indigo-200 rounded outline-none font-bold text-[10px] text-indigo-900 focus:border-indigo-500"
+                className="w-20 h-8 text-center bg-white border border-emerald-300 rounded outline-none font-bold text-[10px] text-emerald-900 focus:border-emerald-500"
                 title="سعر الصرف (قسمة)"
               />
               <button
                 type="button"
                 onClick={handleTransferEgyptToTreasury}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3 h-7 rounded shadow-sm cursor-pointer transition-colors"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 h-8 rounded shadow-sm cursor-pointer transition-colors border border-emerald-500"
                 title="ترحيل للخزينة بالدينار"
               >
                 ترحيل د.ل للخزنة
               </button>
             </div>
 
-            {/* 3 small Vodafone cash inputs (Rendered as a vertical stack) */}
-            <div className="flex flex-col gap-1.5 bg-white p-2 rounded-xl border border-purple-200 shadow-sm w-28">
-              <span className="text-[11px] font-bold text-purple-700 text-center border-b border-purple-100 pb-1 mb-0.5">
-                خصم كاش
-              </span>
-              {consumerRows.map((row, idx) => (
-                <input
-                  key={row.id}
-                  type="text"
-                  inputMode="numeric"
-                  value={row.amount || ""}
-                  onChange={(e) =>
-                    handleUpdateConsumerRow(row.id, e.target.value)
-                  }
-                  className="w-full text-center bg-slate-50 border border-slate-200 rounded px-1.5 py-1.5 outline-none font-extrabold text-[13px] text-slate-900 focus:bg-purple-50 focus:border-purple-300 transition-colors"
-                  placeholder="0"
-                  title={`الخصم ${idx + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowHdModal(true)}
-            className="group relative bg-gradient-to-l from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2 transition overflow-hidden shadow-sm"
-          >
-            <div className="absolute inset-0 bg-white/20 translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-            <Smartphone className="w-4 h-4" />
-            <span>تصوير الكروت 📸</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              openSmartCardStudio({
-                type: "purchases",
-                merchant: activeMerch === "baqy" ? "البيان" : "سمسم",
-                p1: prevBalance,
-                p2: totalTodayWork,
-                p3: totalPaidToday,
-                p4: remainingTotalOwed,
-                p5: remainingEgyptianValue,
-              });
-            }}
-            className="group relative bg-gradient-to-l from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2 transition overflow-hidden shadow-sm"
-          >
-            <Smartphone className="w-4 h-4" />
-            <span>النظام الذكي 🛍️</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handlePerformRollover}
-            className="bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs px-4 py-2.5 rounded-lg border border-amber-300 cursor-pointer flex items-center gap-1.5 transition"
-          >
-            <Calendar className="w-4 h-4" />
-            <span>ترحيل الحساب 🔄</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Main Layout Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-        {/* Right Column: 5 Cards (takes 2 cols) */}
-        <div className="xl:col-span-3 flex flex-col gap-3">
-          {/* Card 1 */}
-          <div className="bg-white border border-slate-200/70 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-slate-500 font-bold text-[11px]">
-                📝 1. القيمة السابقة
-              </span>
-            </div>
-            <div className="flex items-end gap-1.5">
-              <input
-                type="number"
-                step="1"
-                value={prevBalance}
-                onChange={(e) => handleUpdatePreviousBalance(e.target.value)}
-                className="font-mono text-2xl font-black text-slate-800 w-full border-none focus:ring-0 focus:outline-none p-0 bg-transparent text-right placeholder-slate-300 transition-colors focus:text-indigo-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                placeholder="0"
-              />
-              <span className="text-xs font-bold text-slate-400 mb-1">د.ل</span>
-            </div>
-          </div>
-
-          {/* Card 2 */}
-          <div className="bg-white border border-emerald-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow border-t-2 border-t-emerald-400 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-emerald-700/80 font-bold text-[11px]">
-                ⚡ 2. إجمالي شغل اليوم
-              </span>
-            </div>
-            <div>
-              <span className="font-mono text-xl font-black text-emerald-600 leading-none">
-                {totalTodayWork.toLocaleString()}{" "}
-                <span className="text-xs font-bold text-emerald-400">د.ل</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3 */}
-          <div className="bg-white border border-rose-100 rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow border-t-2 border-t-rose-400 relative overflow-hidden">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-rose-700/80 font-bold text-[11px]">
-                🟢 3. إجمالي المسددة
-              </span>
-            </div>
-            <div>
-              <span className="font-mono text-xl font-black text-rose-600 leading-none">
-                {totalPaidToday.toLocaleString()}{" "}
-                <span className="text-xs font-bold text-rose-400">د.ل</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4 - Highlighted */}
-          <div className={`bg-white border rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 ${remainingTotalOwed > 0 ? "border-indigo-100 border-t-rose-500" : remainingTotalOwed < 0 ? "border-indigo-100 border-t-emerald-500" : "border-indigo-100 border-t-indigo-500"}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`font-bold text-[11px] ${remainingTotalOwed > 0 ? "text-rose-700/80" : remainingTotalOwed < 0 ? "text-emerald-700/80" : "text-indigo-700/80"}`}>
-                🎒 4. إجمالي الديون
-              </span>
-            </div>
-            <div className="relative z-10">
-              <span className={`font-mono text-xl font-black leading-none ${remainingTotalOwed > 0 ? "text-rose-600" : remainingTotalOwed < 0 ? "text-emerald-600" : "text-indigo-900"}`}>
-                {remainingTotalOwed.toLocaleString()}{" "}
-                <span className={`text-xs font-bold ${remainingTotalOwed > 0 ? "text-rose-400" : remainingTotalOwed < 0 ? "text-emerald-400" : "text-indigo-400"}`}>د.ل</span>
-              </span>
-            </div>
-          </div>
-
-          {/* Card 5 - Highlighted Egypt */}
-          <div className={`bg-white border rounded-xl p-3.5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden border-t-2 ${remainingEgyptianValue > 0 ? "border-purple-100 border-t-emerald-500" : remainingEgyptianValue < 0 ? "border-purple-100 border-t-rose-500" : "border-purple-100 border-t-purple-500"}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className={`font-bold text-[11px] ${remainingEgyptianValue > 0 ? "text-emerald-700/80" : remainingEgyptianValue < 0 ? "text-rose-700/80" : "text-purple-700/80"}`}>
-                🇪🇬 5. الباقي المصري
-              </span>
-            </div>
-            <div>
-              <span
-                className={`font-mono text-xl font-black leading-none ${remainingEgyptianValue > 0 ? "text-emerald-600" : remainingEgyptianValue < 0 ? "text-rose-600" : "text-purple-600"}`}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Smart System Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  openSmartCardStudio({
+                    type: "purchases",
+                    merchant: activeMerch === "baqy" ? "البيان" : "سمسم",
+                    p1: prevBalance,
+                    p2: totalTodayWork,
+                    p3: totalPaidToday,
+                    p4: remainingTotalOwed,
+                    p5: remainingEgyptianValue,
+                  });
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2 transition-all shadow-sm border border-emerald-500"
               >
-                {remainingEgyptianValue.toLocaleString()}{" "}
-                <span className={`text-xs font-bold ${remainingEgyptianValue > 0 ? "text-emerald-400" : remainingEgyptianValue < 0 ? "text-rose-400" : "text-purple-400"}`}>EGP</span>
-              </span>
+                <Smartphone className="w-4 h-4" />
+                <span>النظام الذكي</span>
+              </button>
+
+              {/* Account Posting Button */}
+              <button
+                type="button"
+                onClick={handleExportToPdf}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-2 transition-all shadow-sm border border-emerald-500"
+              >
+                <FileText className="w-4 h-4" />
+                <span>ترحيل الحساب</span>
+              </button>
+
+              {/* Post Log Button */}
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-1.5 transition-all shadow-sm border border-emerald-500"
+              >
+                <Calendar className="w-4 h-4" />
+                <span>سجل الترحيلات</span>
+              </button>
+
+              {/* Add Transaction Button */}
+              <button
+                type="button"
+                onClick={handleAddRow}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg cursor-pointer flex items-center gap-1.5 transition-all shadow-sm border border-emerald-500"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إضافة معاملة</span>
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Middle Column: Table Ledger (takes 9 cols) */}
-        <div className="xl:col-span-9">
+        {/* Middle Column: Table Ledger (takes 12 cols) */}
+        <div className="xl:col-span-12">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center justify-between gap-3">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
+                <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center shadow-sm">
                   <span className="text-base leading-none">📋</span>
                 </div>
                 <div>
@@ -1148,24 +1187,6 @@ export default function PurchasesModule({
                     جدول المشتريات اليومية
                   </h3>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowHistoryModal(true)}
-                  className="bg-purple-100 hover:bg-purple-200 text-purple-800 font-extrabold text-xs px-4 py-2.5 rounded-lg shadow-sm cursor-pointer flex items-center gap-1.5 transition-all border border-purple-200"
-                >
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>سجل الترحيلات</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddRow}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-4 py-2.5 rounded-lg shadow-sm cursor-pointer flex items-center gap-1.5 transition-all"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>إضافة معاملة</span>
-                </button>
               </div>
             </div>
 
