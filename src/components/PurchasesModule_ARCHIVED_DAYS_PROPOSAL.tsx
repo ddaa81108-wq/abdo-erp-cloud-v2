@@ -642,7 +642,7 @@ export default function PurchasesModuleArchivedDays({
     return type.includes("فودافون") || type.toLowerCase().includes("vodafone");
   };
 
-  const prevBalance = Math.round(currentData.previousBalance || 0);
+  const prevBalance = Math.round(Number(currentData.previousBalance) || 0);
 
   const remainingTotalOwed = prevBalance + totalWork - totalPaid;
 
