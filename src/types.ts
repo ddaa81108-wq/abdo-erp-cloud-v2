@@ -158,23 +158,6 @@ export interface NoteReminder {
   isCompleted: boolean;
 }
 
-export interface AdvancePerson {
-  id: string;
-  name: string;
-  balanceLYD: number;
-  balanceEGP: number;
-}
-
-export interface AdvanceTransaction {
-  id: string;
-  personId: string;
-  type: "add" | "repay";
-  amount: number;
-  currency: "LYD" | "EGP";
-  date: string;
-  note: string;
-}
-
 export interface SafeAudit {
   id: string;
   date: string;
@@ -202,7 +185,6 @@ export interface UserPermissions {
   canViewDeposits: boolean;
   canViewArchive: boolean;
   canViewBackup: boolean;
-  canViewAdvances: boolean;
 }
 
 export interface User {
@@ -246,8 +228,6 @@ export interface ERPState {
   egyptianCashRecords: EgyptianCashRecord[];
   delegates?: string[]; // Custom delegates list
   notesAndReminders: NoteReminder[];
-  advancePersons: AdvancePerson[];
-  advanceTransactions: AdvanceTransaction[];
 }
 
 // ----------------------------------------------------
@@ -385,8 +365,7 @@ export const INITIAL_ERP_STATE: ERPState = {
         canViewPurchases: true,
         canViewDeposits: true,
         canViewArchive: true,
-        canViewBackup: true,
-        canViewAdvances: true
+        canViewBackup: true
       },
       createdAt: '2026-06-15T00:00:00'
     },
@@ -403,8 +382,7 @@ export const INITIAL_ERP_STATE: ERPState = {
         canViewPurchases: true,
         canViewDeposits: true,
         canViewArchive: true,
-        canViewBackup: false,
-        canViewAdvances: true
+        canViewBackup: false
       },
       createdAt: '2026-06-15T00:00:00'
     },
@@ -421,8 +399,7 @@ export const INITIAL_ERP_STATE: ERPState = {
         canViewPurchases: false,
         canViewDeposits: true,
         canViewArchive: false,
-        canViewBackup: false,
-        canViewAdvances: false
+        canViewBackup: false
       },
       createdAt: '2026-06-15T00:00:00'
     },
@@ -439,8 +416,7 @@ export const INITIAL_ERP_STATE: ERPState = {
         canViewPurchases: true,
         canViewDeposits: false,
         canViewArchive: true,
-        canViewBackup: false,
-        canViewAdvances: false
+        canViewBackup: false
       },
       createdAt: '2026-06-15T00:00:00'
     },
@@ -457,8 +433,7 @@ export const INITIAL_ERP_STATE: ERPState = {
         canViewPurchases: false,
         canViewDeposits: false,
         canViewArchive: true,
-        canViewBackup: false,
-        canViewAdvances: false
+        canViewBackup: false
       },
       createdAt: '2026-06-15T00:00:00'
     }
@@ -466,6 +441,4 @@ export const INITIAL_ERP_STATE: ERPState = {
   egyptianCashRecords: [],
   delegates: [],
   notesAndReminders: [],
-  advancePersons: [],
-  advanceTransactions: [],
 };
