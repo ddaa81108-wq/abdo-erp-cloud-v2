@@ -278,6 +278,9 @@ export default function PurchasesModuleArchivedDays({
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // NEW: Store original day data for delta calculation
+  const [originalDayData, setOriginalDayData] = useState<Record<string, DayData>>({});
+
   // Load and sync from Firestore
   useEffect(() => {
     let unmounted = false;
@@ -765,19 +768,84 @@ export default function PurchasesModuleArchivedDays({
   // NEW: Enable editing for archived day
   const handleEnableDayEdit = (dayDate: string) => {
     setEditingDayDate(dayDate);
+    // Store original data for delta calculation
+    const dayToEdit = currentData.days.find(d => d.date === dayDate);
+    if (dayToEdit) {
+      setOriginalDayData(prev => ({
+        ...prev,
+        [dayDate]: JSON.parse(JSON.stringify(dayToEdit))
+      }));
+    }
     updateDayState(dayDate, (prev) => ({
       ...prev,
       isReadOnly: false,
     }));
   };
 
-  // NEW: Save editing for archived day
+  // NEW: Save editing for archived day with delta calculation
   const handleSaveDayEdit = (dayDate: string) => {
     setEditingDayDate(null);
+    
+    // Calculate deltas from original data
+    const original = originalDayData[dayDate];
+    const current = currentData.days.find(d => d.date === dayDate);
+    
+    if (original && current) {
+      // Calculate delta for result (total work)
+      const originalTotalResult = original.rows.reduce((sum, r) => sum + (Number(r.result) || 0), 0);
+      const currentTotalResult = current.rows.reduce((sum, r) => sum + (Number(r.result) || 0), 0);
+      const deltaResult = currentTotalResult - originalTotalResult;
+      
+      // Calculate delta for paid
+      const originalTotalPaid = original.rows.reduce((sum, r) => sum + (Number(r.paid) || 0), 0);
+      const currentTotalPaid = current.rows.reduce((sum, r) => sum + (Number(r.paid) || 0), 0);
+      const deltaPaid = currentTotalPaid - originalTotalPaid;
+      
+      // Calculate delta for vodafone base (Egyptian value)
+      const originalVodafoneBase = original.rows.reduce((sum, r) => {
+        if (r.type && (r.type.includes("فودافون") || r.type.toLowerCase().includes("vodafone"))) {
+          return sum + (Number(r.value) || 0);
+        }
+        return sum;
+      }, 0);
+      const currentVodafoneBase = current.rows.reduce((sum, r) => {
+        if (r.type && (r.type.includes("فودافون") || r.type.toLowerCase().includes("vodafone"))) {
+          return sum + (Number(r.value) || 0);
+        }
+        return sum;
+      }, 0);
+      const deltaVodafoneBase = currentVodafoneBase - originalVodafoneBase;
+      
+      // Calculate delta for consumer value
+      const originalConsumerValue = original.consumerRows?.reduce((sum, r) => sum + (Number(r.amount) || 0), 0) || 0;
+      const currentConsumerValue = current.consumerRows?.reduce((sum, r) => sum + (Number(r.amount) || 0), 0) || 0;
+      const deltaConsumerValue = currentConsumerValue - originalConsumerValue;
+      
+      // Apply deltas to active day's previous balance and egyptian previous balance
+      // Delta in previous balance = deltaResult - deltaPaid
+      const deltaPreviousBalance = deltaResult - deltaPaid;
+      // Delta in egyptian previous balance = deltaVodafoneBase - deltaConsumerValue
+      const deltaEgyptianPreviousBalance = deltaVodafoneBase - deltaConsumerValue;
+      
+      // Update the active day's previous balances with deltas
+      updateCurrentMerchantState((prev) => ({
+        ...prev,
+        previousBalance: (Number(prev.previousBalance) || 0) + deltaPreviousBalance,
+        egyptianPreviousBalance: (Number(prev.egyptianPreviousBalance) || 0) + deltaEgyptianPreviousBalance,
+      }));
+    }
+    
     updateDayState(dayDate, (prev) => ({
       ...prev,
       isReadOnly: true,
     }));
+    
+    // Clear original data for this day
+    setOriginalDayData(prev => {
+      const newData = { ...prev };
+      delete newData[dayDate];
+      return newData;
+    });
   };
 
   // NEW: Switch to specific day
