@@ -827,18 +827,38 @@ export default function PurchasesModuleArchivedDays({
       // Delta in egyptian previous balance = deltaVodafoneBase - deltaConsumerValue
       const deltaEgyptianPreviousBalance = deltaVodafoneBase - deltaConsumerValue;
       
-      // Update the active day's previous balances with deltas
-      updateCurrentMerchantState((prev) => ({
+      // Update both days in a single operation
+      updateCurrentMerchantState((prev) => {
+        const updatedDays = prev.days.map(day => {
+          // Update the archived day with new data and set to read-only
+          if (day.date === dayDate) {
+            return { ...current, isReadOnly: true };
+          }
+          // Update the active day's previous balances with deltas
+          if (!day.isArchived) {
+            return {
+              ...day,
+              previousBalance: (Number(day.previousBalance) || 0) + deltaPreviousBalance,
+              egyptianPreviousBalance: (Number(day.egyptianPreviousBalance) || 0) + deltaEgyptianPreviousBalance,
+            };
+          }
+          return day;
+        });
+        
+        return {
+          ...prev,
+          days: updatedDays,
+          previousBalance: (Number(prev.previousBalance) || 0) + deltaPreviousBalance,
+          egyptianPreviousBalance: (Number(prev.egyptianPreviousBalance) || 0) + deltaEgyptianPreviousBalance,
+        };
+      });
+    } else {
+      // If no original data exists, just set to read-only
+      updateDayState(dayDate, (prev) => ({
         ...prev,
-        previousBalance: (Number(prev.previousBalance) || 0) + deltaPreviousBalance,
-        egyptianPreviousBalance: (Number(prev.egyptianPreviousBalance) || 0) + deltaEgyptianPreviousBalance,
+        isReadOnly: true,
       }));
     }
-    
-    updateDayState(dayDate, (prev) => ({
-      ...prev,
-      isReadOnly: true,
-    }));
     
     // Clear original data for this day
     setOriginalDayData(prev => {
