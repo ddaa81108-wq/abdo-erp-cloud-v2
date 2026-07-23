@@ -794,7 +794,6 @@ const handleLoginSuccess = (user: User) => {
                   { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? true },
                   { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: true },
                   { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? true }, // ✅ محصن نهائياً
-                  { id: "purchases_new", label: "6.1 المشتريات (النسخة الحديثة 🚀)", enabled: currentUser?.permissions?.canViewPurchases ?? true }, // ✅ نسخة تجريبية
                   { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? true }, // ✅ محصن نهائياً
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: true },
                   { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: true },
@@ -846,7 +845,6 @@ const handleLoginSuccess = (user: User) => {
                   {activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
                   {activeTab === "financial_reports" && <FinancialReportsModule state={state} onOpenExporter={handleOpenExporter} />}
                   {activeTab === "purchases" && <PurchasesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
-                  {activeTab === "purchases_new" && <PurchasesModule_ARCHIVED_DAYS_PROPOSAL state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
                   {activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
