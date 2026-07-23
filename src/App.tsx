@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
-import { doc, getDoc, setDoc, onSnapshot, collection, getDocs } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 import {
   ERPState,
@@ -418,48 +417,6 @@ const syncTimeoutRef = useRef<any>(null);
       unmounted = true;
       unsubscribe();
     };
-  }, []);
-
-  // 2. إنشاء مستخدم Admin افتراضي إذا لم يكن هناك مستخدمين (Seed)
-  useEffect(() => {
-    const seedInitialAdmin = async () => {
-      if (!db || !auth) return;
-      
-      try {
-        const usersCol = collection(db, "users");
-        const snapshot = await getDocs(usersCol);
-        
-        if (snapshot.empty) {
-          console.log("No users found. Seeding initial admin...");
-          const defaultEmail = "admin@abdocash121.com";
-          const defaultPassword = "Abdo@121Secure!";
-          
-          const userCred = await createUserWithEmailAndPassword(auth, defaultEmail, defaultPassword);
-          const newAdmin: User = {
-            id: userCred.user.uid,
-            username: defaultEmail,
-            role: "admin",
-            permissions: {
-              canViewDebts: true,
-              canViewCompanies: true,
-              canViewTreasury: true,
-              canViewPurchases: true,
-              canViewDeposits: true,
-              canViewBackup: true,
-              canManageUsers: true,
-              canDeleteRecords: true
-            }
-          };
-          
-          await setDoc(doc(db, "users", userCred.user.uid), newAdmin);
-          console.log("Initial admin created successfully.");
-        }
-      } catch (error) {
-        console.error("Failed to seed initial admin:", error);
-      }
-    };
-
-    seedInitialAdmin();
   }, []);
 
   // 🛡️ SECURE THE SYNC FUNCTION
