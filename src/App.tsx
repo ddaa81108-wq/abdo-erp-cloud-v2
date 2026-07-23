@@ -32,7 +32,6 @@ import CustomerDebtsModule from "./components/CustomerDebtsModule";
 import CompaniesModule from "./components/CompaniesModule";
 import TreasuryModule from "./components/TreasuryModule";
 import PurchasesModule from "./components/PurchasesModule";
-import PurchasesModule_ARCHIVED_DAYS_PROPOSAL from "./components/PurchasesModule_ARCHIVED_DAYS_PROPOSAL";
 import DepositsModule from "./components/DepositsModule";
 import MerchantsModule from "./components/MerchantsModule";
 import TransactionLogModule from "./components/TransactionLogModule";
