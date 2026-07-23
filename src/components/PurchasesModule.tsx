@@ -2,19 +2,15 @@ import React, { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Trash2,
-  Calendar,
   Calculator,
   Check,
   Copy,
-  Download,
   X,
-  Eye,
   FileText,
   Smartphone,
 } from "lucide-react";
-import { toPng } from "html-to-image";
 import { db } from "../firebase";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { ERPState } from "../types";
 import { openSmartCardStudio } from "../utils/imageExporterUtils";
 
@@ -88,13 +84,7 @@ export default function PurchasesModule({
   onOpenExporter,
 }: PurchasesModuleProps) {
   const [activeMerch, setActiveMerch] = useState<"baqy" | "semsem">("baqy");
-  const [egTransferRate, setEgTransferRate] = useState<string>("1.0");
   const lastEditTime = useRef<number>(0);
-
-  const [showHdModal, setShowHdModal] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [copiedHd, setCopiedHd] = useState(false);
-  const [generatingHd, setGeneratingHd] = useState(false);
 
   const [showBird, setShowBird] = useState(false);
   const [birdDismissed, setBirdDismissed] = useState(false);
@@ -104,72 +94,11 @@ export default function PurchasesModule({
   const [alertMessage, setAlertMessage] = useState("");
   const [alertDismissed, setAlertDismissed] = useState(false);
 
-  const confirmResetPurchases = () => {
-    setMerchStates({
-      baqy: {
-        previousBalance: 0,
-        egyptianPreviousBalance: 0,
-        rows: [],
-        manualConsumerValue: 0,
-        consumerRows: [],
-      },
-      semsem: {
-        previousBalance: 0,
-        egyptianPreviousBalance: 0,
-        rows: [],
-        manualConsumerValue: 0,
-        consumerRows: [],
-      },
-    });
-    onUpdateState({ ...state, purchases: [] });
-    setShowResetConfirm(false);
-  };
-
-  const hdCardsRef = useRef<HTMLDivElement>(null);
-
-  const saveHdCardsImage = async () => {
-    if (!hdCardsRef.current) return;
-    setGeneratingHd(true);
-    try {
-      const dataUrl = await toPng(hdCardsRef.current, {
-        pixelRatio: 3,
-        style: { transform: "scale(1)" },
-      });
-      const link = document.createElement("a");
-      const filename = `Daily_Cards_${activeMerch.toUpperCase()}_${new Date().toISOString().slice(0, 10)}.png`;
-      link.download = filename;
-      link.href = dataUrl;
-      link.click();
-    } catch (err) {
-      console.error("Error generating image", err);
-      alert("حدث خطأ أثناء تصوير الكروت، يرجى المحاولة لاحقاً.");
-    } finally {
-      setGeneratingHd(false);
-    }
-  };
-
-  const copyHdCardsToClipboard = async () => {
-    if (!hdCardsRef.current) return;
-    setGeneratingHd(true);
-    try {
-      const dataUrl = await toPng(hdCardsRef.current, {
-        pixelRatio: 3,
-        style: { transform: "scale(1)" },
-      });
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob }),
-      ]);
-      setCopiedHd(true);
-      setTimeout(() => setCopiedHd(false), 3005);
-    } catch (err) {
-      console.error("Error copying to clipboard", err);
-      saveHdCardsImage();
-    } finally {
-      setGeneratingHd(false);
-    }
-  };
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calcRows, setCalcRows] = useState<
+    { id: string; value: string; price: string; operator: "multiply" | "divide" | "add" | "subtract" }[]
+  >([{ id: "1", value: "", price: "", operator: "multiply" }]);
+  const [calcCopied, setCalcCopied] = useState(false);
 
   const [merchStates, setMerchStates] = useState<
     Record<string, MerchantPurchaseState>
@@ -285,15 +214,7 @@ export default function PurchasesModule({
     return () => clearTimeout(handler);
   }, [merchStates, historyRecords, isLoaded]);
 
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [historyFilterDate, setHistoryFilterDate] = useState("");
-
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [calcRows, setCalcRows] = useState<
-    { id: string; value: string; price: string; operator: "multiply" | "divide" | "add" | "subtract" }[]
-  >([{ id: "1", value: "", price: "", operator: "multiply" }]);
-  const [calcCopied, setCalcCopied] = useState(false);
-
+  // Floating Calculator Logic
   const handleAddCalcRow = () => {
     setCalcRows([...calcRows, { id: Math.random().toString(), value: "", price: "", operator: "multiply" }]);
   };
@@ -437,45 +358,6 @@ export default function PurchasesModule({
     }));
   };
 
-  const handleUpdatePreviousBalance = (val: number | string) => {
-    updateCurrentMerchantState((prev) => ({
-      ...prev,
-      previousBalance: val,
-    }));
-  };
-
-  const consumerRows = currentData.consumerRows || [
-    { id: "c_1", name: "المستهلك الأول", amount: 0 },
-    { id: "c_2", name: "المستهلك الثاني", amount: 0 },
-    { id: "c_3", name: "المستهلك الثالث", amount: 0 },
-  ];
-
-  const handleUpdateConsumerRow = (id: string, amount: number | string) => {
-    const cleanAmount = typeof amount === "string" ? amount.replace(/,/g, "") : amount;
-    updateCurrentMerchantState((prev) => {
-      const rows = prev.consumerRows || [
-        { id: "c_1", name: "المستهلك الأول", amount: prev.manualConsumerValue || 0 },
-        { id: "c_2", name: "المستهلك الثاني", amount: 0 },
-        { id: "c_3", name: "المستهلك الثالث", amount: 0 },
-      ];
-      const updated = rows.map((r) => (r.id === id ? { ...r, amount: cleanAmount } : r));
-      const newSum = updated.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
-      return { ...prev, consumerRows: updated, manualConsumerValue: newSum };
-    });
-  };
-
-  const handleUpdateConsumerName = (id: string, name: string) => {
-    updateCurrentMerchantState((prev) => {
-      const rows = prev.consumerRows || [
-        { id: "c_1", name: "المستهلك الأول", amount: prev.manualConsumerValue || 0 },
-        { id: "c_2", name: "المستهلك الثاني", amount: 0 },
-        { id: "c_3", name: "المستهلك الثالث", amount: 0 },
-      ];
-      const updated = rows.map((r) => (r.id === id ? { ...r, name } : r));
-      return { ...prev, consumerRows: updated };
-    });
-  };
-
   const isVodafoneRow = (type: string) => {
     if (!type) return false;
     return type.includes("فودافون") || type.toLowerCase().includes("vodafone");
@@ -549,191 +431,6 @@ export default function PurchasesModule({
     const interval = setInterval(checkTimeAndShowAlert, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [alertDismissed]);
-
-  const handleExportToPdf = () => {
-    const merchTitle = activeMerch === "baqy" ? "التاجر الباقي" : "التاجر سمسم";
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("تم حظر فتح النافذة المنبثقة من قبل المتصفح. يرجى السماح بالنوافذ المنبثقة لتصدير ملف الـ PDF.");
-      return;
-    }
-    const htmlContent = `
-      <html dir="rtl" lang="ar">
-        <head>
-          <title>كشف حساب مشتريات يومي - ${merchTitle}</title>
-          <meta charset="utf-8" />
-          <style>
-            body { font-family: Arial, sans-serif; color: #111; background-color: #fff; padding: 40px; margin: 0; direction: rtl; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #111; padding-bottom: 20px; margin-bottom: 30px; }
-            .header h1 { margin: 0; font-size: 26px; font-weight: bold; }
-            .header p { margin: 5px 0 0 0; font-size: 14px; color: #444; }
-            .metadata { text-align: left; font-size: 13px; line-height: 1.6; }
-            .cards-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-bottom: 40px; }
-            .card { border: 2px solid #111; border-radius: 12px; padding: 15px; background-color: #fbfbfb; }
-            .card-title { font-size: 11px; font-weight: bold; color: #444; margin-bottom: 5px; }
-            .card-value { font-size: 18px; font-weight: bold; }
-            .section-title { font-size: 16px; font-weight: bold; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #111; padding-bottom: 5px; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 13px; }
-            th, td { border: 1px solid #111; padding: 10px; text-align: center; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            tr:nth-child(even) { background-color: #fafafa; }
-            @media print { body { padding: 10px; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div>
-              <h1>عبدو للمنظومات الرقمية</h1>
-              <p>كشف حساب مشتريات يومي للذمم والعملات • ${merchTitle}</p>
-            </div>
-            <div class="metadata">
-              <strong>تاريخ الاستخراج:</strong> ${new Date().toLocaleDateString("ar-LY")} <br/>
-              <strong>الوقت:</strong> ${new Date().toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}
-            </div>
-          </div>
-          <div class="cards-grid">
-            <div class="card"><div class="card-title">📝 1. القيمة السابقة</div><div class="card-value">${prevBalance.toLocaleString()} د.ل</div></div>
-            <div class="card"><div class="card-title">⚡ 2. إجمالي شغل اليوم</div><div class="card-value">${totalTodayWork.toLocaleString()} د.ل</div></div>
-            <div class="card"><div class="card-title">🟢 3. القيمة المسددة</div><div class="card-value">${totalPaidToday.toLocaleString()} د.ل</div></div>
-            <div class="card" style="border: 3px solid #000; background-color: #f0f4ff;"><div class="card-title" style="color: #000;">🎒 4. الباقي من شغل اليوم</div><div class="card-value" style="font-size: 20px;">${remainingTotalOwed.toLocaleString()} د.ل</div></div>
-            <div class="card" style="background-color: #faf5ff;"><div class="card-title">🇪🇬 5. القيمة المصرية الباقية</div><div class="card-value" style="color: #6b21a8;">${remainingEgyptianValue.toLocaleString()} جنيه</div></div>
-          </div>
-          <div class="section-title">📊 تفاصيل جدول معاملات التوريد والمشتريات:</div>
-          <table>
-            <thead>
-              <tr>
-                <th>ت</th><th>نوع المعاملة والبيان</th><th>القيمة بالكامل</th><th>العملية الحسابية</th><th>سعر العملة / التحويل</th><th>الناتج المعادل اليومي</th><th>المسدد اليوم نقداً</th><th>المتبقي بالدينار</th><th>مستهلك فودافون</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${currentData.rows.map((r) => `
-                <tr>
-                  <td>${r.seq}</td>
-                  <td>${r.type || "غير محدد"}</td>
-                  <td>${Number(r.value || 0).toLocaleString()}</td>
-                  <td>${r.op === "multiply" ? "ضرب (✖)" : "قسمة (➗)"}</td>
-                  <td>${Number(r.rate || 0).toLocaleString()}</td>
-                  <td style="font-weight: bold;">${r.result.toLocaleString()} د.ل</td>
-                  <td style="color: green;">${Number(r.paid || 0).toLocaleString()} د.ل</td>
-                  <td style="font-weight: bold; color: #1e1b4b;">${r.remaining.toLocaleString()} د.ل</td>
-                  <td style="color: #6b21a8;">${Number(r.consumer || 0).toLocaleString()} ج.م</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-          <div style="font-size: 11px; color: #555; text-align: center; margin-top: 50px; border-top: 1px solid #111; padding-top: 15px;">
-            تم توليد المستند وحفظه تلقائياً بصيغة PDF عالية الوضوح بنجاح عبر نظام عبدو لبرمجيات الـ ERP المتكاملة.
-          </div>
-          <script>
-            window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 800); };
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-  };
-
-  const [showRolloverConfirm, setShowRolloverConfirm] = useState(false);
-  const handlePerformRollover = () => {
-    setShowRolloverConfirm(true);
-  };
-  const executePerformRollover = () => {
-    const newHistoryRecord = {
-      id: `hist_${Date.now()}`,
-      date: new Date().toISOString(),
-      merchantId: activeMerch,
-      previousBalance: currentData.previousBalance,
-      totalTodayWork,
-      totalPaidToday,
-      remainingTotalOwed,
-      rows: currentData.rows,
-      consumerValue: totalConsumerValue,
-      consumerRows: currentData.consumerRows || [],
-      egyptianPreviousBalance: currentData.egyptianPreviousBalance || 0,
-      remainingEgyptianValue,
-    };
-    setHistoryRecords((prev) => [newHistoryRecord, ...prev]);
-    updateCurrentMerchantState((prev) => ({
-      ...prev,
-      previousBalance: remainingTotalOwed,
-      egyptianPreviousBalance: remainingEgyptianValue,
-      rows: [],
-      manualConsumerValue: 0,
-      consumerRows: [
-        { id: `${activeMerch}_c_1`, name: "المستهلك الأول", amount: 0 },
-        { id: `${activeMerch}_c_2`, name: "المستهلك الثاني", amount: 0 },
-        { id: `${activeMerch}_c_3`, name: "المستهلك الثالث", amount: 0 },
-      ],
-    }));
-    setShowRolloverConfirm(false);
-  };
-
-  const handleTransferEgyptToTreasury = () => {
-    if (remainingEgyptianValue <= 0) {
-      alert("لا توجد قيمة مصرية متبقية لترحيلها حالياً.");
-      return;
-    }
-    const rate = parseFloat(egTransferRate) || 1.0;
-    if (rate <= 0) {
-      alert("يرجى إدخال سعر تحويل صحيح أكبر من الصفر.");
-      return;
-    }
-    const lydEquivalent = Math.round(remainingEgyptianValue / rate);
-    if (lydEquivalent <= 0) {
-      alert("القيمة المعادلة بالدينار الليبي ضئيلة جداً.");
-      return;
-    }
-    const refNo = `TX-TR-${Date.now().toString().slice(-6)}`;
-    const merchTitle = activeMerch === "baqy" ? "البيان" : "سمسم";
-    const newTx = {
-      id: `settle_egypt_auto_${Date.now()}`,
-      type: "in" as const,
-      amount: lydEquivalent,
-      currency: "د.ل",
-      conversionRate: 1.0,
-      date: new Date().toISOString(),
-      partyName: "مورد خارجي",
-      referenceNo: refNo,
-      source: "manual_deposit" as const,
-      description: `صرف عملة فودافون كاش (${remainingEgyptianValue.toLocaleString()} جنيه تقسيم سعر ${rate}) لـ (${merchTitle}) كأثر مالي إيجابي بالخزينة`,
-      createdAt: new Date().toISOString(),
-    };
-    onUpdateState({
-      ...state,
-      treasuryTransactions: [...(state.treasuryTransactions || []), newTx as any],
-    });
-    alert(`تم الاعتماد وتم تسجيل الأثر برأس المال الإجمالي بـ ${lydEquivalent.toLocaleString()} د.ل! 🎉`);
-  };
-
-  const handleExportDailyImage = () => {
-    const headers = ["ت", "نوع المعاملة", "القيمة بالكامل", "العملية", "سعر العملة", "الناتج المعادل", "المسدد اليوم", "باقي القيد د.ل", "مستهلك فودافون"];
-    const rows = currentData.rows.map((r) => [
-      r.seq.toString(),
-      r.type || "غير محدد",
-      Number(r.value || 0).toLocaleString() + " مصري",
-      r.op === "multiply" ? "ضرب (✖)" : "قسمة (➗)",
-      Number(r.rate || 0).toLocaleString(),
-      r.result.toLocaleString() + " د.ل",
-      Number(r.paid || 0).toLocaleString() + " د.ل",
-      r.remaining.toLocaleString() + " د.ل",
-      Number(r.consumer || 0).toLocaleString() + " ج.م",
-    ]);
-    const merchTitle = activeMerch === "baqy" ? "البيان" : "سمسم";
-    onOpenExporter(
-      `كشف المشتريات اليومية لشغل (${merchTitle})`,
-      {
-        label1: "القيمة السابقة د.ل",
-        value1: prevBalance.toLocaleString() + " د.ل",
-        label2: "إجمالي الشغل والمدفوع اليوم",
-        value2: `${totalTodayWork.toLocaleString()} د.ل (مسدد: ${totalPaidToday.toLocaleString()})`,
-        label3: "المتبقي لـ فودافون كاش",
-        value3: `${remainingEgyptianValue.toLocaleString()} جنيه`,
-      },
-      headers,
-      rows,
-    );
-  };
 
   return (
     <div className="space-y-4 text-right font-sans" dir="rtl">
@@ -848,7 +545,7 @@ export default function PurchasesModule({
           </div>
         </div>
 
-        {/* جدول المشتريات المستمر (القديم فوق، الأحدث تحت) */}
+        {/* جدول المشتريات المستمر (القديم فوق، الأحدث تحت) - رأس الجدول مثبت */}
         <div className="xl:col-span-12">
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
             <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex flex-row items-center gap-3">
@@ -874,22 +571,22 @@ export default function PurchasesModule({
                 </button>
               </div>
             ) : (
-              <div className="overflow-x-auto flex-grow p-4 pt-0">
-                <div className="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm mt-4">
+              <div className="flex-grow p-4 pt-0">
+                <div className="border border-slate-200/80 rounded-xl shadow-sm mt-4 max-h-[70vh] overflow-auto">
                   <table className="w-full text-right text-[11px] border-collapse min-w-[1150px] table-fixed">
-                    <thead className="bg-slate-100 text-slate-500 font-bold border-b-2 border-slate-200/80">
+                    <thead className="bg-slate-100 text-slate-500 font-bold border-b-2 border-slate-200/80 sticky top-0 z-10">
                       <tr>
-                        <th className="p-2 border-l border-slate-200/80 text-center w-[4%]">ت</th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-[11%]">التاريخ</th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-[15%]">النوع</th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-[11%]">القيمة (مصري) EGP</th>
-                        <th className="p-2 border-l border-slate-200/80 text-center w-[11%]">العملية</th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-[8%]">صرف (لر)</th>
-                        <th className="p-2 border-l border-slate-200/80 text-right w-[10%]">الناتج (د.ل)</th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-[10%]">المسدد (د.ل)</th>
-                        <th className="p-2 border-l border-slate-200/80 text-right w-[10%]">الباقي (د.ل)</th>
-                        <th className="p-0 border-l border-slate-200/80 text-center w-[10%] text-purple-700">مستهلك فودافون EGP</th>
-                        <th className="p-2 text-center w-[4%]"><Trash2 className="w-3 h-3 mx-auto" /></th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[4%] bg-slate-100">ت</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[11%] bg-slate-100">التاريخ</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[15%] bg-slate-100">النوع</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[11%] bg-slate-100">القيمة (مصري) EGP</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[11%] bg-slate-100">العملية</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[8%] bg-slate-100">صرف (لر)</th>
+                        <th className="p-2 border-l border-slate-200/80 text-right w-[10%] bg-slate-100">الناتج (د.ل)</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[10%] text-emerald-700 bg-slate-100">المسدد (د.ل)</th>
+                        <th className="p-2 border-l border-slate-200/80 text-right w-[10%] text-indigo-700 bg-slate-100">الباقي (د.ل)</th>
+                        <th className="p-2 border-l border-slate-200/80 text-center w-[10%] text-purple-700 bg-slate-100">مستهلك فودافون EGP</th>
+                        <th className="p-2 text-center w-[4%] bg-slate-100"><Trash2 className="w-3 h-3 mx-auto" /></th>
                       </tr>
                     </thead>
                     <tbody className="font-mono text-slate-700 divide-y divide-slate-100">
@@ -1027,211 +724,6 @@ export default function PurchasesModule({
           <li>إجمالي الخزينة (البومة) يقرأ مجموع ديون التاجرين معاً لتسهيل الترحيل.</li>
         </ul>
       </div>
-
-      {/* HD Capture Modal */}
-      {showHdModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col transition-all transform scale-100">
-            <div className="p-4 border-b border-slate-800 bg-slate-950 flex items-center justify-between text-white">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full animate-ping" />
-                <h3 className="font-sans font-black text-xs">شاشة تصوير الكروت الخمسة عالية الوضوح واللمعان | 5 Work Cards HD Live View</h3>
-              </div>
-              <button type="button" onClick={() => setShowHdModal(false)} className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-xl transition cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh] bg-slate-950 flex flex-col items-center">
-              <p className="text-xs text-slate-400 mb-4 font-sans text-center">
-                هذه النسخة المدمرة بصريًا مهيأة للنسخ المباشر أو التحميل بدقة <strong className="text-emerald-400">Full HD (300% DPI Pixel-Ratio)</strong> لمشاركتها على واتساب والمنصات.
-              </p>
-              <div className="w-full overflow-auto p-2 flex justify-center bg-slate-900">
-                <div ref={hdCardsRef} className="bg-white p-6 rounded-3xl border border-slate-200 font-sans text-right text-slate-800 relative shadow-2xl shrink-0" style={{ width: "600px", minWidth: "600px", direction: "rtl", boxSizing: "border-box" }}>
-                  <div className="text-center mb-6">
-                    <h2 className="text-xl font-black text-slate-800">ملخص حساب المشتريات</h2>
-                    <p className="text-sm font-bold text-slate-500 mt-1">{activeMerch === "baqy" ? "البيان" : "سمسم"}</p>
-                    <p className="text-xs text-slate-400 mt-1 font-mono">{new Date().toLocaleDateString("ar-LY")}</p>
-                  </div>
-                  <div className="grid grid-cols-6 gap-4 font-sans">
-                    <div className="col-span-2 bg-white border border-slate-200/70 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                      <span className="text-slate-500 font-bold text-sm shrink-0 mb-2">📝 1. القيمة السابقة</span>
-                      <span className="font-mono text-2xl font-extrabold text-slate-800 tracking-wide text-left break-all">{prevBalance.toLocaleString()} <span className="text-sm text-slate-400 font-bold">د.ل</span></span>
-                    </div>
-                    <div className="col-span-2 bg-white border-t-2 border-slate-200 border-t-emerald-400 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                      <span className="text-emerald-700/80 font-bold text-sm shrink-0 mb-2">⚡ 2. إجمالي الشغل</span>
-                      <span className="font-mono text-2xl font-extrabold text-emerald-600 tracking-wide text-left break-all">{totalTodayWork.toLocaleString()} <span className="text-sm text-emerald-400 font-bold">د.ل</span></span>
-                    </div>
-                    <div className="col-span-2 bg-white border-t-2 border-slate-200 border-t-rose-400 rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-                      <span className="text-rose-700/80 font-bold text-sm shrink-0 mb-2">🟢 3. إجمالي المسددة</span>
-                      <span className="font-mono text-2xl font-extrabold text-rose-600 tracking-wide text-left break-all">{totalPaidToday.toLocaleString()} <span className="text-sm text-rose-400 font-bold">د.ل</span></span>
-                    </div>
-                    <div className="col-span-6 sm:col-span-3 bg-white border-t-2 border-slate-200 border-t-indigo-500 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative">
-                      <div className="absolute inset-0 bg-indigo-50/50 outline-none rounded-2xl"></div>
-                      <span className="text-indigo-700 font-bold text-sm relative z-10 shrink-0 mb-2">🎒 4. الباقي من الشغل</span>
-                      <span className="font-mono text-3xl font-black text-indigo-900 tracking-wide relative z-10 text-left break-all">{remainingTotalOwed.toLocaleString()} <span className="text-sm text-indigo-400 font-bold">د.ل</span></span>
-                    </div>
-                    <div className="col-span-6 sm:col-span-3 bg-white border-t-2 border-slate-200 border-t-purple-500 rounded-2xl p-4 flex flex-col justify-center shadow-sm relative">
-                      <div className="absolute inset-0 bg-purple-50/50 outline-none rounded-2xl"></div>
-                      <span className="text-purple-700 font-bold text-sm relative z-10 shrink-0 mb-2">🇪🇬 5. الباقية مصري</span>
-                      <span className="font-mono text-3xl font-black text-purple-900 tracking-wide relative z-10 text-left break-all">{remainingEgyptianValue.toLocaleString()} <span className="text-sm text-purple-400 font-bold">EGP</span></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="p-4 border-t border-slate-800 bg-slate-950 flex flex-wrap gap-2 justify-end">
-              <button type="button" onClick={copyHdCardsToClipboard} disabled={generatingHd} className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 py-3 rounded-xl flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer">
-                <Copy className="w-4 h-4" />
-                <span>{copiedHd ? "تم النسخ للحافظة بنجاح! 📋" : "نسخ لوحة الكروت للحافظة 📋"}</span>
-              </button>
-              <button type="button" onClick={saveHdCardsImage} disabled={generatingHd} className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-5 py-3 rounded-xl flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer">
-                <Download className="w-4 h-4" />
-                <span>{generatingHd ? "جاري السحب ومعالجة الـ HD..." : "تحميل الصورة بجودة Ultra HD 📸"}</span>
-              </button>
-              <button type="button" onClick={() => setShowHdModal(false)} className="bg-slate-800 hover:bg-slate-750 text-slate-300 font-bold text-xs px-4 py-3 rounded-xl transition cursor-pointer">إغلاق الشاشة ❌</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rollover Confirm */}
-      {showRolloverConfirm && (
-        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 z-[9999]" dir="rtl">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl relative text-right">
-            <h3 className="font-extrabold text-[#f1f5f9] text-base mb-2 flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>تسوية وترحيل الحساب الحالي اليوم 🔄</span>
-            </h3>
-            <p className="text-xs text-slate-300 mb-6 leading-relaxed">
-              هل أنت متأكد من ترحيل الحساب لـ تيسير المعاملات اليومية للمستلم النشط: <strong className="text-amber-400">{activeMerch === "baqy" ? "البيان" : "سمسم"}</strong>؟ <br />
-              <strong className="text-emerald-400 block mt-1">سيتم نقل الباقي الإجمالي المترصد بالدينار ({remainingTotalOwed.toLocaleString()} د.ل) ليكون القيمة السابقة لليوم الجديد، وتصفير جدول اليوم الجديد.</strong>
-            </p>
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={executePerformRollover} className="bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black py-2.5 px-4 rounded-xl transition cursor-pointer flex items-center gap-1.5">
-                <span>نعم، ترحيل رصيد كشف المورد الكلي 📁</span>
-              </button>
-              <button type="button" onClick={() => setShowRolloverConfirm(false)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold py-2.5 px-4 rounded-xl transition cursor-pointer">إلغاء التراجع</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Confirm */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4 z-[9999]" dir="rtl">
-          <div className="bg-white border-2 border-rose-500 rounded-3xl p-6 max-w-md w-full shadow-2xl relative text-right">
-            <h3 className="font-extrabold text-rose-600 text-lg mb-2 flex items-center gap-2">
-              <Trash2 className="w-5 h-5" />
-              <span>تحذير: تصفير قسم المشتريات بالكامل ⚠️</span>
-            </h3>
-            <p className="text-sm font-semibold text-slate-600 mb-6 leading-relaxed">
-              هل أنت متأكد من تصفير وإفراغ جميع بيانات وحركة المخزن (قسم المشتريات) بالكامل وبناء مخزن جديد من الصفر؟ <strong className="text-rose-600">لا يمكن التراجع عن هذا الإجراء!</strong>
-            </p>
-            <div className="flex flex-col gap-2">
-              <button type="button" onClick={confirmResetPurchases} className="bg-rose-600 hover:bg-rose-700 text-white w-full text-sm font-black py-3 px-4 rounded-xl transition cursor-pointer flex items-center justify-center">الموافقة والتصفير بالكامل الآن</button>
-              <button type="button" onClick={() => setShowResetConfirm(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-700 w-full text-sm font-bold py-3 px-4 rounded-xl transition cursor-pointer">إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* History Modal */}
-      {showHistoryModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex justify-center items-center z-[9999] p-4" dir="rtl">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-slate-200">
-            <div className="bg-slate-50 border-b border-slate-200 p-4 flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center text-purple-700"><Calendar className="w-5 h-5" /></div>
-                <div>
-                  <h3 className="font-extrabold text-lg text-slate-800">السجل التاريخي للمعاملات (الأرشيف الآمن)</h3>
-                  <p className="text-xs text-slate-500 font-bold">هذه المعاملات غير قابلة للحذف ويمكن الرجوع إليها بالبحث.</p>
-                </div>
-              </div>
-              <button onClick={() => setShowHistoryModal(false)} className="w-8 h-8 flex items-center justify-center bg-slate-200 hover:bg-rose-100 hover:text-rose-600 text-slate-500 rounded-lg cursor-pointer transition-colors" title="إغلاق الشاشة"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-4 bg-white border-b border-slate-100 flex items-center gap-4 shrink-0">
-              <div className="flex-1 max-w-sm">
-                <input type="date" value={historyFilterDate} onChange={(e) => setHistoryFilterDate(e.target.value)} className="w-full border-2 border-slate-200 rounded-xl px-4 py-2 font-mono text-slate-800 focus:outline-none focus:border-purple-500 transition-colors" />
-              </div>
-              {historyFilterDate && (
-                <button onClick={() => setHistoryFilterDate("")} className="text-xs font-bold text-slate-400 hover:text-slate-700 underline cursor-pointer">إلغاء تصفية التاريخ</button>
-              )}
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50 space-y-4">
-              {historyRecords
-                .filter((rec) => !historyFilterDate || rec.date.startsWith(historyFilterDate))
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                .map((rec) => (
-                  <div key={rec.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 hover:shadow-md transition-shadow">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-md">{rec.merchantId === "baqy" ? "البيان" : "سمسم"}</span>
-                        <span className="font-mono text-sm font-bold text-slate-600 bg-slate-100 px-2 rounded-md">
-                          {new Date(rec.date).toLocaleDateString("ar-LY")} - {new Date(rec.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs font-bold text-slate-600 flex-wrap">
-                        <div>سابقة د.ل: <span className="font-mono text-slate-900">{Number(rec.previousBalance || 0).toLocaleString()}</span></div>
-                        <div>باقي د.ل: <span className="font-mono text-indigo-700">{Number(rec.remainingTotalOwed || 0).toLocaleString()}</span></div>
-                        <div>إجمالي المستهلكين: <span className="font-mono text-rose-700">{Number(rec.consumerValue || 0).toLocaleString()}</span> ج.م</div>
-                      </div>
-                    </div>
-                    {rec.rows && rec.rows.length > 0 ? (
-                      <div className="overflow-x-auto border border-slate-200 rounded-xl mb-3">
-                        <table className="w-full text-right text-[10px] sm:text-xs">
-                          <thead className="bg-slate-100 text-slate-600">
-                            <tr>
-                              <th className="p-2 border-b border-slate-200 pr-3">البيان</th>
-                              <th className="p-2 border-b border-slate-200 text-center">القيمة (ج.م / يورو)</th>
-                              <th className="p-2 border-b border-slate-200 text-center">العملية</th>
-                              <th className="p-2 border-b border-slate-200 text-center">الناتج د.ل</th>
-                              <th className="p-2 border-b border-slate-200 text-center">المسدد د.ل</th>
-                              <th className="p-2 border-b border-slate-200 text-center">باقي القيد د.ل</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-mono">
-                            {rec.rows.map((r: any) => (
-                              <tr key={r.id} className="hover:bg-slate-50/50">
-                                <td className="p-2 pr-3 text-slate-800 font-sans font-bold text-xs">{r.type || "غير محدد"}</td>
-                                <td className="p-2 text-slate-600 text-center">{Number(r.value || 0).toLocaleString()}</td>
-                                <td className="p-2 text-slate-500 text-[10px] text-center">{r.op === "multiply" ? "ضرب فى" : "قسمة على"} {r.rate}</td>
-                                <td className="p-2 text-indigo-700 font-bold text-center">{Number(r.result || 0).toLocaleString()}</td>
-                                <td className="p-2 text-emerald-600 font-bold text-center">{Number(r.paid || 0).toLocaleString()}</td>
-                                <td className="p-2 text-rose-600 font-bold text-center">{Number(r.remaining || 0).toLocaleString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="text-center text-xs font-bold text-slate-400 py-3 mb-3 border border-dashed border-slate-200 rounded-xl">لا توجد عمليات مسجلة للجدول.</div>
-                    )}
-                    {rec.consumerRows && rec.consumerRows.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2 overflow-x-auto pb-1 bg-purple-50/50 p-2 rounded-xl">
-                        <div className="text-xs font-bold text-purple-900 w-full mb-1">تفاصيل مستهلكي فودافون كاش:</div>
-                        {rec.consumerRows.map((cr: any) => (
-                          <div key={cr.id} className="bg-white border border-purple-200 shadow-sm rounded-lg flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-purple-800 whitespace-nowrap">
-                            <span>{cr.name}:</span>
-                            <span className="font-mono text-purple-600">{Number(cr.amount || 0).toLocaleString()} ج.م</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              {historyRecords.filter((rec) => !historyFilterDate || rec.date.startsWith(historyFilterDate)).length === 0 && (
-                <div className="text-center py-20">
-                  <div className="text-slate-300 mb-2 mt-4 inline-flex items-center justify-center bg-white p-6 rounded-full shadow-sm"><FileText className="w-10 h-10 text-slate-300" /></div>
-                  <h4 className="text-sm font-bold text-slate-500 mt-2">لا توجد سجلات ترحيلات مطابقة لتاريخ البحث.</h4>
-                </div>
-              )}
-            </div>
-            <div className="p-4 bg-slate-100 border-t border-slate-200 text-center shrink-0">
-              <span className="text-[10px] font-bold text-slate-400">جميع القيود مؤرشفة ولا يمكن تعديلها أو حذفها للحفاظ على شفافية النظام المحاسبي.</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Daily Review Alert */}
       {showReviewAlert && (
