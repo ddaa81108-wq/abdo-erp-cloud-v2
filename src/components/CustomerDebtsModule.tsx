@@ -13,6 +13,8 @@ import {
   Plus,
   X,
   Landmark,
+  Pencil,
+  Check,
 } from "lucide-react";
 import {
   ERPState,
@@ -77,11 +79,9 @@ const getCardColorClasses = (
   if (debtBalance === 0) {
     return { borderT: "border-t-emerald-400", text: "text-emerald-600", bgBadge: "bg-emerald-50" };
   }
-
   if (debtBalance < 0) {
     return { borderT: "border-t-emerald-400", text: "text-emerald-600", bgBadge: "bg-emerald-50" };
   }
-
   if (daysSinceCreation > 2) {
     if (daysSinceCreation <= 5) {
       return { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" };
@@ -93,17 +93,16 @@ const getCardColorClasses = (
       return { borderT: "border-t-red-600", text: "text-red-600", bgBadge: "bg-red-50" };
     }
   }
-
   return DEFAULT_COLORS[index % DEFAULT_COLORS.length];
 };
 
 // ============================================================
-// مكون شريط الديون المتأخرة (معدل - قابل للضغط)
+// مكون شريط الديون المتأخرة (قابل للضغط)
 // ============================================================
-const OverdueDebtTicker = ({ 
-  customers, 
-  onCustomerClick 
-}: { 
+const OverdueDebtTicker = ({
+  customers,
+  onCustomerClick,
+}: {
   customers: any[];
   onCustomerClick: (customerId: string) => void;
 }) => {
@@ -140,8 +139,8 @@ const OverdueDebtTicker = ({
   const daysSinceLastDebt = getDaysSinceLastDebt(currentCustomer.historicalTxs);
 
   return (
-    <div 
-      className="flex items-center gap-2 animate-fade-in-out cursor-pointer hover:bg-white/20 p-1 rounded transition-colors"
+    <div
+      className="flex items-center gap-2 animate-fade-in-out cursor-pointer hover:bg-white/20 p-1 rounded transition-colors w-full justify-center"
       onClick={() => onCustomerClick(currentCustomer.cust.id)}
       title="اضغط لفتح بطاقة العميل"
     >
@@ -265,6 +264,18 @@ export default function CustomerDebtsModule({
   const [innerDebtAmount, setInnerDebtAmount] = useState("");
   const [innerDebtNote, setInnerDebtNote] = useState("");
 
+  // ====== حالات جديدة: تعديل بيانات العميل ======
+  const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
+  const [editCustName, setEditCustName] = useState("");
+  const [editCustPhone, setEditCustPhone] = useState("");
+  const [editCustCollector, setEditCustCollector] = useState<"abdullah" | "ali">("abdullah");
+
+  // ====== حالات جديدة: تعديل معاملة ======
+  const [showEditTxModal, setShowEditTxModal] = useState(false);
+  const [editingTx, setEditingTx] = useState<DebtTransaction | null>(null);
+  const [editTxAmount, setEditTxAmount] = useState("");
+  const [editTxNote, setEditTxNote] = useState("");
+
   const stateRef = React.useRef(state);
   React.useEffect(() => {
     stateRef.current = state;
@@ -351,6 +362,19 @@ export default function CustomerDebtsModule({
   };
 
   // ============================================================
+  // دالة مساعدة: إعادة حساب رصيد الدورة من المعاملات
+  // ============================================================
+  const recalcCycleBalance = (cycleId: string, transactions: DebtTransaction[]) => {
+    const cycle = state.cycles.find((cy) => cy.id === cycleId);
+    if (!cycle) return 0;
+    const cycleTxs = transactions.filter((t) => t.cycleId === cycleId);
+    const initial = cycle.initialBalance || 0;
+    const debts = cycleTxs.filter((t) => t.type === "debt").reduce((s, t) => s + t.amount, 0);
+    const payments = cycleTxs.filter((t) => t.type === "payment").reduce((s, t) => s + t.amount, 0);
+    return initial + debts - payments;
+  };
+
+  // ============================================================
   // إضافة عميل جديد
   // ============================================================
   const handleAddCustomerSubmit = (e: React.FormEvent) => {
@@ -432,11 +456,11 @@ export default function CustomerDebtsModule({
 
       const updatedCustomers = state.customers.map((c) => {
         if (c.id === restorableCustomer.id) {
-          return { 
-            ...c, 
+          return {
+            ...c,
             isDeleted: false,
             phone: newCustPhone.trim() || c.phone,
-            collector: newCustCollector || c.collector 
+            collector: newCustCollector || c.collector,
           };
         }
         return c;
@@ -574,11 +598,115 @@ export default function CustomerDebtsModule({
         setSelectedCustomerId(null);
         setShowSuccessToast("🎉 تم تسديد الدين بالكامل وإغلاق الدورة المالية بنجاح.");
       } else {
-        setShowSuccessToast(" تم خصم الدفعة الجزئية من دين الزبون.");
+        setShowSuccessToast("🎉 تم خصم الدفعة الجزئية من دين الزبون.");
       }
     } catch (error) {
       alert("حدث خطأ أثناء تسجيل السداد. الرجاء المحاولة مرة أخرى.");
       console.error("Error processing payment:", error);
+    }
+  };
+
+  // ============================================================
+  // 🆕 تعديل بيانات العميل
+  // ============================================================
+  const openEditCustomerModal = () => {
+    const currentAcc = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
+    if (!currentAcc) return;
+    setEditCustName(currentAcc.cust.name || "");
+    setEditCustPhone(currentAcc.cust.phone || "");
+    setEditCustCollector(currentAcc.cust.collector || "abdullah");
+    setShowEditCustomerModal(true);
+  };
+
+  const handleSaveCustomerEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomerId || !editCustName.trim()) return;
+    try {
+      const updatedCustomers = state.customers.map((c) => {
+        if (c.id === selectedCustomerId) {
+          return {
+            ...c,
+            name: editCustName.trim(),
+            phone: editCustPhone.trim(),
+            collector: editCustCollector,
+          };
+        }
+        return c;
+      });
+      onUpdateState({ ...state, customers: updatedCustomers });
+      setShowEditCustomerModal(false);
+      setShowSuccessToast("✅ تم تحديث بيانات العميل بنجاح.");
+    } catch (error) {
+      alert("حدث خطأ أثناء تحديث بيانات العميل. الرجاء المحاولة مرة أخرى.");
+      console.error("Error editing customer:", error);
+    }
+  };
+
+  // ============================================================
+  // 🆕 تعديل معاملة (فتح النافذة)
+  // ============================================================
+  const openEditTxModal = (tx: DebtTransaction) => {
+    setEditingTx(tx);
+    setEditTxAmount(String(tx.amount));
+    setEditTxNote(tx.note || "");
+    setShowEditTxModal(true);
+  };
+
+  const handleSaveEditTx = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTx) return;
+    const newAmount = Math.round(parseFloat(editTxAmount) || 0);
+    if (newAmount <= 0) { alert("الرجاء كتابة مبلغ أكبر من الصفر."); return; }
+    try {
+      const updatedTransactions = state.debtTransactions.map((t) =>
+        t.id === editingTx.id ? { ...t, amount: newAmount, note: editTxNote } : t
+      );
+      const newBalance = recalcCycleBalance(editingTx.cycleId, updatedTransactions);
+      const updatedCycles = state.cycles.map((cy) => {
+        if (cy.id === editingTx.cycleId) {
+          return {
+            ...cy,
+            currentBalance: newBalance,
+            status: newBalance === 0 ? ("closed" as const) : ("active" as const),
+          };
+        }
+        return cy;
+      });
+      onUpdateState({ ...state, debtTransactions: updatedTransactions, cycles: updatedCycles });
+      setShowEditTxModal(false);
+      setEditingTx(null);
+      setEditTxAmount("");
+      setEditTxNote("");
+      setShowSuccessToast("✅ تم تعديل المعاملة وتحديث الرصيد بنجاح.");
+    } catch (error) {
+      alert("حدث خطأ أثناء تعديل المعاملة. الرجاء المحاولة مرة أخرى.");
+      console.error("Error editing transaction:", error);
+    }
+  };
+
+  // ============================================================
+  // 🆕 حذف معاملة (مع إعادة حساب الرصيد)
+  // ============================================================
+  const handleDeleteTx = (tx: DebtTransaction) => {
+    if (!window.confirm("⚠️ هل أنت متأكد من حذف هذه المعاملة؟ سيتم إعادة حساب الرصيد تلقائياً.")) return;
+    try {
+      const updatedTransactions = state.debtTransactions.filter((t) => t.id !== tx.id);
+      const newBalance = recalcCycleBalance(tx.cycleId, updatedTransactions);
+      const updatedCycles = state.cycles.map((cy) => {
+        if (cy.id === tx.cycleId) {
+          return {
+            ...cy,
+            currentBalance: newBalance,
+            status: newBalance === 0 ? ("closed" as const) : ("active" as const),
+          };
+        }
+        return cy;
+      });
+      onUpdateState({ ...state, debtTransactions: updatedTransactions, cycles: updatedCycles });
+      setShowSuccessToast("🗑️ تم حذف المعاملة وتحديث الرصيد بنجاح.");
+    } catch (error) {
+      alert("حدث خطأ أثناء حذف المعاملة. الرجاء المحاولة مرة أخرى.");
+      console.error("Error deleting transaction:", error);
     }
   };
 
@@ -649,7 +777,7 @@ export default function CustomerDebtsModule({
   // التصدير
   // ============================================================
   const handleExportSelectedToRep = () => {
-    if (selectedForRep.length === 0) { alert("️ الرجاء تحديد زبون واحد على الأقل."); return; }
+    if (selectedForRep.length === 0) { alert("⚠️ الرجاء تحديد زبون واحد على الأقل."); return; }
     const selectedCustomers = activeCustomersList.filter((acc) => selectedForRep.includes(acc.cust.id));
     const headers = ["اسم الزبون", "الرصيد المتبقي (الديون/الأمانات)"];
     const rows = selectedCustomers.map(({ cust, debtBalance }) => {
@@ -695,6 +823,30 @@ export default function CustomerDebtsModule({
   };
 
   const selectedAccDetails = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
+
+  // ============================================================
+  // 🆕 ترتيب المعاملات تصاعدياً + تحديد نوع كل معاملة + الرصيد التراكمي
+  // ============================================================
+  const ledgerRows = useMemo(() => {
+    if (!selectedAccDetails) return [];
+    const sorted = [...selectedAccDetails.historicalTxs].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    let running = 0;
+    return sorted.map((tx, idx) => {
+      if (tx.type === "debt") running += tx.amount;
+      else running -= tx.amount;
+      // تحديد نوع الصف: إضافة دين / دفع جزء / سداد كامل
+      let rowKind: "debt" | "partial" | "full" = "debt";
+      if (tx.type === "debt") {
+        rowKind = "debt";
+      } else {
+        // payment: لو الرصيد التراكمي بعد المعاملة = 0 → سداد كامل، وإلا دفع جزء
+        rowKind = running === 0 ? "full" : "partial";
+      }
+      return { tx, running, rowKind, seq: idx + 1 };
+    });
+  }, [selectedAccDetails]);
 
   // ============================================================
   // Render
@@ -748,10 +900,9 @@ export default function CustomerDebtsModule({
                 <span className="text-white font-extrabold text-xs tracking-wide">تنبيه الديون المتأخرة</span>
               </div>
               <div className="bg-white/10 rounded-lg p-2 overflow-hidden h-12 flex items-center justify-center">
-                {/* ✅ التعديل النهائي: الشريط قابل للضغط */}
-                <OverdueDebtTicker 
-                  customers={activeCustomersList} 
-                  onCustomerClick={(customerId) => setSelectedCustomerId(customerId)} 
+                <OverdueDebtTicker
+                  customers={activeCustomersList}
+                  onCustomerClick={(customerId) => setSelectedCustomerId(customerId)}
                 />
               </div>
             </div>
@@ -777,8 +928,6 @@ export default function CustomerDebtsModule({
           {[...activeCustomersList].reverse().map((acc, i) => {
             const isSelected = selectedForRep.includes(acc.cust.id);
             const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-            
-            // ✅ استخدام Helper Function لألوان الكروت
             const clr = getCardColorClasses(daysSinceCreation, acc.debtBalance, i);
 
             return (
@@ -806,10 +955,176 @@ export default function CustomerDebtsModule({
         </div>
       </div>
 
+      {/* ============================================================ */}
+      {/* 🆕 بطاقة كشف الزبون - التصميم الجديد (Top Bar + Ledger + Footer) */}
+      {/* ============================================================ */}
+      {selectedCustomerId && selectedAccDetails && (
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-5xl w-full border border-slate-200 flex flex-col max-h-[92vh] text-right">
+
+            {/* الشريط العلوي الموحد (Top Bar) */}
+            <div className="flex flex-wrap items-center justify-end gap-2 pb-3 mb-4 border-b border-slate-200">
+              {/* اسم العميل (أقصى اليمين) */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl mr-auto">
+                <UserPlus className="w-4 h-4 text-indigo-600" />
+                <span className="font-black text-sm text-slate-900">{selectedAccDetails.cust.name}</span>
+              </div>
+
+              {/* إضافة الدين */}
+              <button
+                type="button"
+                onClick={() => { setInnerDebtAmount(""); setInnerDebtNote(""); setShowAddDebtInnerModal(true); }}
+                className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>إضافة الدين</span>
+              </button>
+
+              {/* دفع جزء من الدين */}
+              <button
+                type="button"
+                onClick={() => { setPaymentType("partial"); setPaymentAmount(""); setShowPaymentModal(true); }}
+                className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                <CircleCheck className="w-4 h-4" />
+                <span>دفع جزء من الدين</span>
+              </button>
+
+              {/* السداد الكامل */}
+              <button
+                type="button"
+                onClick={() => { setPaymentType("full"); setPaymentAmount(selectedAccDetails.debtBalance.toString()); setShowPaymentModal(true); }}
+                disabled={selectedAccDetails.debtBalance <= 0}
+                className={`flex items-center gap-1.5 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer border ${selectedAccDetails.debtBalance <= 0 ? "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500"}`}
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span>السداد الكامل</span>
+              </button>
+
+              {/* تعديل بيانات */}
+              <button
+                type="button"
+                onClick={openEditCustomerModal}
+                className="flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                <Pencil className="w-4 h-4" />
+                <span>تعديل بيانات</span>
+              </button>
+
+              {/* إغلاق النافذة */}
+              <button
+                type="button"
+                onClick={() => setSelectedCustomerId(null)}
+                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                <span>إغلاق النافذة</span>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* عنوان الجدول */}
+            <h4 className="text-center font-black text-base text-slate-800 mb-3 pb-2 border-b-2 border-indigo-400">
+              سجل المعاملات والأرشفة
+            </h4>
+
+            {/* الجدول الرئيسي (Ledger) */}
+            <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white mb-4">
+              <table className="w-full text-[11px] border-collapse min-w-[820px]">
+                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 sticky top-0 z-10">
+                  <tr>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[8%]">التسلسل</th>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[16%]">التاريخ</th>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[12%]">إضافة الدين</th>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[14%]">دفع جزء من الدين</th>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[12%]">السداد الكامل</th>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[14%]">إجمالي الديون</th>
+                    <th className="p-2.5 text-center border-l border-slate-200 w-[12%]">تعديل</th>
+                    <th className="p-2.5 text-center w-[12%]">مسح</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {ledgerRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-400 text-xs italic">
+                        لا توجد أي معاملات مسجلة لهذا العميل بعد.
+                      </td>
+                    </tr>
+                  ) : (
+                    ledgerRows.map((row) => (
+                      <tr key={row.tx.id} className="hover:bg-slate-50 transition-colors">
+                        {/* التسلسل */}
+                        <td className="p-2 text-center font-bold text-slate-500 border-l border-slate-100">{row.seq}</td>
+                        {/* التاريخ */}
+                        <td className="p-2 text-center font-mono text-slate-700 border-l border-slate-100">
+                          {new Date(row.tx.date).toLocaleDateString("ar-LY")}
+                          <br />
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(row.tx.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </td>
+                        {/* إضافة الدين */}
+                        <td className="p-2 text-center border-l border-slate-100">
+                          {row.rowKind === "debt" ? <Check className="w-5 h-5 mx-auto text-emerald-600" /> : null}
+                        </td>
+                        {/* دفع جزء */}
+                        <td className="p-2 text-center border-l border-slate-100">
+                          {row.rowKind === "partial" ? <Check className="w-5 h-5 mx-auto text-emerald-600" /> : null}
+                        </td>
+                        {/* سداد كامل */}
+                        <td className="p-2 text-center border-l border-slate-100">
+                          {row.rowKind === "full" ? <Check className="w-5 h-5 mx-auto text-emerald-600" /> : null}
+                        </td>
+                        {/* إجمالي الديون التراكمي */}
+                        <td className="p-2 text-center font-mono font-black text-slate-900 border-l border-slate-100">
+                          {Math.round(row.running).toLocaleString("en-US")} د.ل
+                        </td>
+                        {/* تعديل */}
+                        <td className="p-2 text-center border-l border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => openEditTxModal(row.tx)}
+                            className="text-sky-600 hover:text-sky-800 hover:bg-sky-50 p-1 rounded transition mx-auto block"
+                            title="تعديل المعاملة"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        </td>
+                        {/* مسح */}
+                        <td className="p-2 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTx(row.tx)}
+                            className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 p-1 rounded transition mx-auto block"
+                            title="حذف المعاملة"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* القسم السفلي (Footer) - إجمالي الديون المستحقة الآن */}
+            <div className="border-2 border-slate-300 rounded-xl p-3 flex items-center justify-between bg-slate-50">
+              <span className="font-black text-sm text-slate-800">إجمالي الديون المستحقة الآن</span>
+              <span className={`font-mono font-black text-lg ${selectedAccDetails.debtBalance > 0 ? "text-rose-600" : selectedAccDetails.debtBalance < 0 ? "text-emerald-700" : "text-emerald-600"}`}>
+                {Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* نافذة إضافة زبون جديد */}
+      {/* ============================================================ */}
       {showAddCustomerModal && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
-            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-4 flex items-center gap-2"><UserPlus className="w-5 h-5 text-indigo-650" /><span>تسجيل زبون ودين مالي جديد</span></h3>
+            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-4 flex items-center gap-2"><UserPlus className="w-5 h-5 text-indigo-600" /><span>تسجيل زبون ودين مالي جديد</span></h3>
             <form onSubmit={handleAddCustomerSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبون بالكامل *</label>
@@ -847,8 +1162,8 @@ export default function CustomerDebtsModule({
                 </div>
               </div>
               {showRestorePrompt && restorableCustomer && (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2.5 text-xs text-amber-955 leading-relaxed">
-                  <div className="flex items-center gap-1 font-bold text-amber-900"><AlertCircle className="w-4.5 h-4.5 text-amber-600" /><span>⚠️ هذا العميل كان مسجلاً سابقاً وسدد ديونه!</span></div>
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2.5 text-xs text-amber-900 leading-relaxed">
+                  <div className="flex items-center gap-1 font-bold text-amber-900"><AlertCircle className="w-4 h-4 text-amber-600" /><span>⚠️ هذا العميل كان مسجلاً سابقاً وسدد ديونه!</span></div>
                   <p className="text-[11px]">المنظومة تفيد بأن الزبون "{restorableCustomer.name}" لديه ملف قديم بالأرشيف. هل تريد استرجاع ملفه القديم ليتصل أرشيفه السابق بالدين الجديد؟</p>
                   <div className="flex gap-2">
                     <button type="button" onClick={handleRestoreOldCustomer} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-2 rounded-lg text-[10.5px] transition-colors">نعم، استرجع الحساب واربطه بـ أرشيفه القديم</button>
@@ -864,104 +1179,90 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
-      {selectedCustomerId && selectedAccDetails && (
-        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-4xl w-full border border-slate-200 flex flex-col max-h-[90vh] text-right">
-            <div className="flex items-center justify-between border-b pb-3.5 mb-4">
+      {/* ============================================================ */}
+      {/* 🆕 نافذة تعديل بيانات العميل */}
+      {/* ============================================================ */}
+      {showEditCustomerModal && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
+            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-4 flex items-center gap-2"><Pencil className="w-5 h-5 text-purple-600" /><span>تعديل بيانات العميل</span></h3>
+            <form onSubmit={handleSaveCustomerEdit} className="space-y-4">
               <div>
-                <span className="bg-indigo-100 text-indigo-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full font-sans">بطاقة كشف زبون حالي</span>
-                <h3 className="font-black text-base text-slate-900 mt-1 flex items-center gap-1"><span>اسم الزبون:</span><span className="text-indigo-650">{selectedAccDetails.cust.name}</span></h3>
+                <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبون بالكامل *</label>
+                <input type="text" required value={editCustName} onChange={(e) => setEditCustName(e.target.value)} className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
               </div>
-              <button onClick={() => setSelectedCustomerId(null)} className="bg-slate-100 hover:bg-slate-200 p-1 px-3 rounded-lg text-xs font-bold text-slate-700 transition">إغلاق النافذة ✕</button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              {selectedAccDetails.debtBalance > 0 ? (
-                <div className="bg-rose-50 border border-rose-100 p-3 rounded-xl">
-                  <span className="text-rose-800 text-[10px] font-bold block mb-0.5">الرصيد القائم حالياً عليه</span>
-                  <span className="text-base font-mono font-black text-rose-600">{Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل</span>
-                </div>
-              ) : selectedAccDetails.debtBalance < 0 ? (
-                <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl ring-1 ring-emerald-500" title="أمانة">
-                  <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">رصيد دائن لصالحه (له أمانة)</span>
-                  <span className="text-base font-mono font-black text-emerald-700">{Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل</span>
-                </div>
-              ) : (
-                <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl">
-                  <span className="text-slate-800 text-[10px] font-bold block mb-0.5">الرصيد القائم حالياً</span>
-                  <span className="text-base font-mono font-black text-slate-500">مسدد و خالص ✓</span>
-                </div>
-              )}
-              <div className="bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
-                <span className="text-emerald-800 text-[10px] font-bold block mb-0.5">مجموع الدفوعات المسددة من قبل</span>
-                <span className="text-base font-mono font-black text-emerald-700">{Math.round(selectedAccDetails.historicalTxs.filter((t) => t.type === "payment").reduce((sum, t) => sum + t.amount, 0)).toLocaleString("en-US")} د.ل</span>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف (اختياري)</label>
+                <input type="text" value={editCustPhone} onChange={(e) => setEditCustPhone(e.target.value)} placeholder="091-XXXXXXX" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
               </div>
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-slate-500 font-bold text-[10px] block mb-0.5">إرسال كشف للزبون</span>
-                    <span className="text-[10px] text-slate-400 block">اضغط لتصدير نسخة مخصصة</span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {selectedAccDetails.debtBalance === 0 ? (
-                      <button onClick={async () => { const success = await copySettledImage(selectedAccDetails.cust.name); if (success) { setShowSuccessToast("تم مشاركة كارت المخالصة بنجاح 📋"); setTimeout(() => setShowSuccessToast(null), 3000); } }} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center shadow-md border border-emerald-500"><Copy className="w-3.5 h-3.5" />نسخ كارت المخالصة 📋</button>
-                    ) : (
-                      <button onClick={() => handleCopyDebtImage(selectedAccDetails.cust.name, selectedAccDetails.debtBalance)} className="bg-purple-600 hover:bg-purple-700 text-white rounded-lg p-1.5 px-3 text-[10px] font-bold cursor-pointer flex justify-center gap-1 items-center"><Copy className="w-3.5 h-3.5" />نسخ كارت الدين السريع 📋</button>
-                    )}
-                  </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">مُحصّل الدين *</label>
+                <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                  <label className="flex-1 cursor-pointer">
+                    <div className={`p-3 rounded-lg text-center transition-all ${editCustCollector === "abdullah" ? "bg-indigo-100 border-2 border-indigo-500 text-indigo-900 font-bold" : "bg-white border border-slate-200 text-slate-600"}`}>
+                      <input type="radio" name="edit_collector" className="hidden" checked={editCustCollector === "abdullah"} onChange={() => setEditCustCollector("abdullah")} />ديون عبد الله
+                    </div>
+                  </label>
+                  <label className="flex-1 cursor-pointer">
+                    <div className={`p-3 rounded-lg text-center transition-all ${editCustCollector === "ali" ? "bg-emerald-100 border-2 border-emerald-500 text-emerald-900 font-bold" : "bg-white border border-slate-200 text-slate-600"}`}>
+                      <input type="radio" name="edit_collector" className="hidden" checked={editCustCollector === "ali"} onChange={() => setEditCustCollector("ali")} />ديون علي
+                    </div>
+                  </label>
                 </div>
               </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto border border-slate-150 rounded-xl p-3 bg-slate-50 mb-4 min-h-[160px]">
-              <h4 className="text-xs font-extrabold text-slate-700 mb-2.5 pb-1.5 border-b border-slate-200 flex items-center gap-1.5"><Clock className="w-4 h-4 text-indigo-500 font-bold" /><span>أرشيف الزبون (جميع الحركات التاريخية)</span></h4>
-              {selectedAccDetails.historicalTxs.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-xs italic">لا توجد أي حركات دفع أو دين مسجلة في كشف حساب الزبون بعد.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] border-collapse">
-                    <thead>
-                      <tr className="bg-slate-200 text-slate-700 font-bold border-b border-slate-300">
-                        <th className="p-2 text-right">الوقت والتاريخ</th>
-                        <th className="p-2 text-right">الحركة</th>
-                        <th className="p-2 text-right">رقم المستند</th>
-                        <th className="p-2 text-left">قيمة الحركة</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
-                      {[...selectedAccDetails.historicalTxs].reverse().map((tx) => (
-                        <tr key={tx.id} className="hover:bg-slate-50 font-mono">
-                          <td className="p-2 font-sans text-[10.5px]">{new Date(tx.date).toLocaleDateString("ar-LY")} {new Date(tx.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}</td>
-                          <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-sans font-bold ${tx.type === "debt" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{tx.type === "debt" ? " إضافة دين" : "🟢 سداد دفعة"}</span></td>
-                          <td className="p-2 text-slate-500">{tx.referenceNo}</td>
-                          <td className={`p-2 text-left font-black ${tx.type === "debt" ? "text-rose-600" : "text-emerald-700"}`}>{Math.round(tx.amount).toLocaleString("en-US")} د.ل</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-
-            <div className="border-t pt-3 flex flex-wrap gap-2 justify-between items-center">
-              <button onClick={() => handleQuickDelete()} className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs p-2.5 px-4 rounded-xl flex items-center gap-1 transition cursor-pointer"><Trash2 className="w-4 h-4" /><span>مسح وإلغاء الزبون بالكامل 🗑️</span></button>
-              <div className="flex gap-2">
-                <button onClick={() => { setInnerDebtAmount(""); setInnerDebtNote(""); setShowAddDebtInnerModal(true); }} className="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer">🔴 إضافة دين جديد</button>
-                <button onClick={() => { setPaymentType("partial"); setPaymentAmount(""); setShowPaymentModal(true); }} className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold text-xs p-2.5 px-4 rounded-xl transition cursor-pointer">🟢 دفع جزء من الدين</button>
-                <button onClick={() => { setPaymentType("full"); setPaymentAmount(selectedAccDetails.debtBalance.toString()); setShowPaymentModal(true); }} disabled={selectedAccDetails.debtBalance <= 0} className={`bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs p-2.5 px-4 rounded-xl shadow-xs transition cursor-pointer ${selectedAccDetails.debtBalance <= 0 ? "opacity-50 cursor-not-allowed" : ""}`}>✅ سداد كامل وتصفير</button>
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button type="button" onClick={() => setShowEditCustomerModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء</button>
+                <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg">حفظ التعديلات</button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
 
+      {/* ============================================================ */}
+      {/* 🆕 نافذة تعديل معاملة */}
+      {/* ============================================================ */}
+      {showEditTxModal && editingTx && (
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
+            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-3 flex items-center gap-2"><Pencil className="w-5 h-5 text-sky-600" /><span>تعديل المعاملة</span></h3>
+            <form onSubmit={handleSaveEditTx} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">نوع المعاملة</label>
+                <div className="text-xs font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">
+                  {editingTx.type === "debt" ? "🔴 إضافة دين" : "🟢 دفعة سداد"}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ *</label>
+                <div className="relative">
+                  <input type="number" required value={editTxAmount} onChange={(e) => setEditTxAmount(e.target.value)} className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
+                  <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">البيان / ملاحظة</label>
+                <input type="text" value={editTxNote} onChange={(e) => setEditTxNote(e.target.value)} className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button type="button" onClick={() => { setShowEditTxModal(false); setEditingTx(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء</button>
+                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg">حفظ التعديل</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* نافذة إضافة دين داخلي */}
+      {/* ============================================================ */}
       {showAddDebtInnerModal && selectedAccDetails && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
             <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500"></span>إضافة دين جديد للعميل: {selectedAccDetails.cust.name}</h3>
             <form onSubmit={handleProcessInnerDebtSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-650 mb-1">المبلغ المراد إضافته كدين *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ المراد إضافته كدين *</label>
                 <div className="relative">
                   <input type="number" required value={innerDebtAmount} onChange={(e) => setInnerDebtAmount(e.target.value)} placeholder="0" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
                   <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
@@ -975,7 +1276,7 @@ export default function CustomerDebtsModule({
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => setShowAddDebtInnerModal(false)} className="bg-slate-150 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors">إلغاء</button>
+                <button type="button" onClick={() => setShowAddDebtInnerModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors">إلغاء</button>
                 <button type="submit" className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg transition-all shadow-sm">تأكيد إضافة الدين</button>
               </div>
             </form>
@@ -983,18 +1284,21 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
+      {/* ============================================================ */}
+      {/* نافذة السداد */}
+      {/* ============================================================ */}
       {showPaymentModal && selectedAccDetails && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
             <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-3">{paymentType === "full" ? "تسجيل سداد دين كامل وتسوية" : "تسجيل سداد جزء وقيد دفعة"}</h3>
             <form onSubmit={handleProcessPaymentSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-650 mb-1">المبلغ المراد خصمه وتسديده *</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ المراد خصمه وتسديده *</label>
                 <div className="relative">
                   <input type="number" required disabled={paymentType === "full"} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
                   <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
                 </div>
-                {paymentType === "full" && <p className="text-[10px] text-slate-405 mt-1">* في الدفع الكامل، يتم جلب رصيد الدين المتبقي للزبون تلقائياً وهو {selectedAccDetails.debtBalance} د.ل.</p>}
+                {paymentType === "full" && <p className="text-[10px] text-slate-400 mt-1">* في الدفع الكامل، يتم جلب رصيد الدين المتبقي للزبون تلقائياً وهو {selectedAccDetails.debtBalance} د.ل.</p>}
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">ملاحظة عامة أو بيان السند (اختياري)</label>
@@ -1004,7 +1308,7 @@ export default function CustomerDebtsModule({
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => setShowPaymentModal(false)} className="bg-slate-150 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء التراجع</button>
+                <button type="button" onClick={() => setShowPaymentModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء التراجع</button>
                 <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-xs px-5 py-2 rounded-lg transition-all">تسجيل السداد والخصم</button>
               </div>
             </form>
@@ -1012,6 +1316,9 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
+      {/* ============================================================ */}
+      {/* الحاسبة العائمة */}
+      {/* ============================================================ */}
       <div className="fixed bottom-6 left-6 z-[100] flex flex-col items-start gap-4">
         {showCalculator && (
           <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-[320px] md:w-[380px] flex flex-col transform origin-bottom-left transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
