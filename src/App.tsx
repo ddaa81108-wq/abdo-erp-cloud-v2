@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 
 import {
   ERPState,
@@ -40,7 +40,6 @@ import FinancialReportsModule from "./components/FinancialReportsModule";
 import PdfExportModule from "./components/PdfExportModule";
 
 export default function App() {
-  // 🔄 Multi-device sync: loading state only, localStorage as fallback
   const [isLoading, setIsLoading] = useState(true);
   const [isOnlineMode, setIsOnlineMode] = useState(false);
 
@@ -55,7 +54,6 @@ export default function App() {
     return INITIAL_ERP_STATE;
   });
 
-  // 👥 Active session details
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const stored = sessionStorage.getItem("ABDO_ERP_V2_ACTIVE_USER");
     if (stored) {
@@ -284,24 +282,74 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-const syncTimeoutRef = useRef<any>(null);
+  const syncTimeoutRef = useRef<any>(null);
 
-  // 🔄 Auto Backup Logic (درع النسخ التلقائي المحصن كل 12 ساعة)
+  // 🔄 Auto Backup Logic
   const stateRef = useRef(state);
-  // تحديث المرجع باستمرار لضمان التقاط أحدث بيانات وعدم ضياع أي حرف
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
+  // ============================================================
+  // 🆕 Helper: Write state to Firebase in split format
+  // ============================================================
+  const writeSplitState = async (stateToWrite: ERPState) => {
+    if (!db) return;
+
+    // 1. Save each backup's dataJson to its own document
+    const backupPoints = stateToWrite.backupPoints || [];
+    for (const bp of backupPoints) {
+      if (bp.dataJson) {
+        try {
+          await setDoc(doc(db, "erp_system", `backup_${bp.id}`), {
+            id: bp.id,
+            name: bp.name,
+            date: bp.date,
+            description: bp.description,
+            dataJson: bp.dataJson,
+          });
+        } catch (e) {
+          console.error("Failed to save backup doc:", bp.id, e);
+        }
+      }
+    }
+
+    // 2. Prepare main state: remove large arrays + strip dataJson from backups
+    const stateCopy: any = JSON.parse(JSON.stringify(stateToWrite));
+    const debtTransactions = stateCopy.debtTransactions || [];
+    const purchases = stateCopy.purchases || [];
+    delete stateCopy.debtTransactions;
+    delete stateCopy.purchases;
+    stateCopy.backupPoints = (stateCopy.backupPoints || []).map((bp: any) => {
+      const { dataJson, ...rest } = bp;
+      return rest;
+    });
+
+    // 3. Write main state (small)
+    await setDoc(doc(db, "erp_system", "main_state"), stateCopy, { merge: true });
+
+    // 4. Write debtTransactions chunk
+    await setDoc(doc(db, "erp_system", "chunk_debt_transactions"), {
+      debtTransactions,
+    });
+
+    // 5. Write purchases chunk
+    await setDoc(doc(db, "erp_system", "chunk_purchases"), {
+      purchases,
+    });
+  };
+
+  // ============================================================
+  // 🆕 Auto Backup (keeps last 3 auto-backups only)
+  // ============================================================
   useEffect(() => {
     if (!currentUser) return;
 
     const performAutoBackup = async () => {
-      const currentState = stateRef.current; // 🛡️ السر هنا: جلب أحدث بيانات فورية وليست قديمة
+      const currentState = stateRef.current;
       const now = Date.now();
-      const twelveHoursMs = 12 * 60 * 60 * 1000; 
+      const twelveHoursMs = 12 * 60 * 60 * 1000;
       
-      // نعتمد على المتصفح لحفظ وقت آخر نسخة لتجنب تعديل ملفات الأنواع (Types)
       const lastBackupTime = parseInt(localStorage.getItem("ABDO_LAST_AUTO_BACKUP") || "0", 10);
 
       if (now - lastBackupTime >= twelveHoursMs) {
@@ -320,41 +368,105 @@ const syncTimeoutRef = useRef<any>(null);
         };
 
         try {
-          // حفظ وقت النسخة فوراً لمنع التكرار المجنون
           localStorage.setItem("ABDO_LAST_AUTO_BACKUP", now.toString());
+          
+          // Keep only last 3 auto-backups
+          const existingAutoBackups = (currentState.backupPoints || []).filter(
+            (bp: any) => bp.id.startsWith("auto_backup_")
+          );
+          const backupsToRemove = existingAutoBackups.slice(0, Math.max(0, existingAutoBackups.length - 2));
+          const remainingBackups = (currentState.backupPoints || []).filter(
+            (bp: any) => !backupsToRemove.some((r: any) => r.id === bp.id)
+          );
+
+          // Delete old backup documents from Firebase
+          if (db) {
+            for (const old of backupsToRemove) {
+              try {
+                await deleteDoc(doc(db, "erp_system", `backup_${old.id}`));
+              } catch (e) {}
+            }
+          }
           
           await updateStateAndSync({
             ...currentState,
-            backupPoints: [...(currentState.backupPoints || []), newBackup]
+            backupPoints: [...remainingBackups, newBackup]
           });
           
-          console.log("✅ تم حفظ النسخة الاحتياطية التلقائية بنجاح في قسم الإعدادات");
+          console.log("✅ تم حفظ النسخة الاحتياطية التلقائية بنجاح");
         } catch (error) {
           console.error("❌ فشل إنشاء النسخة التلقائية:", error);
         }
       }
     };
 
-    // 1. فحص فوري عند فتح التطبيق
     performAutoBackup();
-
-    // 2. فحص دوري كل ساعة في الخلفية
     const intervalId = setInterval(performAutoBackup, 60 * 60 * 1000);
 
     return () => clearInterval(intervalId);
   }, [currentUser]);
 
-  // 1. Firebase Synchronization Core
+  // ============================================================
+  // 🆕 Firebase Synchronization Core - Multi-document merge
+  // ============================================================
   useEffect(() => {
     let unmounted = false;
     if (!db) return;
 
-    const docRef = doc(db, "erp_system", "main_state");
+    const mainRef = doc(db, "erp_system", "main_state");
+    const debtRef = doc(db, "erp_system", "chunk_debt_transactions");
+    const purchasesRef = doc(db, "erp_system", "chunk_purchases");
+
+    const reassembleState = async (mainData: any) => {
+      // Start with whatever is in mainData (backward compat with old format)
+      let debtTransactions: any[] = mainData.debtTransactions || [];
+      let purchases: any[] = mainData.purchases || [];
+
+      // Try to load from chunk documents (new format)
+      try {
+        const debtSnap = await getDoc(debtRef);
+        if (debtSnap.exists()) {
+          debtTransactions = debtSnap.data().debtTransactions || [];
+        }
+      } catch (e) { /* fallback to mainData */ }
+
+      try {
+        const purchasesSnap = await getDoc(purchasesRef);
+        if (purchasesSnap.exists()) {
+          purchases = purchasesSnap.data().purchases || [];
+        }
+      } catch (e) { /* fallback to mainData */ }
+
+      // Restore backup dataJson from separate documents
+      const backupPoints = mainData.backupPoints || [];
+      const restoredBackups = await Promise.all(
+        backupPoints.map(async (bp: any) => {
+          if (bp.dataJson) return bp; // already has data (old format in localStorage)
+          try {
+            const bpSnap = await getDoc(doc(db, "erp_system", `backup_${bp.id}`));
+            if (bpSnap.exists()) {
+              return { ...bp, dataJson: bpSnap.data().dataJson };
+            }
+          } catch (e) { /* skip */ }
+          return bp;
+        })
+      );
+
+      return {
+        ...mainData,
+        debtTransactions,
+        purchases,
+        backupPoints: restoredBackups,
+      };
+    };
+
     const unsubscribe = onSnapshot(
-      docRef,
+      mainRef,
       async (docSnap) => {
         if (docSnap.exists()) {
-          const data = docSnap.data() as ERPState;
+          const data = docSnap.data() as any;
+
+          // Legacy migration: merchants → companies
           if (!data.users || data.users.length === 0) data.users = INITIAL_ERP_STATE.users;
           if (!data.merchants) data.merchants = INITIAL_ERP_STATE.merchants || [];
           if (!data.merchantTransactions) data.merchantTransactions = INITIAL_ERP_STATE.merchantTransactions || [];
@@ -363,11 +475,11 @@ const syncTimeoutRef = useRef<any>(null);
 
           if (data.merchants && Array.isArray(data.merchants) && data.merchants.length > 0) {
             data.companies.push(
-              ...data.merchants.map((m) => ({ ...m, id: m.id.replace("mer_", "comp_") })),
+              ...data.merchants.map((m: any) => ({ ...m, id: m.id.replace("mer_", "comp_") })),
             );
             if (data.merchantTransactions && Array.isArray(data.merchantTransactions)) {
               data.companyTransactions.push(
-                ...data.merchantTransactions.map((tx) => ({
+                ...data.merchantTransactions.map((tx: any) => ({
                   ...tx,
                   id: tx.id.replace("tx_m_", "tx_c_"),
                   companyId: tx.merchantId.replace("mer_", "comp_"),
@@ -377,18 +489,20 @@ const syncTimeoutRef = useRef<any>(null);
             }
             data.merchants = [];
             data.merchantTransactions = [];
-            await setDoc(docRef, data, { merge: true });
+            await setDoc(mainRef, { merchants: [], merchantTransactions: [], companies: data.companies, companyTransactions: data.companyTransactions }, { merge: true });
           }
 
           if (!data.trustDeposits) data.trustDeposits = INITIAL_ERP_STATE.trustDeposits || [];
-          if (!data.purchases) data.purchases = INITIAL_ERP_STATE.purchases || [];
           if (!data.egyptianCashRecords) data.egyptianCashRecords = [];
+
+          // Reassemble full state from chunks
+          const fullState = await reassembleState(data);
 
           if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
-            setState((current) => JSON.stringify(current) === JSON.stringify(data) ? current : data);
-            try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(data)); } catch (e) {}
+            setState((current) => JSON.stringify(current) === JSON.stringify(fullState) ? current : fullState as ERPState);
+            try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(fullState)); } catch (e) {}
           }
         } else {
           const tryLocal = localStorage.getItem("ABDO_ERP_V2_DATA");
@@ -399,7 +513,12 @@ const syncTimeoutRef = useRef<any>(null);
               if (parsed && parsed.customers) initialData = parsed;
             } catch (e) {}
           }
-          await setDoc(docRef, initialData, { merge: true });
+          // Write initial data in split format
+          try {
+            await writeSplitState(initialData);
+          } catch (e) {
+            console.error("Failed to write initial split state:", e);
+          }
           if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
@@ -419,7 +538,9 @@ const syncTimeoutRef = useRef<any>(null);
     };
   }, []);
 
-  // 🛡️ SECURE THE SYNC FUNCTION
+  // ============================================================
+  // 🆕 SECURE THE SYNC FUNCTION - uses writeSplitState
+  // ============================================================
   const updateStateAndSync = async (newState: ERPState) => {
     const cleanedState = JSON.parse(JSON.stringify(newState));
     setState(cleanedState);
@@ -434,7 +555,7 @@ const syncTimeoutRef = useRef<any>(null);
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(async () => {
         try {
-          await setDoc(doc(db, "erp_system", "main_state"), cleanedState, { merge: true });
+          await writeSplitState(cleanedState);
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
         }
@@ -521,11 +642,24 @@ const syncTimeoutRef = useRef<any>(null);
   };
 
   const handleRestoreState = (newState: ERPState) => updateStateAndSync(newState);
+
+  // 🆕 Modified: backup dataJson stored in separate Firebase doc
   const handleSaveBackupPoint = (name: string, description: string) => {
-    const newPoint = { id: `point_${Date.now()}`, name, date: new Date().toISOString(), description, dataJson: JSON.stringify(state) };
+    const newPoint = {
+      id: `point_${Date.now()}`,
+      name,
+      date: new Date().toISOString(),
+      description,
+      dataJson: JSON.stringify(state),
+    };
     updateStateAndSync({ ...state, backupPoints: [...state.backupPoints, newPoint] });
   };
+
+  // 🆕 Modified: also deletes the separate backup document
   const handleDeleteBackupPoint = (id: string) => {
+    if (db) {
+      deleteDoc(doc(db, "erp_system", `backup_${id}`)).catch(() => {});
+    }
     updateStateAndSync({ ...state, backupPoints: state.backupPoints.filter((p) => p.id !== id) });
   };
 
@@ -555,16 +689,15 @@ const syncTimeoutRef = useRef<any>(null);
     setShowGlobSearch(false);
   };
 
-const handleLoginSuccess = (user: User) => {
-    // 🛡️ درع الحماية المعكوس: نجلب بيانات الفايربيس أولاً، ثم نفرض سيطرتنا بالقيم الآمنة
+  const handleLoginSuccess = (user: User) => {
     const secureUser: User = {
       ...user,
       permissions: {
-        ...(user.permissions || {}),        // 1. نقرأ ما في الفايربيس أولاً
-        canViewDebts: true,                 // 2. نفرض سيطرتنا ونضمن ظهور الأقسام
+        ...(user.permissions || {}),
+        canViewDebts: true,
         canViewCompanies: true,
-        canViewTreasury: true,              // ✅ الخزنة مضمونة الظهور
-        canViewPurchases: true,             // ✅ المشتريات مضمونة الظهور
+        canViewTreasury: true,
+        canViewPurchases: true,
         canViewDeposits: true,
         canViewBackup: true,
         canViewArchive: true,
@@ -574,7 +707,6 @@ const handleLoginSuccess = (user: User) => {
     setCurrentUser(secureUser);
     sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(secureUser));
     
-    // تحديد أول قسم مسموح به للفتح تلقائياً
     const allowed = [
       { id: "debts", enabled: secureUser.permissions.canViewDebts },
       { id: "companies", enabled: secureUser.permissions.canViewCompanies },
@@ -618,7 +750,6 @@ const handleLoginSuccess = (user: User) => {
     sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(updatedUser));
   };
 
-  // 🌀 Loading screen
   if (isLoading && !isOnlineMode) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-6 font-sans" dir="rtl">
@@ -629,7 +760,6 @@ const handleLoginSuccess = (user: User) => {
     );
   }
 
-  // 🛡️ SECURE LOGIN SCREEN RENDERING
   if (!currentUser) {
     return (
       <LoginScreen onLoginSuccess={handleLoginSuccess} />
@@ -744,14 +874,14 @@ const handleLoginSuccess = (user: User) => {
                 </button>
               </div>
 
-                            <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-right max-h-[calc(100vh-130px)] custom-scrollbar">
+              <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-right max-h-[calc(100vh-130px)] custom-scrollbar">
                 {[
                   { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? true },
                   { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? true },
                   { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? true },
                   { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: true },
-                  { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? true }, // ✅ محصن نهائياً
-                  { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? true }, // ✅ محصن نهائياً
+                  { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? true },
+                  { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? true },
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: true },
                   { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: true },
                   { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: true },
