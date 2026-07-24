@@ -501,11 +501,21 @@ export default function App() {
           // Reassemble full state from chunks
           const fullState = await reassembleState(data);
 
-          if (!unmounted) {
+                   if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
-            setState((current) => JSON.stringify(current) === JSON.stringify(fullState) ? current : fullState as ERPState);
-            try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(fullState)); } catch (e) {}
+            let safe = fullState as ERPState;
+            try {
+              const loc = localStorage.getItem("ABDO_ERP_V2_DATA");
+              if (loc) {
+                const lp = JSON.parse(loc);
+                const lc = (lp.customers?.length||0)+(lp.companies?.length||0)+(lp.merchants?.length||0);
+                const fc = (fullState.customers?.length||0)+(fullState.companies?.length||0)+(fullState.merchants?.length||0);
+                if (lc > fc && lc > 0) safe = lp;
+              }
+            } catch(e){}
+            setState((current) => JSON.stringify(current) === JSON.stringify(safe) ? current : safe);
+            try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(safe)); } catch (e) {}
           }
         } else {
           // 🔒 FIX #1: Document doesn't exist in Firebase.
