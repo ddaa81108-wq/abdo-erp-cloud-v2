@@ -98,9 +98,15 @@ const getCardColorClasses = (
 };
 
 // ============================================================
-// مكون شريط الديون المتأخرة
+// مكون شريط الديون المتأخرة (مدمج مع خاصية الضغط)
 // ============================================================
-const OverdueDebtTicker = ({ customers }: { customers: any[] }) => {
+const OverdueDebtTicker = ({
+  customers,
+  onCustomerClick,
+}: {
+  customers: any[];
+  onCustomerClick: (customerId: string) => void;
+}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const getDaysSinceLastDebt = (historicalTxs: any[]) => {
@@ -134,7 +140,11 @@ const OverdueDebtTicker = ({ customers }: { customers: any[] }) => {
   const daysSinceLastDebt = getDaysSinceLastDebt(currentCustomer.historicalTxs);
 
   return (
-    <div className="flex items-center gap-2 animate-fade-in-out">
+    <div
+      className="flex items-center gap-2 animate-fade-in-out cursor-pointer hover:bg-white/20 p-1 rounded transition-colors"
+      onClick={() => onCustomerClick(currentCustomer.cust.id)}
+      title="اضغط لفتح بطاقة العميل"
+    >
       <span className="text-white font-bold text-xs">{currentCustomer.cust.name}</span>
       <span className="text-white/80 font-mono text-xs">
         {Math.round(currentCustomer.debtBalance).toLocaleString("en-US")} د.ل
@@ -515,14 +525,14 @@ export default function CustomerDebtsModule({
     e.preventDefault();
     if (!selectedCustomerId) return;
     const currentAcc = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
-    if (!currentAcc || !currentAcc.activeCycle) { alert("️ هذا الزبون ليس لديه حساب ديون نشط حالياً."); return; }
+    if (!currentAcc || !currentAcc.activeCycle) { alert("⚠️ هذا الزبون ليس لديه حساب ديون نشط حالياً."); return; }
 
     const amountToPay = Math.round(parseFloat(paymentAmount));
     if (isNaN(amountToPay) || amountToPay === 0) { alert("⚠️ الرجاء كتابة مبلغ مالي صحيح."); return; }
 
     if (paymentType === "full") {
       if (currentAcc.debtBalance <= 0) {
-        alert("️ لا يمكن سداد دين كامل لأن العميل ليس عليه دين (الرصيد صفر أو أمانة).");
+        alert("⚠️ لا يمكن سداد دين كامل لأن العميل ليس عليه دين (الرصيد صفر أو أمانة).");
         return;
       }
       if (amountToPay !== currentAcc.debtBalance) {
@@ -738,7 +748,10 @@ export default function CustomerDebtsModule({
                 <span className="text-white font-extrabold text-xs tracking-wide">تنبيه الديون المتأخرة</span>
               </div>
               <div className="bg-white/10 rounded-lg p-2 overflow-hidden h-12 flex items-center justify-center">
-                <OverdueDebtTicker customers={activeCustomersList} />
+                <OverdueDebtTicker 
+                  customers={activeCustomersList} 
+                  onCustomerClick={(customerId) => setSelectedCustomerId(customerId)} 
+                />
               </div>
             </div>
           </div>
@@ -764,7 +777,6 @@ export default function CustomerDebtsModule({
             const isSelected = selectedForRep.includes(acc.cust.id);
             const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
             
-            // ✅ استخدام Helper Function لألوان الكروت
             const clr = getCardColorClasses(daysSinceCreation, acc.debtBalance, i);
 
             return (
