@@ -408,10 +408,13 @@ export default function App() {
 
   // ============================================================
   // 🆕 Firebase Synchronization Core - Multi-document merge
+  // 🔒 FIX #4: Only sync AFTER login — prevents permission errors
+  // 🔒 FIX #1: NEVER auto-write INITIAL_ERP_STATE to Firebase
   // ============================================================
   useEffect(() => {
     let unmounted = false;
     if (!db) return;
+    if (!currentUser) return; // 🔒 FIX #4: wait for login before any read/write
 
     const mainRef = doc(db, "erp_system", "main_state");
     const debtRef = doc(db, "erp_system", "chunk_debt_transactions");
@@ -505,24 +508,29 @@ export default function App() {
             try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(fullState)); } catch (e) {}
           }
         } else {
+          // 🔒 FIX #1: Document doesn't exist in Firebase.
+          // NEVER write INITIAL_ERP_STATE (test data) to Firebase automatically.
+          // Only load from localStorage if available. Otherwise show empty state.
           const tryLocal = localStorage.getItem("ABDO_ERP_V2_DATA");
-          let initialData = INITIAL_ERP_STATE;
+          let localData: ERPState | null = null;
           if (tryLocal) {
             try {
               const parsed = JSON.parse(tryLocal);
-              if (parsed && parsed.customers) initialData = parsed;
+              if (parsed && parsed.customers && parsed.customers.length > 0) {
+                localData = parsed;
+              }
             } catch (e) {}
-          }
-          // Write initial data in split format
-          try {
-            await writeSplitState(initialData);
-          } catch (e) {
-            console.error("Failed to write initial split state:", e);
           }
           if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
-            setState(initialData);
+            if (localData) {
+              // Restore from local backup — do NOT push to Firebase automatically
+              setState(localData);
+            } else {
+              // No data anywhere — show empty state, user must import/restore manually
+              setState(INITIAL_ERP_STATE);
+            }
           }
         }
       },
@@ -536,7 +544,7 @@ export default function App() {
       unmounted = true;
       unsubscribe();
     };
-  }, []);
+  }, [currentUser]);
 
   // ============================================================
   // 🆕 SECURE THE SYNC FUNCTION - uses writeSplitState
@@ -733,13 +741,24 @@ export default function App() {
     setTimeout(() => setShowCustomToast(""), 4500);
   };
 
+  // 🔒 FIX #2: Block seeding if real data already exists — prevents accidental wipe
   const executeDataSeed = () => {
+    if (state.customers.length > 0 || state.companies.length > 0 || state.merchants.length > 0) {
+      setShowSeedConfirm(false);
+      triggerCustomToast("⚠️ ممنوع: توجد بيانات حقيقية بالفعل. لا يمكن تهيئة بيانات تجريبية فوقها.");
+      return;
+    }
     updateStateAndSync(INITIAL_ERP_STATE);
     setShowSeedConfirm(false);
     triggerCustomToast("👑 تم تعبئة البيانات النموذجية للزبائن والشركات بنجاح!");
   };
 
   const executeSeedBanner = () => {
+    if (state.customers.length > 0 || state.companies.length > 0 || state.merchants.length > 0) {
+      setShowSeedBannerConfirm(false);
+      triggerCustomToast("⚠️ ممنوع: توجد بيانات حقيقية بالفعل. لا يمكن تهيئة بيانات تجريبية فوقها.");
+      return;
+    }
     updateStateAndSync(INITIAL_ERP_STATE);
     setShowSeedBannerConfirm(false);
     triggerCustomToast("👑 تم تهيئة قاعدة المعطيات وتنزيل عينة محرك الدفاتر بنجاح!");
@@ -1018,7 +1037,7 @@ export default function App() {
                 <p className="text-[10px] text-indigo-400 font-semibold">تحميل المعطيات النموذجية التجريبية</p>
               </div>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-semibold mb-5">هل تود شحن المنظومة وتحميل كافة البيانات النموذجية الآن؟ <br /><strong className="text-amber-500/90 font-sans block mt-2 text-[10px]">⚠️ سيتم استبدال البيانات الحالية.</strong></p>
+            <p className="text-xs text-slate-300 leading-relaxed font-semibold mb-5">هل تود شحن المنظومة وتحميل كافة البيانات النموذجية الآن؟ <br /><strong className="text-rose-500 font-sans block mt-2 text-[10px]">⚠️ تحذير شديد: سيتم استبدال ALL البيانات الحالية. هذا الإجراء لا يمكن التراجع عنه!</strong></p>
             <div className="flex items-center gap-3 justify-end">
               <button type="button" onClick={executeDataSeed} className="flex-1 bg-gradient-to-l from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-black py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">موافق، شحن الدفاتر</button>
               <button type="button" onClick={() => setShowSeedConfirm(false)} className="flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">تراجع وإلغاء</button>
@@ -1037,7 +1056,7 @@ export default function App() {
                 <p className="text-[10px] text-amber-500 font-semibold">نظام التشغيل التلقائي بالأرصدة</p>
               </div>
             </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-semibold mb-5">هل تود شحن المنظومة ببيانات العينة وتجربة كافة الميزات الآن؟</p>
+            <p className="text-xs text-slate-300 leading-relaxed font-semibold mb-5">هل تود شحن المنظومة ببيانات العينة وتجربة كافة الميزات الآن؟ <br /><strong className="text-rose-500 font-sans block mt-2 text-[10px]">⚠️ تحذير شديد: سيتم استبدال ALL البيانات الحالية. هذا الإجراء لا يمكن التراجع عنه!</strong></p>
             <div className="flex items-center gap-3 justify-end">
               <button type="button" onClick={executeSeedBanner} className="flex-1 bg-gradient-to-l from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-slate-950 font-black py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">تحديث وتجربة الفوري</button>
               <button type="button" onClick={() => setShowSeedBannerConfirm(false)} className="flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">إلغاء التنزيل</button>
