@@ -272,7 +272,7 @@ export default function CustomerDebtsModule({
   const [editTxAmount, setEditTxAmount] = useState("");
   const [editTxNote, setEditTxNote] = useState("");
 
-  // ====== 🆕 حالات الـ Autocomplete الذكي ======
+  // ====== حالات الـ Autocomplete الذكي ======
   const [suggestions, setSuggestions] = useState<Customer[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -355,7 +355,7 @@ export default function CustomerDebtsModule({
   };
 
   // ============================================================
-  // 🆕 دالة البحث عن الاقتراحات (Autocomplete)
+  // 🆕 دالة البحث عن الاقتراحات (مُحسّنة: ترتيب ذكي + تشخيص)
   // ============================================================
   const getCustomerSuggestions = (query: string) => {
     if (!query.trim()) {
@@ -364,20 +364,33 @@ export default function CustomerDebtsModule({
       return;
     }
     const lowerQuery = query.trim().toLowerCase();
-    // بحث في كل العملاء (حتى المحذوفين/المؤرشفين)
-    const matches = state.customers.filter((cust) =>
+
+    // فلترة كل العملاء (نشط + محذوف/مؤرشف) بالتطابق الجزئي
+    const allMatches = state.customers.filter((cust) =>
       cust.name.trim().toLowerCase().includes(lowerQuery)
     );
-    // ترتيب النتائج: النشطاء أولاً ثم المحذوفين
-    matches.sort((a, b) => {
-      if (a.isDeleted === b.isDeleted) return 0;
-      return a.isDeleted ? 1 : -1;
+
+    // 🔍 تشخيص مؤقت: يوضح في الـ Console كام نشط وكام محذوف اتلاقوا فعلاً
+    const activeFound = allMatches.filter((c) => !c.isDeleted).length;
+    const deletedFound = allMatches.filter((c) => c.isDeleted).length;
+    console.log(
+      `[بحث الأسماء] كتبت: "${query}" — لقيت إجمالي ${allMatches.length} (نشط: ${activeFound} | محذوف/مؤرشف: ${deletedFound})`
+    );
+
+    // ترتيب ذكي: التطابق التام أولاً (نشط ومحذوف معاً)، ثم التطابق الجزئي
+    allMatches.sort((a, b) => {
+      const aExact = a.name.trim().toLowerCase() === lowerQuery ? 0 : 1;
+      const bExact = b.name.trim().toLowerCase() === lowerQuery ? 0 : 1;
+      if (aExact !== bExact) return aExact - bExact;
+      if (a.isDeleted !== b.isDeleted) return a.isDeleted ? 1 : -1;
+      return 0;
     });
-    setSuggestions(matches.slice(0, 10)); // حد أقصى 10 نتائج
-    setShowSuggestions(matches.length > 0);
+
+    setSuggestions(allMatches.slice(0, 20)); // رفع الحد إلى 20
+    setShowSuggestions(allMatches.length > 0);
   };
 
-  // 🆕 تصفير قائمة الاقتراحات تلقائياً عند إغلاق نافذة الإضافة
+  // تصفير قائمة الاقتراحات تلقائياً عند إغلاق نافذة الإضافة
   useEffect(() => {
     if (!showAddCustomerModal) {
       setSuggestions([]);
@@ -396,7 +409,7 @@ export default function CustomerDebtsModule({
   };
 
   // ============================================================
-  // إضافة عميل جديد (التحقق موجود كـ شبكة أمان + Autocomplete)
+  // إضافة عميل جديد
   // ============================================================
   const handleAddCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1090,9 +1103,7 @@ export default function CustomerDebtsModule({
         </div>
       )}
 
-      {/* ============================================================ */}
-      {/* نافذة إضافة زبون جديد + 🆕 Autocomplete الذكي */}
-      {/* ============================================================ */}
+      {/* نافذة إضافة زبون جديد + Autocomplete الذكي */}
       {showAddCustomerModal && (
         <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
@@ -1101,7 +1112,6 @@ export default function CustomerDebtsModule({
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبون بالكامل *</label>
                 <div className="relative">
-                  {/* 🆕 حقل الاسم مع Autocomplete */}
                   <input
                     type="text"
                     required
@@ -1124,7 +1134,7 @@ export default function CustomerDebtsModule({
                     }} />
                   </div>
 
-                  {/* 🆕 قائمة الاقتراحات المنسدلة */}
+                  {/* قائمة الاقتراحات المنسدلة */}
                   {showSuggestions && suggestions.length > 0 && (
                     <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
                       {suggestions.map((cust) => (
@@ -1134,13 +1144,11 @@ export default function CustomerDebtsModule({
                           onMouseDown={(e) => {
                             e.preventDefault();
                             if (!cust.isDeleted) {
-                              // عميل نشط: افتح بطاقته مباشرة
                               setSelectedCustomerId(cust.id);
                               setShowAddCustomerModal(false);
                               setShowSuggestions(false);
                               setNewCustName(""); setNewCustPhone(""); setNewCustDebt("");
                             } else {
-                              // عميل محذوف: اعرض خيار الاسترجاع
                               setNewCustName(cust.name);
                               setNewCustPhone(cust.phone || "");
                               setNewCustCollector(cust.collector || "abdullah");
