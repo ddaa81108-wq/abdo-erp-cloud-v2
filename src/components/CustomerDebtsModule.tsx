@@ -98,12 +98,12 @@ const getCardColorClasses = (
 };
 
 // ============================================================
-// مكون شريط الديون المتأخرة (مدمج مع خاصية الضغط)
+// مكون شريط الديون المتأخرة (معدل - قابل للضغط)
 // ============================================================
-const OverdueDebtTicker = ({
-  customers,
-  onCustomerClick,
-}: {
+const OverdueDebtTicker = ({ 
+  customers, 
+  onCustomerClick 
+}: { 
   customers: any[];
   onCustomerClick: (customerId: string) => void;
 }) => {
@@ -140,7 +140,7 @@ const OverdueDebtTicker = ({
   const daysSinceLastDebt = getDaysSinceLastDebt(currentCustomer.historicalTxs);
 
   return (
-    <div
+    <div 
       className="flex items-center gap-2 animate-fade-in-out cursor-pointer hover:bg-white/20 p-1 rounded transition-colors"
       onClick={() => onCustomerClick(currentCustomer.cust.id)}
       title="اضغط لفتح بطاقة العميل"
@@ -574,7 +574,7 @@ export default function CustomerDebtsModule({
         setSelectedCustomerId(null);
         setShowSuccessToast("🎉 تم تسديد الدين بالكامل وإغلاق الدورة المالية بنجاح.");
       } else {
-        setShowSuccessToast("🎉 تم خصم الدفعة الجزئية من دين الزبون.");
+        setShowSuccessToast(" تم خصم الدفعة الجزئية من دين الزبون.");
       }
     } catch (error) {
       alert("حدث خطأ أثناء تسجيل السداد. الرجاء المحاولة مرة أخرى.");
@@ -649,7 +649,7 @@ export default function CustomerDebtsModule({
   // التصدير
   // ============================================================
   const handleExportSelectedToRep = () => {
-    if (selectedForRep.length === 0) { alert("⚠️ الرجاء تحديد زبون واحد على الأقل."); return; }
+    if (selectedForRep.length === 0) { alert("️ الرجاء تحديد زبون واحد على الأقل."); return; }
     const selectedCustomers = activeCustomersList.filter((acc) => selectedForRep.includes(acc.cust.id));
     const headers = ["اسم الزبون", "الرصيد المتبقي (الديون/الأمانات)"];
     const rows = selectedCustomers.map(({ cust, debtBalance }) => {
@@ -748,6 +748,7 @@ export default function CustomerDebtsModule({
                 <span className="text-white font-extrabold text-xs tracking-wide">تنبيه الديون المتأخرة</span>
               </div>
               <div className="bg-white/10 rounded-lg p-2 overflow-hidden h-12 flex items-center justify-center">
+                {/* ✅ التعديل النهائي: الشريط قابل للضغط */}
                 <OverdueDebtTicker 
                   customers={activeCustomersList} 
                   onCustomerClick={(customerId) => setSelectedCustomerId(customerId)} 
@@ -777,6 +778,7 @@ export default function CustomerDebtsModule({
             const isSelected = selectedForRep.includes(acc.cust.id);
             const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
             
+            // ✅ استخدام Helper Function لألوان الكروت
             const clr = getCardColorClasses(daysSinceCreation, acc.debtBalance, i);
 
             return (
@@ -930,7 +932,7 @@ export default function CustomerDebtsModule({
                       {[...selectedAccDetails.historicalTxs].reverse().map((tx) => (
                         <tr key={tx.id} className="hover:bg-slate-50 font-mono">
                           <td className="p-2 font-sans text-[10.5px]">{new Date(tx.date).toLocaleDateString("ar-LY")} {new Date(tx.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}</td>
-                          <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-sans font-bold ${tx.type === "debt" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{tx.type === "debt" ? "🔴 إضافة دين" : "🟢 سداد دفعة"}</span></td>
+                          <td className="p-2"><span className={`inline-block px-2 py-0.5 rounded text-[10px] font-sans font-bold ${tx.type === "debt" ? "bg-rose-50 text-rose-700" : "bg-emerald-50 text-emerald-700"}`}>{tx.type === "debt" ? " إضافة دين" : "🟢 سداد دفعة"}</span></td>
                           <td className="p-2 text-slate-500">{tx.referenceNo}</td>
                           <td className={`p-2 text-left font-black ${tx.type === "debt" ? "text-rose-600" : "text-emerald-700"}`}>{Math.round(tx.amount).toLocaleString("en-US")} د.ل</td>
                         </tr>
