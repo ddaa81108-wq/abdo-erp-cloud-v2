@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { User as UserType } from '../types';
+import { User as UserType, UserPermissions } from '../types';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserType) => void;
@@ -33,42 +33,49 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const userDocRef = doc(db, "users", fbUser.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      // دالة مساعدة لضمان وجود الصلاحيات الافتراضية ومنع الخطأ
+      const limitedPermissions: UserPermissions = {
+        canViewDebts: false,
+        canViewCompanies: false,
+        canViewTreasury: false,
+        canViewPurchases: false,
+        canViewDeposits: false,
+        canViewArchive: false,
+        canViewBackup: false,
+      };
+
+      // استكمال الحقول الناقصة محلياً فقط دون تعديل وثيقة المستخدم أو توسيع صلاحياته
       const ensureSafeUser = (data: any): UserType => {
         return {
           ...data,
           id: fbUser.uid,
           username: data.username || fbUser.email || 'مستخدم',
+          name: data.name || data.username || fbUser.email || 'مستخدم',
           email: data.email || fbUser.email,
-          role: data.role || 'user',
-          // 🛡️ الحقن الآمن للصلاحيات لمنع خطأ canViewDebts
+          role: data.role || 'assistant',
+          password: data.password || '',
+          createdAt: data.createdAt || '',
           permissions: {
-            canViewDebts: true, // قيمة افتراضية آمنة
+            ...limitedPermissions,
             ...(data.permissions || {})
-          },
-          // احتياطي إضافي إذا كان الكود يقرأ الخاصية مباشرة وليس داخل permissions
-          canViewDebts: data.canViewDebts ?? true 
+          }
         } as UserType;
       };
 
       if (userDocSnap.exists()) {
-        console.log('✅ User document found! Applying safe defaults...');
-        const safeUser = ensureSafeUser(userDocSnap.data());
-        
-        // تحديث الوثيقة في الخلفية بالصلاحيات الآمنة للمرة القادمة
-        await setDoc(userDocRef, safeUser, { merge: true });
-        
+        const userData = userDocSnap.data();
+        if (userData.role === 'pending' || userData.isActive === false) {
+          await signOut(auth);
+          setErrorMessage('الحساب غير مفعل، تواصل مع المدير');
+          return;
+        }
+
+        console.log('✅ User document found! Applying limited local defaults...');
+        const safeUser = ensureSafeUser(userData);
         onLoginSuccess(safeUser);
       } else {
-        console.log('⚠️ User document NOT found. Creating new document with safe defaults...');
-        const newUser = ensureSafeUser({
-          role: "admin",
-          createdAt: new Date().toISOString(),
-        });
-        
-        await setDoc(userDocRef, newUser);
-        console.log('✅ User document created successfully!');
-        onLoginSuccess(newUser);
+        console.log('⚠️ User document NOT found. Login rejected until activation.');
+        await signOut(auth);
+        setErrorMessage('الحساب غير مفعل، تواصل مع المدير');
       }
     } catch (error: any) {
       console.error('❌ Login error:', error);

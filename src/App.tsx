@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
 import { doc, getDoc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
+import { signOut } from "firebase/auth";
 
 import {
   ERPState,
@@ -708,17 +709,21 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: User) => {
+    const limitedPermissions = {
+      canViewDebts: false,
+      canViewCompanies: false,
+      canViewTreasury: false,
+      canViewPurchases: false,
+      canViewDeposits: false,
+      canViewBackup: false,
+      canViewArchive: false,
+    };
+
     const secureUser: User = {
       ...user,
       permissions: {
+        ...limitedPermissions,
         ...(user.permissions || {}),
-        canViewDebts: true,
-        canViewCompanies: true,
-        canViewTreasury: true,
-        canViewPurchases: true,
-        canViewDeposits: true,
-        canViewBackup: true,
-        canViewArchive: true,
       }
     };
 
@@ -732,7 +737,7 @@ export default function App() {
       { id: "purchases", enabled: secureUser.permissions.canViewPurchases },
       { id: "deposits", enabled: secureUser.permissions.canViewDeposits },
       { id: "backup", enabled: secureUser.permissions.canViewBackup },
-      { id: "settings", enabled: true },
+      { id: "settings", enabled: secureUser.role === "admin" },
     ];
     
     const firstTab = allowed.find((t) => t.enabled);
@@ -740,10 +745,16 @@ export default function App() {
   };
 
   const handleLogout = () => setShowLogoutConfirm(true);
-  const executeLogout = () => {
-    setCurrentUser(null);
-    sessionStorage.removeItem("ABDO_ERP_V2_ACTIVE_USER");
-    setShowLogoutConfirm(false);
+  const executeLogout = async () => {
+    try {
+      await signOut(auth);
+      setCurrentUser(null);
+      sessionStorage.removeItem("ABDO_ERP_V2_ACTIVE_USER");
+      setShowLogoutConfirm(false);
+    } catch (error) {
+      console.error("Firebase logout failed:", error);
+      setShowCustomToast("تعذر تسجيل الخروج من Firebase. حاول مرة أخرى.");
+    }
   };
 
   const triggerCustomToast = (msg: string) => {
@@ -905,17 +916,17 @@ export default function App() {
 
               <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-right max-h-[calc(100vh-130px)] custom-scrollbar">
                 {[
-                  { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? true },
-                  { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? true },
-                  { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? true },
+                  { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? false },
+                  { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? false },
+                  { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? false },
                   { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: true },
-                  { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? true },
-                  { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? true },
+                  { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? false },
+                  { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? false },
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: true },
                   { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: true },
                   { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: true },
-                  { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: true },
-                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? true },
+                  { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
+                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? false },
                   { id: "export_pdf", label: "13. تصدير بي دي اف 📤", enabled: true },
                 ].filter((t) => t.enabled).map((tab) => (
                   <button 
