@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Search, Calendar, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ShoppingBag, FolderSymlink, X } from 'lucide-react';
 import { ERPState } from '../types';
+import { upsertCustomerPaymentInTreasury } from '../domain/customerAccounts';
 
 interface TransactionLogModuleProps {
   state: ERPState;
@@ -17,7 +18,22 @@ export default function TransactionLogModule({ state, onOpenExporter, onUpdateSt
 
     let newState = { ...state };
     if (t.source === 'customer') {
-      newState.debtTransactions = (state.debtTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
+      const target = (state.debtTransactions || []).find(tx => tx.id === t.id);
+      const cycle = target ? state.cycles.find(item => item.id === target.cycleId) : undefined;
+      if (cycle?.status === 'closed') {
+        alert('حركات الدورات التاريخية المغلقة للقراءة فقط ولا يمكن مسحها.');
+        return;
+      }
+      newState.debtTransactions = (state.debtTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true, updatedAt: new Date().toISOString() } : tx);
+      const deleted = newState.debtTransactions.find(tx => tx.id === t.id);
+      const customer = deleted ? state.customers.find(item => item.id === deleted.customerId) : undefined;
+      if (deleted?.type === 'payment') {
+        newState.treasuryTransactions = upsertCustomerPaymentInTreasury(
+          state.treasuryTransactions || [],
+          deleted,
+          customer?.name || 'عميل',
+        );
+      }
     } else if (t.source === 'company') {
       newState.companyTransactions = (state.companyTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
     } else if (t.source === 'treasury') {

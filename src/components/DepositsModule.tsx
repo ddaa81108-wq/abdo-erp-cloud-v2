@@ -3,6 +3,7 @@ import { Landmark, ArrowRightLeft, Shield, CircleAlert as AlertCircle, Plus, Tra
 import { ERPState, TrustDeposit, TrustDepositTx, TreasuryTransaction } from '../types';
 import { copySettledImage, generateUnifiedSmartCard, openSmartCardStudio } from "../utils/imageExporterUtils";
 import { VoiceInputButton } from "./VoiceInputButton";
+import { findSimilarParties, type PartyMatch } from "../domain/partyNameMatcher";
 
 interface DepositsModuleProps {
   state: ERPState;
@@ -92,6 +93,11 @@ export default function DepositsModule({
   const [newInitialAmount, setNewInitialAmount] = useState('');
   const [newCurrency, setNewCurrency] = useState<'lyd' | 'egp'>('lyd');
   const [newNote, setNewNote] = useState('');
+  const [allowSimilarName, setAllowSimilarName] = useState(false);
+  const similarParties = React.useMemo(
+    () => findSimilarParties(state, newCustName),
+    [state, newCustName],
+  );
 
   // Confirmation state for deleting/archiving a deposit card
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -147,6 +153,10 @@ export default function DepositsModule({
       alert(`الاسم "${name}" موجود مسبقاً في قسم الأمانات المفتوحة. يرجى البحث عنه وإضافة الرصيد إليه مباشرة بدلاً من تكرار الاسم.`);
       return;
     }
+    if (similarParties.length > 0 && !allowSimilarName) {
+      alert('توجد أسماء متشابهة في المنظومة. راجع القائمة أولًا أو أكّد أن هذا حساب أمانة مستقل.');
+      return;
+    }
 
     const refNo = generateReferenceNo();
     const nowStr = new Date().toISOString();
@@ -188,10 +198,26 @@ export default function DepositsModule({
 
     // Reset inputs
     setNewCustName('');
+    setAllowSimilarName(false);
     setNewInitialAmount('');
     setNewCurrency('lyd');
     setNewNote('');
     setIsAddModalOpen(false);
+  };
+
+  const selectSimilarParty = (match: PartyMatch) => {
+    if (match.source === 'deposit' && match.status === 'active') {
+      setExpandedCardId(match.id);
+      setIsAddModalOpen(false);
+      setNewCustName('');
+      setAllowSimilarName(false);
+      return;
+    }
+    alert(
+      match.status === 'archived'
+        ? `الاسم "${match.name}" موجود في الأرشيف داخل قسم ${match.source === 'customer' ? 'ديون العملاء' : match.source === 'business' ? 'الشركات والتجار' : 'الأمانات'}.`
+        : `الاسم "${match.name}" موجود داخل قسم ${match.source === 'customer' ? 'ديون العملاء' : match.source === 'business' ? 'الشركات والتجار' : 'الأمانات'}.`,
+    );
   };
 
   // 2. TRANSACTION: DEPOSIT LYD (زيادة أمانة بالليبي)
@@ -1416,7 +1442,7 @@ export default function DepositsModule({
                     type="text"
                     required
                     value={newCustName}
-                    onChange={(e) => setNewCustName(e.target.value)}
+                    onChange={(e) => { setNewCustName(e.target.value); setAllowSimilarName(false); }}
                     placeholder="مثال: أكرم بوعجيله"
                     className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50"
                   />
@@ -1425,6 +1451,23 @@ export default function DepositsModule({
                   </div>
                 </div>
               </div>
+
+              {similarParties.length > 0 && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <strong className="mb-2 block text-xs text-amber-900">أسماء متشابهة في المنظومة</strong>
+                  <div className="max-h-36 space-y-1 overflow-y-auto">
+                    {similarParties.map((match) => (
+                      <button type="button" key={`${match.source}_${match.id}`} onClick={() => selectSimilarParty(match)} className="flex w-full justify-between rounded-lg bg-white p-2 text-right text-xs hover:bg-amber-100">
+                        <span><strong className="block">{match.name}</strong><span className="text-[9px] text-slate-500">{match.source === 'customer' ? 'ديون العملاء' : match.source === 'business' ? 'الشركات والتجار' : 'الأمانات'} · {match.status === 'active' ? 'نشط' : 'مؤرشف'}</span></span>
+                        <span className="text-[9px] font-bold text-amber-700">{Math.round(match.score * 100)}%</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setAllowSimilarName(true)} className={`mt-2 w-full rounded-lg py-2 text-[10px] font-black text-white ${allowSimilarName ? 'bg-emerald-600' : 'bg-amber-600'}`}>
+                    {allowSimilarName ? 'تم تأكيد الحساب المستقل' : 'هذا شخص مختلف — متابعة الإنشاء'}
+                  </button>
+                </div>
+              )}
 
               <div>
                 <label className="block text-slate-500 text-[11px] font-bold mb-1.5">العملة المودعة *</label>

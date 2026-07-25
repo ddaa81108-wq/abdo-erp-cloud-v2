@@ -1,194 +1,41 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { calculateCustomerCycleBalance } from "../domain/financialCalculations";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  UserPlus,
-  Trash2,
-  CircleCheck as CheckCircle,
-  CircleAlert as AlertCircle,
-  SquareCheck as CheckSquare,
-  Send,
-  CircleCheck as CheckCircle2,
-  Copy,
-  Calculator,
-  Plus,
-  X,
-  Landmark,
-  Pencil,
+  AlertTriangle,
   Check,
-} from "lucide-react";
-import {
-  ERPState,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Copy,
+  FileText,
+  Pencil,
+  Plus,
+  Search,
+  Send,
+  Trash2,
+  UserPlus,
+  Users,
+  WalletCards,
+  X,
+} from 'lucide-react';
+import type {
   Customer,
   CustomerCycle,
   DebtTransaction,
-} from "../types";
-import { copySettledImage, openSmartCardStudio } from "../utils/imageExporterUtils";
-import { VoiceInputButton } from "./VoiceInputButton";
+  ERPState,
+} from '../types';
+import {
+  calculateActiveCycleBalance,
+  customerLastActivityAt,
+  cycleTransactions,
+  debtAgeInDays,
+  oldestOutstandingDebtDate,
+  synchronizeActiveCustomerCycles,
+  upsertCustomerPaymentInTreasury,
+} from '../domain/customerAccounts';
+import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
+import { copySettledImage, openSmartCardStudio } from '../utils/imageExporterUtils';
+import { VoiceInputButton } from './VoiceInputButton';
 
-// ============================================================
-// تعريفات CSS للرسوم المتحركة
-// ============================================================
-const animationStyles = `
-  @keyframes fade-in-out {
-    0% { opacity: 0; transform: translateY(-10px); }
-    10% { opacity: 1; transform: translateY(0); }
-    90% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(-10px); }
-  }
-  .animate-fade-in-out {
-    animation: fade-in-out 5s ease-in-out infinite;
-  }
-  @keyframes disintegrate-particle {
-    0% { opacity: 1; transform: translate(0, 0) scale(1); }
-    100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
-  }
-  .vaporizing {
-    animation: vaporize 0.7s forwards;
-    pointer-events: none;
-  }
-  @keyframes vaporize {
-    0% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(0.5) rotate(10deg); }
-  }
-`;
-
-// ============================================================
-// Helper Function لألوان الكروت
-// ============================================================
-interface CardColorClasses {
-  borderT: string;
-  text: string;
-  bgBadge: string;
-}
-
-const DEFAULT_COLORS: CardColorClasses[] = [
-  { borderT: "border-t-indigo-500", text: "text-indigo-600", bgBadge: "bg-indigo-50" },
-  { borderT: "border-t-purple-500", text: "text-purple-600", bgBadge: "bg-purple-50" },
-  { borderT: "border-t-cyan-500", text: "text-cyan-600", bgBadge: "bg-cyan-50" },
-  { borderT: "border-t-blue-500", text: "text-blue-600", bgBadge: "bg-blue-50" },
-  { borderT: "border-t-teal-500", text: "text-teal-600", bgBadge: "bg-teal-50" },
-  { borderT: "border-t-sky-500", text: "text-sky-600", bgBadge: "bg-sky-50" },
-];
-
-const getCardColorClasses = (
-  daysSinceCreation: number,
-  debtBalance: number,
-  index: number
-): CardColorClasses => {
-  if (debtBalance === 0) {
-    return { borderT: "border-t-emerald-400", text: "text-emerald-600", bgBadge: "bg-emerald-50" };
-  }
-  if (debtBalance < 0) {
-    return { borderT: "border-t-emerald-400", text: "text-emerald-600", bgBadge: "bg-emerald-50" };
-  }
-  if (daysSinceCreation > 2) {
-    if (daysSinceCreation <= 5) {
-      return { borderT: "border-t-amber-500", text: "text-amber-600", bgBadge: "bg-amber-50" };
-    } else if (daysSinceCreation <= 10) {
-      return { borderT: "border-t-orange-500", text: "text-orange-600", bgBadge: "bg-orange-50" };
-    } else if (daysSinceCreation <= 15) {
-      return { borderT: "border-t-rose-500", text: "text-rose-600", bgBadge: "bg-rose-50" };
-    } else {
-      return { borderT: "border-t-red-600", text: "text-red-600", bgBadge: "bg-red-50" };
-    }
-  }
-  return DEFAULT_COLORS[index % DEFAULT_COLORS.length];
-};
-
-// ============================================================
-// مكون شريط الديون المتأخرة (قابل للضغط)
-// ============================================================
-const OverdueDebtTicker = ({
-  customers,
-  onCustomerClick,
-}: {
-  customers: any[];
-  onCustomerClick: (customerId: string) => void;
-}) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  const getDaysSinceLastDebt = (historicalTxs: any[]) => {
-    const debtTxs = historicalTxs.filter((t: any) => t.type === "debt");
-    if (debtTxs.length === 0) return 0;
-    const lastDebtDate = new Date(Math.max(...debtTxs.map((t: any) => new Date(t.date).getTime())));
-    return Math.floor((Date.now() - lastDebtDate.getTime()) / (1000 * 60 * 60 * 24));
-  };
-
-  const overdueCustomers = useMemo(() => {
-    return customers.filter((acc) => {
-      if (acc.debtBalance <= 0) return false;
-      const daysSinceLastDebt = getDaysSinceLastDebt(acc.historicalTxs);
-      return daysSinceLastDebt > 2;
-    });
-  }, [customers]);
-
-  useEffect(() => {
-    if (overdueCustomers.length === 0) return;
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % overdueCustomers.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [overdueCustomers.length]);
-
-  if (overdueCustomers.length === 0) {
-    return <span className="text-white/80 font-bold text-xs">لا توجد ديون متأخرة</span>;
-  }
-
-  const currentCustomer = overdueCustomers[currentIndex];
-  const daysSinceLastDebt = getDaysSinceLastDebt(currentCustomer.historicalTxs);
-
-  return (
-    <div
-      className="flex items-center gap-2 animate-fade-in-out cursor-pointer hover:bg-white/20 p-1 rounded transition-colors w-full justify-center"
-      onClick={() => onCustomerClick(currentCustomer.cust.id)}
-      title="اضغط لفتح بطاقة العميل"
-    >
-      <span className="text-white font-bold text-xs">{currentCustomer.cust.name}</span>
-      <span className="text-white/80 font-mono text-xs">
-        {Math.round(currentCustomer.debtBalance).toLocaleString("en-US")} د.ل
-      </span>
-      <span className="text-white/60 font-bold text-xs">({daysSinceLastDebt} يوم)</span>
-    </div>
-  );
-};
-
-// ============================================================
-// مكون الجزيئات المتطايرة
-// ============================================================
-const DisintegrationParticles = () => {
-  const particles = Array.from({ length: 120 }).map((_, i) => {
-    const tx = (Math.random() - 0.5) * 300;
-    const ty = (Math.random() - 1) * 300;
-    const duration = 0.3 + Math.random() * 0.4;
-    const delay = Math.random() * 0.1;
-    const rgb = ["148, 163, 184", "203, 213, 225", "15, 23, 42", "226, 232, 240"][Math.floor(Math.random() * 4)];
-    const size = Math.random() * 5 + 1;
-
-    const style = {
-      "--tx": `${tx}px`,
-      "--ty": `${ty}px`,
-      backgroundColor: `rgb(${rgb})`,
-      width: `${size}px`,
-      height: `${size}px`,
-      left: `${(Math.random() * 100).toFixed(2)}%`,
-      top: `${(Math.random() * 100).toFixed(2)}%`,
-      animation: `disintegrate-particle ${duration}s cubic-bezier(0.25, 1, 0.5, 1) ${delay}s forwards`,
-    } as React.CSSProperties;
-
-    return (
-      <div
-        key={i}
-        className="absolute rounded-full opacity-100 pointer-events-none shadow-sm"
-        style={style}
-      />
-    );
-  });
-  return <div className="absolute inset-0 z-50 pointer-events-none overflow-visible">{particles}</div>;
-};
-
-// ============================================================
-// واجهة Props
-// ============================================================
 interface CustomerDebtsModuleProps {
   state: ERPState;
   onUpdateState: (newState: ERPState) => void;
@@ -197,1196 +44,1054 @@ interface CustomerDebtsModuleProps {
     metrics: any,
     headers: string[],
     rows: any[][],
-    imageType?: "full" | "table" | "card",
-    footerMetrics?: any[]
+    imageType?: 'full' | 'table' | 'card',
+    footerMetrics?: any[],
   ) => void;
   searchQuery?: string;
   pendingDeletions?: string[];
   onScheduleDeletion?: (
-    type: "customer" | "company" | "merchant" | "deposit" | "transaction",
+    type: 'customer' | 'company' | 'merchant' | 'deposit' | 'transaction',
     itemId: string,
     displayName: string,
-    executeDeletion: () => void
+    executeDeletion: () => void,
   ) => void;
   onCancelDeletion?: (itemId: string) => void;
 }
 
-// ============================================================
-// المكون الرئيسي
-// ============================================================
+type AccountView = {
+  customer: Customer;
+  activeCycle?: CustomerCycle;
+  balance: number;
+  oldestDebtDate: string | null;
+  debtAge: number;
+  lastActivity: number;
+};
+
+type EntryMode = 'debt' | 'partial' | 'full';
+
+const money = (value: number) =>
+  `${Math.round(value).toLocaleString('en-US')} د.ل`;
+
+const uid = (prefix: string) =>
+  `${prefix}_${typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
+
+const sourceLabel = {
+  customer: 'ديون العملاء',
+  business: 'الشركات والتجار',
+  deposit: 'الأمانات',
+};
+
+function cardColor(age: number, balance: number) {
+  if (balance <= 0) return 'from-emerald-600 to-emerald-900 border-emerald-400';
+  if (age <= 2) return 'from-indigo-700 to-indigo-950 border-indigo-500';
+  if (age <= 5) return 'from-amber-500 to-amber-800 border-amber-400';
+  if (age <= 10) return 'from-orange-600 to-orange-900 border-orange-500';
+  if (age <= 20) return 'from-rose-600 to-rose-950 border-rose-500';
+  return 'from-red-700 to-red-950 border-red-500';
+}
+
 export default function CustomerDebtsModule({
   state,
   onUpdateState,
   onOpenExporter,
-  searchQuery = "",
-  pendingDeletions = [],
+  searchQuery = '',
   onScheduleDeletion,
-  onCancelDeletion,
 }: CustomerDebtsModuleProps) {
-  React.useEffect(() => {
-    if (!document.getElementById("customer-debts-styles")) {
-      const styleTag = document.createElement("style");
-      styleTag.id = "customer-debts-styles";
-      styleTag.innerHTML = animationStyles;
-      document.head.appendChild(styleTag);
-    }
-  }, []);
-
-  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [calcRows, setCalcRows] = useState<
-    { id: string; value: string; price: string; operator: "multiply" | "divide" | "add" | "subtract" }[]
-  >([{ id: "1", value: "", price: "", operator: "multiply" }]);
-  const [calcCopied, setCalcCopied] = useState(false);
-
-  const [newCustName, setNewCustName] = useState("");
-  const [newCustPhone, setNewCustPhone] = useState("");
-  const [newCustDebt, setNewCustDebt] = useState("");
-  const [newCustCollector, setNewCustCollector] = useState<"abdullah" | "ali">("abdullah");
-
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedForRep, setSelectedForRep] = useState<string[]>([]);
-  const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
-
-  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
-  const [restorableCustomer, setRestorableCustomer] = useState<Customer | null>(null);
-
-  const [vaporizingCustomers, setVaporizingCustomers] = useState<string[]>([]);
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentType, setPaymentType] = useState<"full" | "partial">("full");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentNote, setPaymentNote] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedForExport, setSelectedForExport] = useState<string[]>([]);
+  const [message, setMessage] = useState('');
+  const [tickerIndex, setTickerIndex] = useState(0);
 
-  const [showAddDebtInnerModal, setShowAddDebtInnerModal] = useState(false);
-  const [innerDebtAmount, setInnerDebtAmount] = useState("");
-  const [innerDebtNote, setInnerDebtNote] = useState("");
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newDebt, setNewDebt] = useState('');
+  const [newCollector, setNewCollector] = useState<'abdullah' | 'ali'>('abdullah');
+  const [allowSimilarName, setAllowSimilarName] = useState(false);
+  const [restoreCandidate, setRestoreCandidate] = useState<Customer | null>(null);
 
-  const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
-  const [editCustName, setEditCustName] = useState("");
-  const [editCustPhone, setEditCustPhone] = useState("");
-  const [editCustCollector, setEditCustCollector] = useState<"abdullah" | "ali">("abdullah");
+  const [entryMode, setEntryMode] = useState<EntryMode | null>(null);
+  const [entryAmount, setEntryAmount] = useState('');
+  const [entryNote, setEntryNote] = useState('');
+  const [editingTransaction, setEditingTransaction] = useState<DebtTransaction | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [deleteTransaction, setDeleteTransaction] = useState<DebtTransaction | null>(null);
+  const [showEditCustomer, setShowEditCustomer] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editCollector, setEditCollector] = useState<'abdullah' | 'ali'>('abdullah');
 
-  const [showEditTxModal, setShowEditTxModal] = useState(false);
-  const [editingTx, setEditingTx] = useState<DebtTransaction | null>(null);
-  const [editTxAmount, setEditTxAmount] = useState("");
-  const [editTxNote, setEditTxNote] = useState("");
-
-  // ====== حالات الـ Autocomplete الذكي ======
-  const [suggestions, setSuggestions] = useState<Customer[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const stateRef = React.useRef(state);
-  React.useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
-
-  const generateDocNumber = () => {
-    return `مستند-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  };
-
-  const allActiveAndSettledCustomers = useMemo(() => {
-    return state.customers
-      .map((cust) => {
-        if (cust.isDeleted) return null;
-        const activeCycle = state.cycles.find((cy) => cy.customerId === cust.id && cy.status === "active");
-        const debtBalance = activeCycle ? activeCycle.currentBalance : 0;
-        const historicalTxs = state.debtTransactions.filter((t) => t.customerId === cust.id);
-        return { cust, activeCycle, debtBalance, historicalTxs };
+  const allAccounts = useMemo<AccountView[]>(() => {
+    return (state.customers || [])
+      .filter((customer) => !customer.isDeleted)
+      .map((customer) => {
+        const activeCycle = state.cycles.find(
+          (cycle) => cycle.customerId === customer.id && cycle.status === 'active',
+        );
+        const balance = calculateActiveCycleBalance(activeCycle, state.debtTransactions);
+        const oldestDebtDate = oldestOutstandingDebtDate(activeCycle, state.debtTransactions);
+        return {
+          customer,
+          activeCycle,
+          balance,
+          oldestDebtDate,
+          debtAge: debtAgeInDays(oldestDebtDate),
+          lastActivity: customerLastActivityAt(customer, state.debtTransactions),
+        };
       })
-      .filter(Boolean) as Array<{
-      cust: Customer;
-      activeCycle: CustomerCycle | undefined;
-      debtBalance: number;
-      historicalTxs: DebtTransaction[];
-    }>;
+      .sort((a, b) => b.lastActivity - a.lastActivity);
   }, [state.customers, state.cycles, state.debtTransactions]);
 
-  const activeCustomersList = useMemo(() => {
-    return allActiveAndSettledCustomers.filter((item) =>
-      item.cust.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const visibleAccounts = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase('ar');
+    return allAccounts.filter(
+      (account) => !query || account.customer.name.toLocaleLowerCase('ar').includes(query),
     );
-  }, [allActiveAndSettledCustomers, searchQuery]);
+  }, [allAccounts, searchQuery]);
 
-  const totalOutstandingDebt = useMemo(() => {
-    return activeCustomersList.reduce((sum, item) => sum + item.debtBalance, 0);
-  }, [activeCustomersList]);
+  const overdueAccounts = useMemo(
+    () => allAccounts
+      .filter((account) => account.balance > 0 && account.debtAge >= 2)
+      .sort((a, b) => b.debtAge - a.debtAge || b.balance - a.balance),
+    [allAccounts],
+  );
 
-  const handleAddCalcRow = () => {
-    setCalcRows([...calcRows, { id: Math.random().toString(), value: "", price: "", operator: "multiply" }]);
-  };
-  const handleUpdateCalcRow = (id: string, field: string, val: string) => {
-    setCalcRows(calcRows.map((r) => (r.id === id ? { ...r, [field]: val } : r)));
-  };
-  const handleRemoveCalcRow = (id: string) => {
-    setCalcRows(calcRows.filter((r) => r.id !== id));
-  };
-  const calculateRowResult = (row: (typeof calcRows)[0]) => {
-    const v = parseFloat(row.value) || 0;
-    const p = parseFloat(row.price) || 0;
-    if (v === 0 && p === 0) return 0;
-    let result = 0;
-    switch (row.operator) {
-      case "multiply": result = v * p; break;
-      case "divide": result = p !== 0 ? v / p : 0; break;
-      case "add": result = v + p; break;
-      case "subtract": result = v - p; break;
-    }
-    return Math.round(result);
-  };
-  const totalCalcResult = calcRows.reduce((acc, row) => acc + calculateRowResult(row), 0);
-  const handleCopyCalcResult = () => {
-    navigator.clipboard.writeText(totalCalcResult.toString());
-    setCalcCopied(true);
-    setTimeout(() => setCalcCopied(false), 2000);
-  };
-
-  React.useEffect(() => {
-    if (showSuccessToast) {
-      const timer = setTimeout(() => setShowSuccessToast(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [showSuccessToast]);
-
-  const handleCopyDebtImage = (customerName: string, debtBalance: number) => {
-    const type = debtBalance < 0 ? "trust" : "debt";
-    openSmartCardStudio({ type, name: customerName, amount: Math.abs(debtBalance), currency: "د.ل" });
-    setShowSuccessToast("تم فتح منظومة الكروت الذكية 👑");
-  };
-
-  // ============================================================
-  // 🆕 دالة البحث عن الاقتراحات (مُحسّنة: ترتيب ذكي + تشخيص)
-  // ============================================================
-  const getCustomerSuggestions = (query: string) => {
-    if (!query.trim()) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-    const lowerQuery = query.trim().toLowerCase();
-
-    // فلترة كل العملاء (نشط + محذوف/مؤرشف) بالتطابق الجزئي
-    const allMatches = state.customers.filter((cust) =>
-      cust.name.trim().toLowerCase().includes(lowerQuery)
-    );
-
-    // 🔍 تشخيص مؤقت: يوضح في الـ Console كام نشط وكام محذوف اتلاقوا فعلاً
-    const activeFound = allMatches.filter((c) => !c.isDeleted).length;
-    const deletedFound = allMatches.filter((c) => c.isDeleted).length;
-    console.log(
-      `[بحث الأسماء] كتبت: "${query}" — لقيت إجمالي ${allMatches.length} (نشط: ${activeFound} | محذوف/مؤرشف: ${deletedFound})`
-    );
-
-    // ترتيب ذكي: التطابق التام أولاً (نشط ومحذوف معاً)، ثم التطابق الجزئي
-    allMatches.sort((a, b) => {
-      const aExact = a.name.trim().toLowerCase() === lowerQuery ? 0 : 1;
-      const bExact = b.name.trim().toLowerCase() === lowerQuery ? 0 : 1;
-      if (aExact !== bExact) return aExact - bExact;
-      if (a.isDeleted !== b.isDeleted) return a.isDeleted ? 1 : -1;
-      return 0;
-    });
-
-    setSuggestions(allMatches.slice(0, 20)); // رفع الحد إلى 20
-    setShowSuggestions(allMatches.length > 0);
-  };
-
-  // تصفير قائمة الاقتراحات تلقائياً عند إغلاق نافذة الإضافة
   useEffect(() => {
-    if (!showAddCustomerModal) {
-      setSuggestions([]);
-      setShowSuggestions(false);
-    }
-  }, [showAddCustomerModal]);
-
-  const recalcCycleBalance = (cycleId: string, transactions: DebtTransaction[]) => {
-    const cycle = state.cycles.find((cy) => cy.id === cycleId);
-    if (!cycle) return 0;
-    return calculateCustomerCycleBalance(cycle, transactions);
-  };
-
-  // ============================================================
-  // إضافة عميل جديد
-  // ============================================================
-  const handleAddCustomerSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCustName.trim()) return;
-
-    const initialDebt = Math.round(parseFloat(newCustDebt) || 0);
-
-    if (state.companies.find((c) => c.name.trim().toLowerCase() === newCustName.trim().toLowerCase()) ||
-        state.merchants.find((m) => m.name.trim().toLowerCase() === newCustName.trim().toLowerCase())) {
-      alert("عذراً، يمنع تكرار الأسماء! هذا الاسم مستخدم مسبقاً في قسم (الشركات أو الموردين). الرجاء تغييره.");
-      return;
-    }
-
-    const existingActive = state.customers.find((c) => !c.isDeleted && c.name.trim().toLowerCase() === newCustName.trim().toLowerCase());
-    if (existingActive) {
-      alert(`العميل "${existingActive.name}" مسجل مسبقاً! سيتم فتح بطاقته لإضافة الدين الجديد.`);
-      setSelectedCustomerId(existingActive.id);
-      setShowAddCustomerModal(false);
-      setNewCustName("");
-      setNewCustDebt("");
-      return;
-    }
-
-    const existingDeleted = state.customers.find((c) => c.isDeleted && c.name.trim().toLowerCase() === newCustName.trim().toLowerCase());
-    if (existingDeleted) {
-      setRestorableCustomer(existingDeleted);
-      setShowRestorePrompt(true);
-      return;
-    }
-
-    createNewCustomer(newCustName.trim(), newCustPhone.trim(), initialDebt, newCustCollector);
-  };
-
-  const createNewCustomer = (name: string, phone: string, debtAmount: number, collector: "abdullah" | "ali") => {
-    try {
-      const id = `cust_${Date.now()}`;
-      const newCust: Customer = { id, name, phone, collector, createdAt: new Date().toISOString(), isDeleted: false, type: "customer" };
-      const newCycle: CustomerCycle = {
-        id: `cycle_${id}_${Date.now()}`,
-        customerId: id,
-        startDate: new Date().toISOString(),
-        status: "active",
-        initialBalance: 0,
-        currentBalance: debtAmount,
-      };
-
-      const updatedTransactions = [...state.debtTransactions];
-      if (debtAmount > 0) {
-        updatedTransactions.push({
-          id: `tx_${Date.now()}`,
-          customerId: id,
-          cycleId: newCycle.id,
-          type: "debt",
-          amount: debtAmount,
-          currency: "د.ل",
-          conversionRate: 1.0,
-          date: new Date().toISOString(),
-          referenceNo: generateDocNumber(),
-          note: "الدين المالي الأول المسجل عند التسجيل",
-          postedToTreasury: false,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      onUpdateState({ ...state, customers: [...state.customers, newCust], cycles: [...state.cycles, newCycle], debtTransactions: updatedTransactions });
-      setNewCustName(""); setNewCustPhone(""); setNewCustDebt("");
-      setShowAddCustomerModal(false); setShowRestorePrompt(false); setRestorableCustomer(null);
-    } catch (error) {
-      alert("حدث خطأ أثناء حفظ بيانات الزبون. الرجاء المحاولة مرة أخرى.");
-      console.error("Error creating customer:", error);
-    }
-  };
-
-  const handleRestoreOldCustomer = () => {
-    try {
-      if (!restorableCustomer) return;
-      const debtAmount = parseFloat(newCustDebt) || 0;
-
-      const updatedCustomers = state.customers.map((c) => {
-        if (c.id === restorableCustomer.id) {
-          return {
-            ...c,
-            isDeleted: false,
-            phone: newCustPhone.trim() || c.phone,
-            collector: newCustCollector || c.collector,
-          };
-        }
-        return c;
-      });
-
-      const newCycleId = `cycle_${restorableCustomer.id}_${Date.now()}`;
-      const newCycle: CustomerCycle = {
-        id: newCycleId,
-        customerId: restorableCustomer.id,
-        startDate: new Date().toISOString(),
-        status: "active",
-        initialBalance: 0,
-        currentBalance: debtAmount,
-      };
-
-      const updatedTransactions = [...state.debtTransactions];
-      if (debtAmount > 0) {
-        updatedTransactions.push({
-          id: `tx_rest_${Date.now()}`,
-          customerId: restorableCustomer.id,
-          cycleId: newCycleId,
-          type: "debt",
-          amount: debtAmount,
-          currency: "د.ل",
-          conversionRate: 1.0,
-          date: new Date().toISOString(),
-          referenceNo: generateDocNumber(),
-          note: "دين جديد مضاف لزبون سابق مسترجع من الأرشيف",
-          postedToTreasury: false,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      onUpdateState({ ...state, customers: updatedCustomers, cycles: [...state.cycles, newCycle], debtTransactions: updatedTransactions });
-      setShowRestorePrompt(false); setShowAddCustomerModal(false);
-      setSelectedCustomerId(restorableCustomer.id); setRestorableCustomer(null);
-      setNewCustName(""); setNewCustPhone(""); setNewCustDebt("");
-    } catch (error) {
-      alert("حدث خطأ أثناء استرجاع الزبون. الرجاء المحاولة مرة أخرى.");
-      console.error("Error restoring customer:", error);
-    }
-  };
-
-  const handleProcessInnerDebtSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomerId) return;
-    const currentAcc = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
-    if (!currentAcc) return;
-
-    let targetCycleId = currentAcc.activeCycle?.id;
-    let updatedCycles = [...state.cycles];
-    const timestamp = new Date().toISOString();
-    const amountToAdd = Math.round(parseFloat(innerDebtAmount) || 0);
-
-    if (amountToAdd <= 0) { alert("الرجاء كتابة مبلغ أكبر من الصفر."); return; }
-
-    if (!targetCycleId) {
-      targetCycleId = `cycle_${Date.now()}`;
-      updatedCycles.push({ id: targetCycleId, customerId: currentAcc.cust.id, startDate: timestamp, status: "active", currentBalance: amountToAdd, initialBalance: amountToAdd });
-    } else {
-      updatedCycles = updatedCycles.map((cy) => cy.id === targetCycleId ? { ...cy, currentBalance: cy.currentBalance + amountToAdd } : cy);
-    }
-
-    const newTx = {
-      id: `tx_debt_${Date.now()}`, customerId: currentAcc.cust.id, cycleId: targetCycleId, type: "debt" as const,
-      amount: amountToAdd, currency: "د.ل", conversionRate: 1.0, date: timestamp, referenceNo: generateDocNumber(),
-      note: innerDebtNote || "إضافة دين جديد من داخل البطاقة", postedToTreasury: false, createdAt: timestamp,
-    };
-
-    try {
-      onUpdateState({ ...state, cycles: updatedCycles, debtTransactions: [...state.debtTransactions, newTx] });
-      setShowAddDebtInnerModal(false); setInnerDebtAmount(""); setInnerDebtNote("");
-    } catch (error) {
-      alert("حدث خطأ أثناء إضافة الدين. الرجاء المحاولة مرة أخرى.");
-      console.error("Error adding debt:", error);
-    }
-  };
-
-  const handleProcessPaymentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomerId) return;
-    const currentAcc = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
-    if (!currentAcc || !currentAcc.activeCycle) { alert("⚠️ هذا الزبون ليس لديه حساب ديون نشط حالياً."); return; }
-
-    const amountToPay = Math.round(parseFloat(paymentAmount));
-    if (isNaN(amountToPay) || amountToPay === 0) { alert("⚠️ الرجاء كتابة مبلغ مالي صحيح."); return; }
-
-    if (paymentType === "full") {
-      if (currentAcc.debtBalance <= 0) {
-        alert("⚠️ لا يمكن سداد دين كامل لأن العميل ليس عليه دين (الرصيد صفر أو أمانة).");
-        return;
-      }
-      if (amountToPay !== currentAcc.debtBalance) {
-        alert(`⚠️ للسداد الكامل، يجب أن تكون القيمة مساوية للرصيد المتبقي وهو: ${currentAcc.debtBalance} د.ل`);
-        return;
-      }
-    } else {
-      if (currentAcc.debtBalance > 0 && amountToPay > currentAcc.debtBalance) {
-        const excess = amountToPay - currentAcc.debtBalance;
-        if (!window.confirm(`⚠️ المبلغ المدخل (${amountToPay} د.ل) يتجاوز الرصيد المتبقي (${currentAcc.debtBalance} د.ل).\nالمبلغ الزائد (${excess} د.ل) سيتم تسجيله كأمانة.\nهل تريد المتابعة؟`)) return;
-      } else if (currentAcc.debtBalance < 0) {
-        if (!window.confirm(`⚠️ العميل لديه أمانة حالياً (${Math.abs(currentAcc.debtBalance)} د.ل).\nهذه العملية ستقلل من قيمة الأمانة.\nهل تريد المتابعة؟`)) return;
-      }
-    }
-
-    const txId = `tx_pay_${Date.now()}`;
-    const timestamp = new Date().toISOString();
-    const paymentTx = {
-      id: txId, customerId: selectedCustomerId, cycleId: currentAcc.activeCycle.id, type: "payment" as const,
-      amount: amountToPay, currency: "د.ل", conversionRate: 1.0, date: timestamp, referenceNo: generateDocNumber(),
-      note: `تم استلام الدفعة | ${paymentNote || "بدون بيان إضافي"}`, postedToTreasury: false, createdAt: timestamp,
-    };
-
-    const updatedCycles = state.cycles.map((cy) => {
-      if (cy.id === currentAcc.activeCycle?.id) {
-        const remaining = cy.currentBalance - amountToPay;
-        const cyUpdate: any = { ...cy, currentBalance: remaining, status: remaining === 0 ? ("closed" as const) : ("active" as const) };
-        if (remaining === 0) cyUpdate.endDate = timestamp; else delete cyUpdate.endDate;
-        return cyUpdate;
-      }
-      return cy;
-    });
-
-    try {
-      onUpdateState({ ...state, cycles: updatedCycles, debtTransactions: [...state.debtTransactions, paymentTx] });
-      setPaymentAmount(""); setPaymentNote(""); setShowPaymentModal(false);
-
-      if (paymentType === "full") {
-        setSelectedCustomerId(null);
-        setShowSuccessToast("🎉 تم تسديد الدين بالكامل وإغلاق الدورة المالية بنجاح.");
-      } else {
-        setShowSuccessToast("🎉 تم خصم الدفعة الجزئية من دين الزبون.");
-      }
-    } catch (error) {
-      alert("حدث خطأ أثناء تسجيل السداد. الرجاء المحاولة مرة أخرى.");
-      console.error("Error processing payment:", error);
-    }
-  };
-
-  const openEditCustomerModal = () => {
-    const currentAcc = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
-    if (!currentAcc) return;
-    setEditCustName(currentAcc.cust.name || "");
-    setEditCustPhone(currentAcc.cust.phone || "");
-    setEditCustCollector(currentAcc.cust.collector || "abdullah");
-    setShowEditCustomerModal(true);
-  };
-
-  const handleSaveCustomerEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedCustomerId || !editCustName.trim()) return;
-    try {
-      const updatedCustomers = state.customers.map((c) => {
-        if (c.id === selectedCustomerId) {
-          return {
-            ...c,
-            name: editCustName.trim(),
-            phone: editCustPhone.trim(),
-            collector: editCustCollector,
-          };
-        }
-        return c;
-      });
-      onUpdateState({ ...state, customers: updatedCustomers });
-      setShowEditCustomerModal(false);
-      setShowSuccessToast("✅ تم تحديث بيانات العميل بنجاح.");
-    } catch (error) {
-      alert("حدث خطأ أثناء تحديث بيانات العميل. الرجاء المحاولة مرة أخرى.");
-      console.error("Error editing customer:", error);
-    }
-  };
-
-  const openEditTxModal = (tx: DebtTransaction) => {
-    setEditingTx(tx);
-    setEditTxAmount(String(tx.amount));
-    setEditTxNote(tx.note || "");
-    setShowEditTxModal(true);
-  };
-
-  const handleSaveEditTx = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTx) return;
-    const newAmount = Math.round(parseFloat(editTxAmount) || 0);
-    if (newAmount <= 0) { alert("الرجاء كتابة مبلغ أكبر من الصفر."); return; }
-    try {
-      const updatedTransactions = state.debtTransactions.map((t) =>
-        t.id === editingTx.id ? { ...t, amount: newAmount, note: editTxNote } : t
-      );
-      const newBalance = recalcCycleBalance(editingTx.cycleId, updatedTransactions);
-      const updatedCycles = state.cycles.map((cy) => {
-        if (cy.id === editingTx.cycleId) {
-          return {
-            ...cy,
-            currentBalance: newBalance,
-            status: newBalance === 0 ? ("closed" as const) : ("active" as const),
-          };
-        }
-        return cy;
-      });
-      onUpdateState({ ...state, debtTransactions: updatedTransactions, cycles: updatedCycles });
-      setShowEditTxModal(false);
-      setEditingTx(null);
-      setEditTxAmount("");
-      setEditTxNote("");
-      setShowSuccessToast("✅ تم تعديل المعاملة وتحديث الرصيد بنجاح.");
-    } catch (error) {
-      alert("حدث خطأ أثناء تعديل المعاملة. الرجاء المحاولة مرة أخرى.");
-      console.error("Error editing transaction:", error);
-    }
-  };
-
-  const handleDeleteTx = (tx: DebtTransaction) => {
-    if (!window.confirm("⚠️ هل أنت متأكد من حذف هذه المعاملة؟ سيتم إعادة حساب الرصيد تلقائياً.")) return;
-    try {
-      const updatedTransactions = state.debtTransactions.filter((t) => t.id !== tx.id);
-      const newBalance = recalcCycleBalance(tx.cycleId, updatedTransactions);
-      const updatedCycles = state.cycles.map((cy) => {
-        if (cy.id === tx.cycleId) {
-          return {
-            ...cy,
-            currentBalance: newBalance,
-            status: newBalance === 0 ? ("closed" as const) : ("active" as const),
-          };
-        }
-        return cy;
-      });
-      onUpdateState({ ...state, debtTransactions: updatedTransactions, cycles: updatedCycles });
-      setShowSuccessToast("🗑️ تم حذف المعاملة وتحديث الرصيد بنجاح.");
-    } catch (error) {
-      alert("حدث خطأ أثناء حذف المعاملة. الرجاء المحاولة مرة أخرى.");
-      console.error("Error deleting transaction:", error);
-    }
-  };
-
-  const executeCustomerDeletion = (custId: string) => {
-    try {
-      const currentState = stateRef.current;
-      const custToDel = currentState.customers.find((c) => c.id === custId);
-      if (!custToDel || custToDel.isDeleted) {
-        setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
-        return;
-      }
-
-      const activeCycle = currentState.cycles.find((cy) => cy.customerId === custId && cy.status === "active");
-      const transactions = currentState.debtTransactions.filter((t) => t.cycleId === activeCycle?.id);
-
-      const totalDebts = transactions.filter((t) => t.type === "debt").reduce((sum, t) => sum + t.amount, 0);
-      const totalPayments = transactions.filter((t) => t.type === "payment").reduce((sum, t) => sum + t.amount, 0);
-      const outstanding = (activeCycle?.initialBalance || 0) + totalDebts - totalPayments;
-      const timestamp = new Date().toISOString();
-
-      const updatedCycles = currentState.cycles.map((cy) => {
-        if (cy.customerId === custId && cy.status === "active") {
-          return { ...cy, status: "closed" as const, currentBalance: 0, endDate: timestamp };
-        }
-        return cy;
-      });
-
-      let updatedDebtTransactions = [...currentState.debtTransactions];
-      if (outstanding > 0) {
-        updatedDebtTransactions.push({
-          id: `tx_wipe_${Date.now()}`, customerId: custId, cycleId: activeCycle?.id || "", type: "payment",
-          amount: outstanding, currency: "د.ل", conversionRate: 1.0, date: timestamp, referenceNo: generateDocNumber(),
-          note: `مسح الحساب وإلغاء الدين بالكامل`, postedToTreasury: false, createdAt: timestamp,
-        });
-      }
-
-      const updatedCustomers = currentState.customers.map((c) => c.id === custId ? { ...c, isDeleted: true } : c);
-
-      onUpdateState({ ...currentState, customers: updatedCustomers, cycles: updatedCycles, debtTransactions: updatedDebtTransactions });
-      setVaporizingCustomers((prev) => prev.filter((id) => id !== custId));
-    } catch (error) {
-      alert("حدث خطأ أثناء حذف الزبون. الرجاء المحاولة مرة أخرى.");
-      console.error("Error deleting customer:", error);
-    }
-  };
-
-  const handleQuickDelete = (targetCustId?: string) => {
-    const custId = targetCustId || selectedCustomerId;
-    if (!custId) return;
-    if (!targetCustId) setSelectedCustomerId(null);
-
-    const custToDel = state.customers.find((c) => c.id === custId);
-    const displayName = custToDel?.name || "زبون";
-
-    if (onScheduleDeletion) {
-      setVaporizingCustomers((prev) => [...prev, custId]);
-      onScheduleDeletion("customer", custId, displayName, () => executeCustomerDeletion(custId));
-    } else {
-      setVaporizingCustomers((prev) => [...prev, custId]);
-      setTimeout(() => executeCustomerDeletion(custId), 500);
-    }
-  };
-
-  const handleExportSelectedToRep = () => {
-    if (selectedForRep.length === 0) { alert("⚠️ الرجاء تحديد زبون واحد على الأقل."); return; }
-    const selectedCustomers = activeCustomersList.filter((acc) => selectedForRep.includes(acc.cust.id));
-    const headers = ["اسم الزبون", "الرصيد المتبقي (الديون/الأمانات)"];
-    const rows = selectedCustomers.map(({ cust, debtBalance }) => {
-      let balanceStr = `${Math.round(debtBalance).toLocaleString("en-US")} د.ل`;
-      if (debtBalance < 0) balanceStr += " (أمانة)";
-      return [cust.name, balanceStr];
-    });
-
-    onOpenExporter("كشف الديون للمندوب", { label1: "", value1: "", label2: "", value2: "", label3: "", value3: "" }, headers, rows);
-    setSelectionMode(false); setSelectedForRep([]);
-  };
-
-  const handleExportSingleCustomerImage = (acc: any) => {
-    const sortedTxs = [...acc.historicalTxs].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    let runningBalance = 0;
-    const rows = sortedTxs.map((t: any) => {
-      let debit = 0, credit = 0;
-      if (t.type === "debt") { runningBalance += t.amount; credit = t.amount; }
-      else if (t.type === "payment") { runningBalance -= t.amount; debit = t.amount; }
-      return [
-        new Date(t.date).toLocaleDateString("ar-LY") + " " + new Date(t.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" }),
-        t.note || (credit > 0 ? "تسجيل دين" : "تسجيل دفعة سداد"),
-        credit > 0 ? `+${Math.round(credit).toLocaleString("en-US")} ` : "-",
-        debit > 0 ? `-${Math.round(debit).toLocaleString("en-US")} ` : "-",
-        `${Math.round(runningBalance).toLocaleString("en-US")} د.ل`,
-      ];
-    });
-
-    const headers = ["تاريخ الحركة", "البيان", "دين جديد (+)", "تسديد (-)", "الرصيد التراكمي"];
-    const totalDebts = sortedTxs.filter((t: any) => t.type === "debt").reduce((acc: number, t: any) => acc + t.amount, 0);
-    const totalPayments = sortedTxs.filter((t: any) => t.type === "payment").reduce((acc: number, t: any) => acc + t.amount, 0);
-    const footerMetrics = [
-      { label: "شغل جديد", value: `+${Math.round(totalDebts).toLocaleString("en-US")} د.ل`, colorClass: "text-amber-700" },
-      { label: "الدفع اليوم", value: `-${Math.round(totalPayments).toLocaleString("en-US")} د.ل`, colorClass: "text-emerald-700" },
-      { label: "الرصيد الحالي", value: `${Math.round(runningBalance).toLocaleString("en-US")} د.ل`, colorClass: "text-rose-700" },
-    ];
-
-    onOpenExporter(`كشف حساب الزبون: ${acc.cust.name}`, {
-      label1: "الاسم الحالي", value1: acc.cust.name,
-      label2: "الرصيد المتبقي", value2: `${Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل${acc.debtBalance < 0 ? " (أمانة)" : ""}`,
-      label3: "إجمالي الحركات", value3: `${acc.historicalTxs.length} حركة`,
-    }, headers, rows, "table", footerMetrics);
-  };
-
-  const selectedAccDetails = allActiveAndSettledCustomers.find((a) => a.cust.id === selectedCustomerId);
-
-  const ledgerRows = useMemo(() => {
-    if (!selectedAccDetails) return [];
-    const sorted = [...selectedAccDetails.historicalTxs].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    setTickerIndex((current) => overdueAccounts.length ? current % overdueAccounts.length : 0);
+    if (overdueAccounts.length <= 1) return;
+    const timer = window.setInterval(
+      () => setTickerIndex((current) => (current + 1) % overdueAccounts.length),
+      4000,
     );
-    let running = 0;
-    return sorted.map((tx, idx) => {
-      if (tx.type === "debt") running += tx.amount;
-      else running -= tx.amount;
-      let rowKind: "debt" | "partial" | "full" = "debt";
-      if (tx.type === "debt") {
-        rowKind = "debt";
-      } else {
-        rowKind = running === 0 ? "full" : "partial";
-      }
-      return { tx, running, rowKind, seq: idx + 1 };
+    return () => window.clearInterval(timer);
+  }, [overdueAccounts.length]);
+
+  const selectedAccount = allAccounts.find(
+    (account) => account.customer.id === selectedCustomerId,
+  );
+
+  const activeTransactions = useMemo(
+    () => selectedAccount?.activeCycle
+      ? cycleTransactions(state.debtTransactions, selectedAccount.activeCycle.id)
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      : [],
+    [selectedAccount, state.debtTransactions],
+  );
+
+  const historicalCycles = useMemo(
+    () => selectedCustomerId
+      ? state.cycles
+          .filter(
+            (cycle) =>
+              cycle.customerId === selectedCustomerId &&
+              cycle.status === 'closed',
+          )
+          .sort((a, b) =>
+            new Date(b.endDate || b.startDate).getTime() -
+            new Date(a.endDate || a.startDate).getTime())
+      : [],
+    [selectedCustomerId, state.cycles],
+  );
+
+  const similarParties = useMemo(
+    () => findSimilarParties(state, newName),
+    [state, newName],
+  );
+
+  const totalOutstanding = allAccounts.reduce(
+    (total, account) => total + Math.max(account.balance, 0),
+    0,
+  );
+
+  const toast = (text: string) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(''), 3200);
+  };
+
+  const commit = (
+    nextTransactions: DebtTransaction[],
+    nextCycles = state.cycles,
+    nextCustomers = state.customers,
+    nextTreasury = state.treasuryTransactions || [],
+  ) => {
+    const nextState = {
+      ...state,
+      customers: nextCustomers,
+      debtTransactions: nextTransactions,
+      cycles: synchronizeActiveCustomerCycles(nextCycles, nextTransactions),
+      treasuryTransactions: nextTreasury,
+    };
+    stateRef.current = nextState;
+    onUpdateState(nextState);
+  };
+
+  const resetCreate = () => {
+    setNewName('');
+    setNewPhone('');
+    setNewDebt('');
+    setNewCollector('abdullah');
+    setAllowSimilarName(false);
+    setRestoreCandidate(null);
+  };
+
+  const createOrRestoreCustomer = (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanName = newName.trim();
+    const openingDebt = Number(newDebt) || 0;
+    if (!cleanName || openingDebt < 0) return;
+    if (similarParties.length && !allowSimilarName && !restoreCandidate) {
+      toast('راجع الأسماء المتشابهة أولًا، ثم اختر حسابًا أو أكّد إنشاء حساب جديد.');
+      return;
+    }
+    const now = new Date().toISOString();
+    const customerId = restoreCandidate?.id || uid('customer');
+    const restoredActiveCycle = restoreCandidate
+      ? state.cycles.find(
+          (cycle) =>
+            cycle.customerId === restoreCandidate.id &&
+            cycle.status === 'active',
+        )
+      : undefined;
+    const cycleId = openingDebt > 0
+      ? restoredActiveCycle?.id || uid(`cycle_${customerId}`)
+      : null;
+    const nextCustomers = restoreCandidate
+      ? state.customers.map((customer) =>
+          customer.id === restoreCandidate.id
+            ? {
+                ...customer,
+                isDeleted: false,
+                phone: newPhone.trim() || customer.phone,
+                collector: newCollector,
+                updatedAt: now,
+              }
+            : customer)
+      : [
+          ...state.customers,
+          {
+            id: customerId,
+            name: cleanName,
+            phone: newPhone.trim(),
+            collector: newCollector,
+            createdAt: now,
+            updatedAt: now,
+            isDeleted: false,
+            type: 'customer' as const,
+          },
+        ];
+    const nextCycles = cycleId && !restoredActiveCycle
+      ? [
+          ...state.cycles,
+          {
+            id: cycleId,
+            customerId,
+            startDate: now,
+            status: 'active' as const,
+            initialBalance: 0,
+            currentBalance: openingDebt,
+          },
+        ]
+      : state.cycles;
+    const nextTransactions = cycleId
+      ? [
+          ...state.debtTransactions,
+          {
+            id: uid('tx_debt'),
+            customerId,
+            cycleId,
+            type: 'debt' as const,
+            amount: openingDebt,
+            currency: 'د.ل',
+            conversionRate: 1,
+            date: now,
+            referenceNo: uid('DEBT'),
+            note: restoreCandidate ? 'دين جديد بعد استرجاع الحساب' : 'الدين الأول عند إنشاء الحساب',
+            postedToTreasury: false,
+            createdAt: now,
+          },
+        ]
+      : state.debtTransactions;
+    commit(nextTransactions, nextCycles, nextCustomers);
+    setSelectedCustomerId(customerId);
+    setShowCreate(false);
+    resetCreate();
+    toast(restoreCandidate ? 'تم استرجاع العميل وربطه بتاريخه السابق.' : 'تم إنشاء العميل.');
+  };
+
+  const selectPartyMatch = (match: PartyMatch) => {
+    if (match.source !== 'customer') {
+      toast(`هذا الاسم موجود في قسم ${sourceLabel[match.source]}. يمكنك إنشاء حساب عميل مستقل بعد التأكيد.`);
+      return;
+    }
+    const customer = state.customers.find((item) => item.id === match.id);
+    if (!customer) return;
+    if (!customer.isDeleted) {
+      setShowCreate(false);
+      resetCreate();
+      setSelectedCustomerId(customer.id);
+      return;
+    }
+    setRestoreCandidate(customer);
+    setNewName(customer.name);
+    setNewPhone(customer.phone || '');
+    setNewCollector(customer.collector || 'abdullah');
+    setAllowSimilarName(false);
+  };
+
+  const addLedgerEntry = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedAccount || !entryMode) return;
+    const now = new Date().toISOString();
+    const isPayment = entryMode !== 'debt';
+    const value = entryMode === 'full'
+      ? selectedAccount.balance
+      : Number(entryAmount);
+    if (!Number.isFinite(value) || value <= 0) return;
+    if (isPayment && value > selectedAccount.balance) {
+      toast('قيمة الدفع لا يمكن أن تتجاوز الدين الفعلي.');
+      return;
+    }
+
+    let cycleId = selectedAccount.activeCycle?.id;
+    let nextCycles = [...state.cycles];
+    if (!cycleId) {
+      if (isPayment) return;
+      cycleId = uid(`cycle_${selectedAccount.customer.id}`);
+      nextCycles.push({
+        id: cycleId,
+        customerId: selectedAccount.customer.id,
+        startDate: now,
+        status: 'active',
+        initialBalance: 0,
+        currentBalance: 0,
+      });
+    }
+
+    const transaction: DebtTransaction = {
+      id: uid(isPayment ? 'tx_payment' : 'tx_debt'),
+      customerId: selectedAccount.customer.id,
+      cycleId,
+      type: isPayment ? 'payment' : 'debt',
+      paymentMode: isPayment
+        ? value === selectedAccount.balance ? 'full' : 'partial'
+        : undefined,
+      amount: value,
+      currency: 'د.ل',
+      conversionRate: 1,
+      date: now,
+      referenceNo: uid(isPayment ? 'PAY' : 'DEBT'),
+      note: entryNote.trim() || (
+        entryMode === 'debt'
+          ? 'إضافة دين'
+          : entryMode === 'full'
+            ? 'تسديد كلي'
+            : 'دفع جزئي'
+      ),
+      postedToTreasury: isPayment,
+      createdAt: now,
+    };
+    const nextTransactions = [...state.debtTransactions, transaction];
+    const nextBalance = calculateActiveCycleBalance(
+      nextCycles.find((cycle) => cycle.id === cycleId),
+      nextTransactions,
+    );
+    if (nextBalance === 0) {
+      nextCycles = nextCycles.map((cycle) =>
+        cycle.id === cycleId
+          ? { ...cycle, status: 'closed' as const, currentBalance: 0, endDate: now }
+          : cycle,
+      );
+    }
+    const nextCustomers = state.customers.map((customer) =>
+      customer.id === selectedAccount.customer.id
+        ? { ...customer, updatedAt: now }
+        : customer,
+    );
+    const nextTreasury = isPayment
+      ? upsertCustomerPaymentInTreasury(
+          state.treasuryTransactions || [],
+          transaction,
+          selectedAccount.customer.name,
+        )
+      : state.treasuryTransactions || [];
+    commit(nextTransactions, nextCycles, nextCustomers, nextTreasury);
+    setEntryMode(null);
+    setEntryAmount('');
+    setEntryNote('');
+    toast('تم تسجيل الحركة كسطر مستقل وتحديث جميع الأرصدة.');
+  };
+
+  const beginEditTransaction = (transaction: DebtTransaction) => {
+    if (transaction.cycleId !== selectedAccount?.activeCycle?.id) return;
+    setEditingTransaction(transaction);
+    setEditAmount(String(transaction.amount));
+    setEditNote(transaction.note || '');
+    const date = new Date(transaction.date);
+    setEditDate(new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+      .toISOString().slice(0, 16));
+  };
+
+  const saveTransactionEdit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editingTransaction || !selectedAccount?.activeCycle) return;
+    const value = Number(editAmount);
+    if (!Number.isFinite(value) || value <= 0 || !editDate) return;
+    const now = new Date().toISOString();
+    const nextTransactions = state.debtTransactions.map((transaction) =>
+      transaction.id === editingTransaction.id
+        ? {
+            ...transaction,
+            amount: value,
+            note: editNote.trim(),
+            date: new Date(editDate).toISOString(),
+            updatedAt: now,
+            postedToTreasury: transaction.type === 'payment',
+          }
+        : transaction,
+    );
+    const edited = nextTransactions.find((transaction) => transaction.id === editingTransaction.id)!;
+    const balance = calculateActiveCycleBalance(selectedAccount.activeCycle, nextTransactions);
+    const nextCycles = state.cycles.map((cycle) =>
+      cycle.id === selectedAccount.activeCycle?.id
+        ? {
+            ...cycle,
+            currentBalance: balance,
+            status: balance === 0 ? 'closed' as const : 'active' as const,
+            ...(balance === 0 ? { endDate: now } : { endDate: undefined }),
+          }
+        : cycle,
+    );
+    const nextCustomers = state.customers.map((customer) =>
+      customer.id === selectedAccount.customer.id ? { ...customer, updatedAt: now } : customer,
+    );
+    const nextTreasury = upsertCustomerPaymentInTreasury(
+      state.treasuryTransactions || [],
+      edited,
+      selectedAccount.customer.name,
+    );
+    commit(nextTransactions, nextCycles, nextCustomers, nextTreasury);
+    setEditingTransaction(null);
+    toast('تم تعديل الحركة وإعادة حساب الرصيد والخزنة.');
+  };
+
+  const confirmDeleteTransaction = () => {
+    if (!deleteTransaction || !selectedAccount?.activeCycle) return;
+    const now = new Date().toISOString();
+    const nextTransactions = state.debtTransactions.map((transaction) =>
+      transaction.id === deleteTransaction.id
+        ? { ...transaction, isDeleted: true, updatedAt: now }
+        : transaction,
+    );
+    const deleted = nextTransactions.find((transaction) => transaction.id === deleteTransaction.id)!;
+    const balance = calculateActiveCycleBalance(selectedAccount.activeCycle, nextTransactions);
+    const nextCycles = state.cycles.map((cycle) =>
+      cycle.id === selectedAccount.activeCycle?.id
+        ? { ...cycle, currentBalance: balance }
+        : cycle,
+    );
+    const nextCustomers = state.customers.map((customer) =>
+      customer.id === selectedAccount.customer.id ? { ...customer, updatedAt: now } : customer,
+    );
+    const nextTreasury = upsertCustomerPaymentInTreasury(
+      state.treasuryTransactions || [],
+      deleted,
+      selectedAccount.customer.name,
+    );
+    commit(nextTransactions, nextCycles, nextCustomers, nextTreasury);
+    setDeleteTransaction(null);
+    toast('تم مسح الحركة وإعادة حساب الرصيد والخزنة.');
+  };
+
+  const saveCustomerEdit = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedAccount || !editName.trim()) return;
+    const now = new Date().toISOString();
+    const nextCustomers = state.customers.map((customer) => {
+      if (customer.id !== selectedAccount.customer.id) return customer;
+      const aliases = customer.name === editName.trim()
+        ? customer.nameAliases || []
+        : [...new Set([...(customer.nameAliases || []), customer.name])];
+      return {
+        ...customer,
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        collector: editCollector,
+        nameAliases: aliases,
+        updatedAt: now,
+      };
     });
-  }, [selectedAccDetails]);
+    commit(state.debtTransactions, state.cycles, nextCustomers);
+    setShowEditCustomer(false);
+    toast('تم تعديل بيانات العميل وحفظ الاسم السابق في سجل البحث.');
+  };
+
+  const archiveCustomer = (account: AccountView) => {
+    const execute = () => {
+      const current = stateRef.current;
+      const now = new Date().toISOString();
+      const nextCustomers = current.customers.map((customer) =>
+        customer.id === account.customer.id
+          ? { ...customer, isDeleted: true, updatedAt: now }
+          : customer,
+      );
+      onUpdateState({ ...current, customers: nextCustomers });
+      setSelectedCustomerId(null);
+    };
+    if (onScheduleDeletion) {
+      onScheduleDeletion('customer', account.customer.id, account.customer.name, execute);
+    } else {
+      execute();
+    }
+  };
+
+  const copyCard = async (account: AccountView) => {
+    if (account.balance === 0) {
+      const success = await copySettledImage(account.customer.name);
+      if (success) toast('تم نسخ كارت المخالصة.');
+      return;
+    }
+    openSmartCardStudio({
+      type: account.balance < 0 ? 'trust' : 'debt',
+      name: account.customer.name,
+      amount: Math.abs(account.balance),
+      currency: 'د.ل',
+    });
+  };
+
+  const exportSelected = () => {
+    const accounts = allAccounts.filter((account) =>
+      selectedForExport.includes(account.customer.id));
+    onOpenExporter(
+      'كشف ديون العملاء المحددين',
+      {
+        label1: 'عدد العملاء',
+        value1: accounts.length,
+        label2: 'إجمالي الديون',
+        value2: money(accounts.reduce((sum, account) => sum + Math.max(account.balance, 0), 0)),
+        label3: 'تاريخ الكشف',
+        value3: new Date().toLocaleDateString('ar-LY'),
+      },
+      ['اسم العميل', 'الدين الفعلي'],
+      accounts.map((account) => [account.customer.name, money(account.balance)]),
+    );
+    setSelectionMode(false);
+    setSelectedForExport([]);
+  };
+
+  const exportCustomerLedger = () => {
+    if (!selectedAccount) return;
+    const rows: any[][] = [];
+    const customerCycles = state.cycles
+      .filter((cycle) => cycle.customerId === selectedAccount.customer.id)
+      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    customerCycles.forEach((cycle) => {
+      let running = cycle.initialBalance || 0;
+      cycleTransactions(state.debtTransactions, cycle.id)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .forEach((transaction) => {
+          running += transaction.type === 'debt' ? transaction.amount : -transaction.amount;
+          rows.push([
+            cycle.status === 'active' ? 'الدورة الحالية' : 'دورة سابقة',
+            new Date(transaction.date).toLocaleString('ar-LY'),
+            transaction.note,
+            transaction.type === 'debt' ? money(transaction.amount) : '—',
+            transaction.type === 'payment' ? money(transaction.amount) : '—',
+            money(running),
+          ]);
+        });
+    });
+    onOpenExporter(
+      `السجل التاريخي: ${selectedAccount.customer.name}`,
+      {
+        label1: 'العميل',
+        value1: selectedAccount.customer.name,
+        label2: 'عدد الدورات',
+        value2: customerCycles.length,
+        label3: 'الدين الحالي',
+        value3: money(selectedAccount.balance),
+      },
+      ['الدورة', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
+      rows,
+    );
+  };
+
+  const currentTicker = overdueAccounts[tickerIndex];
 
   return (
-    <div className="space-y-4 text-right" dir="rtl">
-      {showSuccessToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-emerald-600 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-10 fade-in duration-300">
-          <CheckCircle className="w-5 h-5" />
-          <span className="font-bold">{showSuccessToast}</span>
+    <div dir="rtl" className="space-y-4 text-right">
+      {message && (
+        <div className="fixed left-1/2 top-5 z-[100] -translate-x-1/2 rounded-xl bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-2xl">
+          {message}
         </div>
       )}
 
       {!selectionMode ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-emerald-600 border border-emerald-500 rounded-xl p-3 shadow-lg relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Landmark className="w-16 h-16 text-white" /></div>
-            <div className="relative z-10 flex flex-col h-full">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-white font-extrabold text-xs tracking-wide">إجمالي الديون</span>
-                <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md"><Landmark className="w-4 h-4 text-white" /></div>
-              </div>
-              <div className="mt-auto">
-                <div className="font-mono text-xl font-black text-white tracking-widest drop-shadow-md block mb-1">
-                  {Math.round(totalOutstandingDebt).toLocaleString("en-US")} <span className="text-sm font-bold text-white/80">د.ل</span>
+        <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+          <TopCard icon={<WalletCards />} title="إجمالي الديون" value={money(totalOutstanding)} />
+          <TopCard icon={<UserPlus />} title="إضافة عميل" value="حساب ودين جديد" onClick={() => setShowCreate(true)} />
+          <TopCard icon={<Send />} title="وضع الإرسال" value="تحديد وتصدير" onClick={() => setSelectionMode(true)} />
+          <button
+            onClick={() => currentTicker && setSelectedCustomerId(currentTicker.customer.id)}
+            className="min-h-24 overflow-hidden rounded-2xl border border-rose-500 bg-gradient-to-l from-rose-700 to-slate-950 p-3 text-right text-white shadow-lg transition hover:-translate-y-0.5"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[10px] font-black text-rose-100">
+                <AlertTriangle className="h-4 w-4" /> تنبيه الديون المتأخرة
+              </span>
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px]">{overdueAccounts.length}</span>
+            </div>
+            {currentTicker ? (
+              <div key={currentTicker.customer.id} className="animate-pulse">
+                <strong className="block truncate text-sm">{currentTicker.customer.name}</strong>
+                <div className="mt-1 flex justify-between text-[10px] text-rose-100">
+                  <span>{money(currentTicker.balance)}</span>
+                  <span>متأخر {currentTicker.debtAge} يوم</span>
                 </div>
-                <div className="text-[9px] text-white/70 font-semibold bg-white/10 px-2 py-0.5 rounded-md inline-block">{activeCustomersList.length} حساب</div>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-emerald-600 hover:bg-emerald-700 border border-emerald-500 rounded-xl p-3 shadow-lg relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><UserPlus className="w-16 h-16 text-white" /></div>
-            <div className="relative z-10 flex flex-col gap-2">
-              <button onClick={() => setShowAddCustomerModal(true)} className="flex items-center gap-2 text-right w-full bg-white/20 hover:bg-white/30 p-2 rounded-lg backdrop-blur-md transition-all">
-                <div className="bg-white p-1.5 rounded-lg"><UserPlus className="w-4 h-4 text-emerald-600" /></div>
-                <span className="text-white font-extrabold text-sm tracking-wide">إضافة عميل</span>
-              </button>
-              <button onClick={() => setSelectionMode(true)} className="flex items-center gap-2 text-right w-full bg-white/20 hover:bg-white/30 p-2 rounded-lg backdrop-blur-md transition-all">
-                <div className="bg-white p-1.5 rounded-lg"><CheckSquare className="w-4 h-4 text-emerald-600" /></div>
-                <span className="text-white font-extrabold text-sm tracking-wide">وضع الإرسال</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-emerald-600 border border-emerald-500 rounded-xl p-3 shadow-lg relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-2 opacity-10"><AlertCircle className="w-16 h-16 text-white" /></div>
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="bg-white/20 p-1.5 rounded-lg backdrop-blur-md"><AlertCircle className="w-4 h-4 text-white" /></div>
-                <span className="text-white font-extrabold text-xs tracking-wide">تنبيه الديون المتأخرة</span>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2 overflow-hidden h-12 flex items-center justify-center">
-                <OverdueDebtTicker
-                  customers={activeCustomersList}
-                  onCustomerClick={(customerId) => setSelectedCustomerId(customerId)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+            ) : (
+              <span className="text-xs text-rose-100">لا توجد ديون تجاوزت يومين</span>
+            )}
+          </button>
+        </section>
       ) : (
-        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex justify-between items-center shadow-xs">
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
           <div>
-            <h3 className="text-emerald-800 font-black text-sm mb-1 flex items-center gap-2"><CheckSquare className="w-4 h-4" />وضع الإرسال السريع</h3>
-            <p className="text-emerald-600 text-[10px] md:text-xs">قم بالضغط على كروت الزبائن بالأسفل (تم تحديد {selectedForRep.length})</p>
+            <strong className="text-sm text-indigo-900">وضع الإرسال</strong>
+            <p className="text-xs text-indigo-600">تم تحديد {selectedForExport.length} عميل</p>
           </div>
-          <div className="flex flex-col md:flex-row items-center gap-2">
-            <button onClick={() => { setSelectionMode(false); setSelectedForRep([]); }} className="w-full md:w-auto bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs py-2 px-3 rounded-lg cursor-pointer transition-colors">إلغاء</button>
-            <button onClick={handleExportSelectedToRep} className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold text-[11px] lg:text-xs py-2 px-3 rounded-lg cursor-pointer flex justify-center items-center gap-1 shadow-sm transition-colors">
-              <Send className="w-4 h-4" /><span>تصدير التقرير ({selectedForRep.length})</span>
-            </button>
+          <div className="flex gap-2">
+            <button onClick={() => { setSelectionMode(false); setSelectedForExport([]); }} className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-600">إلغاء</button>
+            <button disabled={!selectedForExport.length} onClick={exportSelected} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white disabled:opacity-40">تصدير المحدد</button>
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="bg-slate-50/50 p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col h-full">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 content-start">
-          {[...activeCustomersList].reverse().map((acc, i) => {
-            const isSelected = selectedForRep.includes(acc.cust.id);
-            const daysSinceCreation = Math.floor((Date.now() - new Date(acc.cust.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-            const clr = getCardColorClasses(daysSinceCreation, acc.debtBalance, i);
+      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm">
+        <Search className="h-4 w-4 text-slate-400" />
+        <input readOnly value={searchQuery} placeholder="استخدم البحث العام للعثور على عميل" className="w-full bg-transparent py-3 text-sm outline-none" />
+      </div>
 
+      <section className="max-h-[62vh] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9">
+          {visibleAccounts.map((account) => {
+            const selectedForSend = selectedForExport.includes(account.customer.id);
             return (
-              <div key={acc.cust.id} onClick={(e) => { if ((e.target as Element).closest("button")) return; if (selectionMode) { setSelectedForRep((prev) => prev.includes(acc.cust.id) ? prev.filter((id) => id !== acc.cust.id) : [...prev, acc.cust.id]); } else { setSelectedCustomerId(acc.cust.id); } }}
-                className={`bg-white border-x border-b border-t-4 border-slate-200 ${clr.borderT} text-center ${selectionMode && isSelected ? "ring-2 ring-emerald-500 ring-offset-1 scale-105" : "hover:scale-105 hover:shadow-md"} p-2.5 rounded-xl cursor-pointer transition-all flex flex-col items-center justify-center shadow-xs group min-h-[70px] relative ${vaporizingCustomers.includes(acc.cust.id) ? "vaporizing" : ""}`}>
-                {vaporizingCustomers.includes(acc.cust.id) && <DisintegrationParticles />}
-                {selectionMode && isSelected && <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-0.5 shadow-md z-10 scale-90"><CheckCircle2 className="w-4 h-4" /></div>}
-                {!selectionMode && (
-                  <>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleQuickDelete(acc.cust.id); }} className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded transition-all cursor-pointer z-10 border border-slate-100 shadow-xs" title="أرشفة ❌"><X className="w-3 h-3" /></button>
-                    <button type="button" onClick={async (e) => { e.stopPropagation(); e.preventDefault(); if (Number(acc.debtBalance) === 0) { const success = await copySettledImage(acc.cust.name); if (success) { setShowSuccessToast("تم مشاركة كارت المخالصة بنجاح 📋"); setTimeout(() => setShowSuccessToast(null), 3000); } } else { handleCopyDebtImage(acc.cust.name, acc.debtBalance); } }} className={`absolute top-1 left-7 opacity-0 group-hover:opacity-100 p-1 rounded transition-all cursor-pointer z-10 border shadow-xs ${Number(acc.debtBalance) === 0 ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border-emerald-200' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border-slate-100'}`} title={Number(acc.debtBalance) === 0 ? "نسخ كارت المخالصة" : "نسخ كارت الصورة"}><Copy className="w-3 h-3" /></button>
-                  </>
-                )}
-                <h4 className={`font-bold ${clr.text} text-[11px] w-full px-3 truncate mb-1.5`}>{acc.cust.name}</h4>
-                {acc.debtBalance > 0 ? (
-                  <span className={`font-mono font-black text-rose-600 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-rose-100 shadow-xs`}>{Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل</span>
-                ) : acc.debtBalance < 0 ? (
-                  <span className={`font-mono font-black text-emerald-700 text-xs ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-200 shadow-xs ring-1 ring-emerald-500`} title="رصيد دائن لصالحه (أمانة)">{Math.round(acc.debtBalance).toLocaleString("en-US")} د.ل</span>
-                ) : (
-                  <span className={`font-sans font-black text-emerald-600 text-[10px] ${clr.bgBadge} px-2 py-0.5 rounded border border-emerald-100 shadow-xs`}>مسدد ✓</span>
-                )}
+              <div
+                key={account.customer.id}
+                onClick={() => {
+                  if (selectionMode) {
+                    setSelectedForExport((current) =>
+                      current.includes(account.customer.id)
+                        ? current.filter((id) => id !== account.customer.id)
+                        : [...current, account.customer.id]);
+                  } else {
+                    setSelectedCustomerId(account.customer.id);
+                  }
+                }}
+                className={`relative min-h-28 cursor-pointer rounded-xl border bg-gradient-to-br p-3 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${cardColor(account.debtAge, account.balance)} ${selectedForSend ? 'ring-4 ring-cyan-300' : ''}`}
+              >
+                <button
+                  onClick={(event) => { event.stopPropagation(); archiveCustomer(account); }}
+                  className="absolute right-2 top-2 rounded-lg bg-white/15 p-1.5 text-white hover:bg-rose-500"
+                  title="نقل إلى سلة المهملات"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={(event) => { event.stopPropagation(); copyCard(account); }}
+                  className="absolute left-2 top-2 rounded-lg bg-white/15 p-1.5 text-white hover:bg-indigo-500"
+                  title="نسخ الكارت"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <div className="flex min-h-24 flex-col items-center justify-center px-4 text-center">
+                  <strong className="line-clamp-2 text-xs">{account.customer.name}</strong>
+                  <span className="mt-2 text-sm font-black">{money(account.balance)}</span>
+                  {account.balance > 0 && (
+                    <span className="mt-1 text-[9px] text-white/70">
+                      {account.debtAge <= 1 ? 'دين جديد' : `${account.debtAge} يوم`}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
+      </section>
+
+      {selectedAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 backdrop-blur-sm sm:p-5">
+          <div className="flex max-h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-slate-50 shadow-2xl">
+            <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white p-3">
+              <div className="ml-auto rounded-xl bg-slate-100 px-4 py-2">
+                <strong className="text-sm text-slate-900">{selectedAccount.customer.name}</strong>
+              </div>
+              <ActionButton color="rose" onClick={() => { setEntryMode('debt'); setEntryAmount(''); setEntryNote(''); }}><Plus /> إضافة دين</ActionButton>
+              <ActionButton color="emerald" disabled={selectedAccount.balance <= 0} onClick={() => { setEntryMode('partial'); setEntryAmount(''); setEntryNote(''); }}><CheckCircle2 /> دفع جزئي</ActionButton>
+              <ActionButton color="slate" disabled={selectedAccount.balance <= 0} onClick={() => { setEntryMode('full'); setEntryAmount(String(selectedAccount.balance)); setEntryNote(''); }}><Check /> تسديد كلي</ActionButton>
+              <ActionButton color="indigo" onClick={exportCustomerLedger}><FileText /> طباعة السجل</ActionButton>
+              <ActionButton color="amber" onClick={() => {
+                setEditName(selectedAccount.customer.name);
+                setEditPhone(selectedAccount.customer.phone || '');
+                setEditCollector(selectedAccount.customer.collector || 'abdullah');
+                setShowEditCustomer(true);
+              }}><Pencil /> بيانات العميل</ActionButton>
+              <button onClick={() => setSelectedCustomerId(null)} className="mr-auto flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600"><X className="h-4 w-4" /> إغلاق</button>
+            </header>
+
+            <main className="overflow-y-auto p-3 sm:p-5">
+              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <div>
+                    <h3 className="font-black text-slate-900">الدورة الحالية</h3>
+                    <p className="text-[10px] text-slate-500">الحركات الحالية فقط قابلة للتعديل والمسح</p>
+                  </div>
+                  <strong className="rounded-xl bg-slate-900 px-4 py-2 text-white">{money(selectedAccount.balance)}</strong>
+                </div>
+                <LedgerTable
+                  transactions={activeTransactions}
+                  initialBalance={selectedAccount.activeCycle?.initialBalance || 0}
+                  editable
+                  onEdit={beginEditTransaction}
+                  onDelete={setDeleteTransaction}
+                />
+              </section>
+
+              <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+                <div className="mb-3 flex items-center gap-2">
+                  <Clock3 className="h-4 w-4 text-slate-500" />
+                  <h3 className="text-sm font-black text-slate-800">السجل التاريخي والأرشيف</h3>
+                  <span className="text-[10px] text-slate-400">قراءة وطباعة فقط</span>
+                </div>
+                <div className="space-y-2">
+                  {historicalCycles.map((cycle, index) => (
+                    <details key={cycle.id} className="overflow-hidden rounded-xl border border-slate-200" open={index === 0}>
+                      <summary className="flex cursor-pointer list-none items-center justify-between bg-slate-50 p-3 text-xs font-bold text-slate-700">
+                        <span>دورة من {new Date(cycle.startDate).toLocaleDateString('ar-LY')} إلى {new Date(cycle.endDate || cycle.startDate).toLocaleDateString('ar-LY')}</span>
+                        <span className="flex items-center gap-1 text-emerald-700">مغلقة <ChevronDown className="h-4 w-4" /></span>
+                      </summary>
+                      <LedgerTable
+                        transactions={cycleTransactions(state.debtTransactions, cycle.id)
+                          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())}
+                        initialBalance={cycle.initialBalance || 0}
+                        editable={false}
+                      />
+                    </details>
+                  ))}
+                  {!historicalCycles.length && (
+                    <div className="p-6 text-center text-xs text-slate-400">لا توجد دورات سابقة لهذا العميل.</div>
+                  )}
+                </div>
+              </section>
+            </main>
+          </div>
+        </div>
+      )}
+
+      {showCreate && (
+        <Modal title="إضافة عميل جديد" onClose={() => { setShowCreate(false); resetCreate(); }}>
+          <form onSubmit={createOrRestoreCustomer} className="space-y-4">
+            <Field label="اسم العميل">
+              <div className="flex items-center rounded-xl border border-slate-200">
+                <input
+                  value={newName}
+                  onChange={(event) => {
+                    setNewName(event.target.value);
+                    setAllowSimilarName(false);
+                    setRestoreCandidate(null);
+                  }}
+                  required
+                  autoFocus
+                  className="w-full p-3 outline-none"
+                />
+                <VoiceInputButton onResult={(text) => setNewName((value) => value ? `${value} ${text}` : text)} />
+              </div>
+            </Field>
+
+            {similarParties.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <strong className="mb-2 block text-xs text-amber-900">وجدنا أسماء متشابهة في المنظومة</strong>
+                <div className="max-h-40 space-y-1 overflow-y-auto">
+                  {similarParties.map((match) => (
+                    <button
+                      type="button"
+                      key={`${match.source}_${match.id}`}
+                      onClick={() => selectPartyMatch(match)}
+                      className="flex w-full items-center justify-between rounded-lg bg-white p-2 text-right text-xs hover:bg-amber-100"
+                    >
+                      <span>
+                        <strong className="block">{match.name}</strong>
+                        <span className="text-[9px] text-slate-500">{sourceLabel[match.source]} · {match.status === 'active' ? 'نشط' : 'مؤرشف'}</span>
+                      </span>
+                      <span className="text-[9px] font-bold text-amber-700">{Math.round(match.score * 100)}%</span>
+                    </button>
+                  ))}
+                </div>
+                {!restoreCandidate && (
+                  <button type="button" onClick={() => setAllowSimilarName(true)} className={`mt-2 w-full rounded-lg py-2 text-[10px] font-black ${allowSimilarName ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'}`}>
+                    {allowSimilarName ? 'تم تأكيد إنشاء حساب مستقل' : 'الاسم شخص مختلف — إنشاء حساب جديد'}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {restoreCandidate && (
+              <div className="rounded-xl bg-indigo-50 p-3 text-xs text-indigo-800">
+                سيتم استرجاع حساب <strong>{restoreCandidate.name}</strong> وربط الدين الجديد بسجله التاريخي.
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="الهاتف"><input value={newPhone} onChange={(event) => setNewPhone(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
+              <Field label="الدين الأول"><input type="number" min="0" step="any" value={newDebt} onChange={(event) => setNewDebt(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
+            </div>
+            <CollectorChoice value={newCollector} onChange={setNewCollector} />
+            <PrimaryButton>{restoreCandidate ? 'استرجاع الحساب وإضافة الدين' : 'إنشاء الحساب'}</PrimaryButton>
+          </form>
+        </Modal>
+      )}
+
+      {entryMode && selectedAccount && (
+        <Modal title={entryMode === 'debt' ? 'إضافة دين' : entryMode === 'full' ? 'تسديد كلي' : 'دفع جزئي'} onClose={() => setEntryMode(null)}>
+          <form onSubmit={addLedgerEntry} className="space-y-4">
+            {entryMode === 'full' ? (
+              <div className="rounded-2xl bg-slate-900 p-5 text-center text-white">
+                <span className="block text-xs text-slate-300">قيمة التسديد</span>
+                <strong className="text-3xl">{money(selectedAccount.balance)}</strong>
+              </div>
+            ) : (
+              <Field label="المبلغ"><input type="number" min="0.01" step="any" required autoFocus value={entryAmount} onChange={(event) => setEntryAmount(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
+            )}
+            <Field label="البيان"><textarea rows={3} value={entryNote} onChange={(event) => setEntryNote(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
+            <PrimaryButton>حفظ الحركة كسطر مستقل</PrimaryButton>
+          </form>
+        </Modal>
+      )}
+
+      {editingTransaction && (
+        <Modal title="تعديل حركة الدورة الحالية" onClose={() => setEditingTransaction(null)}>
+          <form onSubmit={saveTransactionEdit} className="space-y-4">
+            <div className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">سيؤثر التعديل على رصيد العميل والإجمالي العام والخزنة إن كانت الحركة دفعة.</div>
+            <Field label="المبلغ"><input type="number" min="0.01" step="any" required value={editAmount} onChange={(event) => setEditAmount(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
+            <Field label="التاريخ"><input type="datetime-local" required value={editDate} onChange={(event) => setEditDate(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
+            <Field label="البيان"><textarea rows={3} value={editNote} onChange={(event) => setEditNote(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
+            <PrimaryButton>حفظ وإعادة الحساب</PrimaryButton>
+          </form>
+        </Modal>
+      )}
+
+      {deleteTransaction && (
+        <Modal title="مسح الحركة" onClose={() => setDeleteTransaction(null)}>
+          <p className="mb-4 rounded-xl bg-rose-50 p-4 text-xs leading-6 text-rose-800">سيتم نقل الحركة إلى سلة المهملات وإعادة حساب الكارت والإجمالي والخزنة.</p>
+          <button onClick={confirmDeleteTransaction} className="w-full rounded-xl bg-rose-600 py-3 text-sm font-black text-white">تأكيد المسح</button>
+        </Modal>
+      )}
+
+      {showEditCustomer && selectedAccount && (
+        <Modal title="تعديل بيانات العميل" onClose={() => setShowEditCustomer(false)}>
+          <form onSubmit={saveCustomerEdit} className="space-y-4">
+            <Field label="الاسم"><input required value={editName} onChange={(event) => setEditName(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
+            <Field label="الهاتف"><input value={editPhone} onChange={(event) => setEditPhone(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
+            <CollectorChoice value={editCollector} onChange={setEditCollector} />
+            <PrimaryButton>حفظ البيانات والاسم السابق</PrimaryButton>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function TopCard({
+  icon,
+  title,
+  value,
+  onClick,
+}: {
+  icon: React.ReactElement;
+  title: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  const Component = onClick ? 'button' : 'div';
+  return (
+    <Component onClick={onClick} className="min-h-24 rounded-2xl border border-indigo-600 bg-gradient-to-l from-indigo-800 to-indigo-950 p-4 text-right text-white shadow-lg transition hover:-translate-y-0.5">
+      <div className="flex items-center justify-between">
+        <div>
+          <span className="block text-[10px] font-bold text-indigo-200">{title}</span>
+          <strong className="mt-2 block text-lg">{value}</strong>
+        </div>
+        {React.cloneElement(icon, { className: 'h-8 w-8 rounded-xl bg-white/10 p-1.5 text-indigo-200' })}
       </div>
+    </Component>
+  );
+}
 
-      {/* بطاقة كشف الزبون - التصميم الجديد */}
-      {selectedCustomerId && selectedAccDetails && (
-        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-5xl w-full border border-slate-200 flex flex-col max-h-[92vh] text-right">
+function LedgerTable({
+  transactions,
+  initialBalance,
+  editable,
+  onEdit,
+  onDelete,
+}: {
+  transactions: DebtTransaction[];
+  initialBalance: number;
+  editable: boolean;
+  onEdit?: (transaction: DebtTransaction) => void;
+  onDelete?: (transaction: DebtTransaction) => void;
+}) {
+  let running = initialBalance;
+  return (
+    <div className="max-h-[40vh] overflow-auto">
+      <table className="w-full min-w-[850px] text-xs">
+        <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
+          <tr>
+            <th className="p-3 text-right">التسلسل</th>
+            <th className="p-3 text-right">التاريخ</th>
+            <th className="p-3 text-right">النوع والبيان</th>
+            <th className="p-3 text-right">دين مضاف</th>
+            <th className="p-3 text-right">مبلغ مدفوع</th>
+            <th className="p-3 text-right">الإجمالي</th>
+            {editable && <th className="p-3 text-center">تعديل</th>}
+            {editable && <th className="p-3 text-center">مسح</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {initialBalance !== 0 && (
+            <tr className="bg-indigo-50/50">
+              <td className="p-3">—</td>
+              <td className="p-3">—</td>
+              <td className="p-3 font-bold text-indigo-700">رصيد افتتاحي مرحّل</td>
+              <td className="p-3 font-black text-rose-600">{money(initialBalance)}</td>
+              <td className="p-3">—</td>
+              <td className="p-3 font-black">{money(initialBalance)}</td>
+              {editable && <td />}
+              {editable && <td />}
+            </tr>
+          )}
+          {transactions.map((transaction, index) => {
+            running += transaction.type === 'debt' ? transaction.amount : -transaction.amount;
+            return (
+              <tr key={transaction.id} className="hover:bg-slate-50">
+                <td className="p-3 font-bold text-slate-400">{index + 1}</td>
+                <td className="whitespace-nowrap p-3 text-slate-600">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
+                <td className="max-w-72 p-3">
+                  <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold ${transaction.type === 'debt' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {transaction.type === 'debt'
+                      ? 'إضافة دين'
+                      : transaction.paymentMode === 'full' || running === 0 ? 'تسديد كلي' : 'دفع جزئي'}
+                  </span>
+                  <span className="block truncate font-semibold text-slate-700">{transaction.note}</span>
+                </td>
+                <td className="p-3 font-black text-rose-600">{transaction.type === 'debt' ? money(transaction.amount) : '—'}</td>
+                <td className="p-3 font-black text-emerald-600">{transaction.type === 'payment' ? money(transaction.amount) : '—'}</td>
+                <td className="p-3 font-black text-slate-900">{money(running)}</td>
+                {editable && (
+                  <td className="p-3 text-center">
+                    <button onClick={() => onEdit?.(transaction)} className="rounded-lg bg-amber-50 p-2 text-amber-700"><Pencil className="h-4 w-4" /></button>
+                  </td>
+                )}
+                {editable && (
+                  <td className="p-3 text-center">
+                    <button onClick={() => onDelete?.(transaction)} className="rounded-lg bg-rose-50 p-2 text-rose-700"><Trash2 className="h-4 w-4" /></button>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+          {!transactions.length && initialBalance === 0 && (
+            <tr><td colSpan={editable ? 8 : 6} className="p-10 text-center text-slate-400">لا توجد حركات في هذه الدورة.</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
-            <div className="flex flex-wrap items-center gap-2 pb-3 mb-4 border-b border-slate-200">
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl ml-auto">
-                <UserPlus className="w-4 h-4 text-indigo-600" />
-                <span className="font-black text-sm text-slate-900">{selectedAccDetails.cust.name}</span>
-              </div>
+function ActionButton({
+  children,
+  color,
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode;
+  color: 'rose' | 'emerald' | 'slate' | 'indigo' | 'amber';
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const colors = {
+    rose: 'bg-rose-600 hover:bg-rose-700',
+    emerald: 'bg-emerald-600 hover:bg-emerald-700',
+    slate: 'bg-slate-900 hover:bg-black',
+    indigo: 'bg-indigo-600 hover:bg-indigo-700',
+    amber: 'bg-amber-500 hover:bg-amber-600',
+  };
+  return (
+    <button disabled={disabled} onClick={onClick} className={`flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-black text-white disabled:cursor-not-allowed disabled:opacity-35 ${colors[color]} [&_svg]:h-4 [&_svg]:w-4`}>
+      {children}
+    </button>
+  );
+}
 
-              <button
-                type="button"
-                onClick={() => { setInnerDebtAmount(""); setInnerDebtNote(""); setShowAddDebtInnerModal(true); }}
-                className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>إضافة الدين</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setPaymentType("partial"); setPaymentAmount(""); setShowPaymentModal(true); }}
-                className="flex items-center gap-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>دفع جزء من الدين</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setPaymentType("full"); setPaymentAmount(selectedAccDetails.debtBalance.toString()); setShowPaymentModal(true); }}
-                disabled={selectedAccDetails.debtBalance <= 0}
-                className={`flex items-center gap-1.5 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer border ${selectedAccDetails.debtBalance <= 0 ? "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500"}`}
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>السداد الكامل</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={openEditCustomerModal}
-                className="flex items-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer"
-              >
-                <Pencil className="w-4 h-4" />
-                <span>تعديل بيانات</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedCustomerId(null)}
-                className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-extrabold text-xs px-3 py-2 rounded-xl transition cursor-pointer mr-auto"
-              >
-                <span>إغلاق النافذة</span>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <h4 className="text-center font-black text-base text-slate-800 mb-3 pb-2 border-b-2 border-indigo-400">
-              سجل المعاملات والأرشفة
-            </h4>
-
-            <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white mb-4">
-              <table className="w-full text-[11px] border-collapse min-w-[820px]">
-                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300 sticky top-0 z-10">
-                  <tr>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[8%]">التسلسل</th>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[16%]">التاريخ</th>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[12%]">إضافة الدين</th>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[14%]">دفع جزء من الدين</th>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[12%]">السداد الكامل</th>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[14%]">إجمالي الديون</th>
-                    <th className="p-2.5 text-center border-l border-slate-200 w-[12%]">تعديل</th>
-                    <th className="p-2.5 text-center w-[12%]">مسح</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {ledgerRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400 text-xs italic">
-                        لا توجد أي معاملات مسجلة لهذا العميل بعد.
-                      </td>
-                    </tr>
-                  ) : (
-                    ledgerRows.map((row) => (
-                      <tr key={row.tx.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-2 text-center font-bold text-slate-500 border-l border-slate-100">{row.seq}</td>
-                        <td className="p-2 text-center font-mono text-slate-700 border-l border-slate-100">
-                          {new Date(row.tx.date).toLocaleDateString("ar-LY")}
-                          <br />
-                          <span className="text-[10px] text-slate-400">
-                            {new Date(row.tx.date).toLocaleTimeString("ar-LY", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                        </td>
-                        <td className="p-2 text-center border-l border-slate-100">
-                          {row.rowKind === "debt" ? <Check className="w-5 h-5 mx-auto text-emerald-600" /> : null}
-                        </td>
-                        <td className="p-2 text-center border-l border-slate-100">
-                          {row.rowKind === "partial" ? <Check className="w-5 h-5 mx-auto text-emerald-600" /> : null}
-                        </td>
-                        <td className="p-2 text-center border-l border-slate-100">
-                          {row.rowKind === "full" ? <Check className="w-5 h-5 mx-auto text-emerald-600" /> : null}
-                        </td>
-                        <td className="p-2 text-center font-mono font-black text-slate-900 border-l border-slate-100">
-                          {Math.round(row.running).toLocaleString("en-US")} د.ل
-                        </td>
-                        <td className="p-2 text-center border-l border-slate-100">
-                          <button
-                            type="button"
-                            onClick={() => openEditTxModal(row.tx)}
-                            className="text-sky-600 hover:text-sky-800 hover:bg-sky-50 p-1 rounded transition mx-auto block"
-                            title="تعديل المعاملة"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                        </td>
-                        <td className="p-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTx(row.tx)}
-                            className="text-rose-600 hover:text-rose-800 hover:bg-rose-50 p-1 rounded transition mx-auto block"
-                            title="حذف المعاملة"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="border-2 border-slate-300 rounded-xl p-3 flex items-center justify-between bg-slate-50">
-              <span className="font-black text-sm text-slate-800">إجمالي الديون المستحقة الآن</span>
-              <span className={`font-mono font-black text-lg ${selectedAccDetails.debtBalance > 0 ? "text-rose-600" : selectedAccDetails.debtBalance < 0 ? "text-emerald-700" : "text-emerald-600"}`}>
-                {Math.round(selectedAccDetails.debtBalance).toLocaleString("en-US")} د.ل
-              </span>
-            </div>
-          </div>
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm" dir="rtl">
+      <div className="max-h-[94vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
+        <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="font-black text-slate-900">{title}</h3>
+          <button onClick={onClose} className="rounded-lg bg-slate-100 p-2 text-slate-500"><X className="h-4 w-4" /></button>
         </div>
-      )}
-
-      {/* نافذة إضافة زبون جديد + Autocomplete الذكي */}
-      {showAddCustomerModal && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
-            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-4 flex items-center gap-2"><UserPlus className="w-5 h-5 text-indigo-600" /><span>تسجيل زبون ودين مالي جديد</span></h3>
-            <form onSubmit={handleAddCustomerSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبون بالكامل *</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={newCustName}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setNewCustName(value);
-                      getCustomerSuggestions(value);
-                    }}
-                    onFocus={() => newCustName.trim() && getCustomerSuggestions(newCustName)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    placeholder="ابحث باسم الزبون أو اكتب اسماً جديداً..."
-                    className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
-                  />
-                  <div className="absolute right-1.5 top-1.5">
-                    <VoiceInputButton onResult={(text) => {
-                      const newVal = newCustName ? newCustName + " " + text : text;
-                      setNewCustName(newVal);
-                      getCustomerSuggestions(newVal);
-                    }} />
-                  </div>
-
-                  {/* قائمة الاقتراحات المنسدلة */}
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                      {suggestions.map((cust) => (
-                        <div
-                          key={cust.id}
-                          className="p-2 hover:bg-slate-100 cursor-pointer flex justify-between items-center border-b border-slate-100 last:border-0"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            if (!cust.isDeleted) {
-                              setSelectedCustomerId(cust.id);
-                              setShowAddCustomerModal(false);
-                              setShowSuggestions(false);
-                              setNewCustName(""); setNewCustPhone(""); setNewCustDebt("");
-                            } else {
-                              setNewCustName(cust.name);
-                              setNewCustPhone(cust.phone || "");
-                              setNewCustCollector(cust.collector || "abdullah");
-                              setShowSuggestions(false);
-                              setRestorableCustomer(cust);
-                              setShowRestorePrompt(true);
-                            }
-                          }}
-                        >
-                          <span className="font-bold text-xs">{cust.name}</span>
-                          <span className="text-[10px] text-slate-500">
-                            {cust.isDeleted ? "🗄️ محذوف" : "🟢 نشط"}
-                            {cust.phone ? ` | ${cust.phone}` : ""}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <p className="text-[9px] text-slate-400 mt-1">💡 ستظهر لك قائمة بالعملاء المشابهين (نشطاء ومحذوفين) لمنع التكرار والحفاظ على الأرشيف.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف (اختياري)</label>
-                  <input type="text" value={newCustPhone} onChange={(e) => setNewCustPhone(e.target.value)} placeholder="091-XXXXXXX" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">مبلغ الدين المديون به *</label>
-                  <div className="relative">
-                    <input type="number" required value={newCustDebt} onChange={(e) => setNewCustDebt(e.target.value)} placeholder="0" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-mono font-bold bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
-                    <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 mt-3">مُحصّل الدين *</label>
-                <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <label className="flex-1 cursor-pointer">
-                    <div className={`p-3 rounded-lg text-center transition-all ${newCustCollector === "abdullah" ? "bg-indigo-100 border-2 border-indigo-500 text-indigo-900 font-bold" : "bg-white border border-slate-200 text-slate-600"}`}>
-                      <input type="radio" name="collector" className="hidden" checked={newCustCollector === "abdullah"} onChange={() => setNewCustCollector("abdullah")} />ديون عبد الله
-                    </div>
-                  </label>
-                  <label className="flex-1 cursor-pointer">
-                    <div className={`p-3 rounded-lg text-center transition-all ${newCustCollector === "ali" ? "bg-emerald-100 border-2 border-emerald-500 text-emerald-900 font-bold" : "bg-white border border-slate-200 text-slate-600"}`}>
-                      <input type="radio" name="collector" className="hidden" checked={newCustCollector === "ali"} onChange={() => setNewCustCollector("ali")} />ديون علي
-                    </div>
-                  </label>
-                </div>
-              </div>
-              {showRestorePrompt && restorableCustomer && (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl space-y-2.5 text-xs text-amber-900 leading-relaxed">
-                  <div className="flex items-center gap-1 font-bold text-amber-900"><AlertCircle className="w-4 h-4 text-amber-600" /><span>⚠️ هذا العميل كان مسجلاً سابقاً وسدد ديونه!</span></div>
-                  <p className="text-[11px]">المنظومة تفيد بأن الزبون "{restorableCustomer.name}" لديه ملف قديم بالأرشيف. هل تريد استرجاع ملفه القديم ليتصل أرشيفه السابق بالدين الجديد؟</p>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={handleRestoreOldCustomer} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-extrabold py-2 rounded-lg text-[10.5px] transition-colors">نعم، استرجع الحساب واربطه بـ أرشيفه القديم</button>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => { setShowAddCustomerModal(false); setShowRestorePrompt(false); setRestorableCustomer(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">تراجع</button>
-                <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg">حفظ وتسجيل الزبون</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة تعديل بيانات العميل */}
-      {showEditCustomerModal && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
-            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-4 flex items-center gap-2"><Pencil className="w-5 h-5 text-purple-600" /><span>تعديل بيانات العميل</span></h3>
-            <form onSubmit={handleSaveCustomerEdit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">اسم الزبون بالكامل *</label>
-                <input type="text" required value={editCustName} onChange={(e) => setEditCustName(e.target.value)} className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">رقم الهاتف (اختياري)</label>
-                <input type="text" value={editCustPhone} onChange={(e) => setEditCustPhone(e.target.value)} placeholder="091-XXXXXXX" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">مُحصّل الدين *</label>
-                <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
-                  <label className="flex-1 cursor-pointer">
-                    <div className={`p-3 rounded-lg text-center transition-all ${editCustCollector === "abdullah" ? "bg-indigo-100 border-2 border-indigo-500 text-indigo-900 font-bold" : "bg-white border border-slate-200 text-slate-600"}`}>
-                      <input type="radio" name="edit_collector" className="hidden" checked={editCustCollector === "abdullah"} onChange={() => setEditCustCollector("abdullah")} />ديون عبد الله
-                    </div>
-                  </label>
-                  <label className="flex-1 cursor-pointer">
-                    <div className={`p-3 rounded-lg text-center transition-all ${editCustCollector === "ali" ? "bg-emerald-100 border-2 border-emerald-500 text-emerald-900 font-bold" : "bg-white border border-slate-200 text-slate-600"}`}>
-                      <input type="radio" name="edit_collector" className="hidden" checked={editCustCollector === "ali"} onChange={() => setEditCustCollector("ali")} />ديون علي
-                    </div>
-                  </label>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => setShowEditCustomerModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء</button>
-                <button type="submit" className="bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg">حفظ التعديلات</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة تعديل معاملة */}
-      {showEditTxModal && editingTx && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
-            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-3 flex items-center gap-2"><Pencil className="w-5 h-5 text-sky-600" /><span>تعديل المعاملة</span></h3>
-            <form onSubmit={handleSaveEditTx} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">نوع المعاملة</label>
-                <div className="text-xs font-bold text-slate-500 bg-slate-50 p-2 rounded-lg">
-                  {editingTx.type === "debt" ? "🔴 إضافة دين" : "🟢 دفعة سداد"}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ *</label>
-                <div className="relative">
-                  <input type="number" required value={editTxAmount} onChange={(e) => setEditTxAmount(e.target.value)} className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
-                  <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">البيان / ملاحظة</label>
-                <input type="text" value={editTxNote} onChange={(e) => setEditTxNote(e.target.value)} className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => { setShowEditTxModal(false); setEditingTx(null); }} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء</button>
-                <button type="submit" className="bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg">حفظ التعديل</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة إضافة دين داخلي */}
-      {showAddDebtInnerModal && selectedAccDetails && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
-            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-rose-500"></span>إضافة دين جديد للعميل: {selectedAccDetails.cust.name}</h3>
-            <form onSubmit={handleProcessInnerDebtSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ المراد إضافته كدين *</label>
-                <div className="relative">
-                  <input type="number" required value={innerDebtAmount} onChange={(e) => setInnerDebtAmount(e.target.value)} placeholder="0" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
-                  <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">البيان / ملاحظة (اختياري)</label>
-                <div className="relative">
-                  <input type="text" value={innerDebtNote} onChange={(e) => setInnerDebtNote(e.target.value)} placeholder="مثال: دين إضافي عن بضاعة" className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" />
-                  <div className="absolute right-1.5 top-1.5"><VoiceInputButton onResult={(text) => setInnerDebtNote((prev) => (prev ? prev + " " + text : text))} /></div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => setShowAddDebtInnerModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs font-bold transition-colors">إلغاء</button>
-                <button type="submit" className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs px-5 py-2 rounded-lg transition-all shadow-sm">تأكيد إضافة الدين</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* نافذة السداد */}
-      {showPaymentModal && selectedAccDetails && (
-        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-5 shadow-2xl max-w-md w-full border border-slate-200 text-right">
-            <h3 className="font-black text-sm text-slate-950 border-b pb-3 mb-3">{paymentType === "full" ? "تسجيل سداد دين كامل وتسوية" : "تسجيل سداد جزء وقيد دفعة"}</h3>
-            <form onSubmit={handleProcessPaymentSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">المبلغ المراد خصمه وتسديده *</label>
-                <div className="relative">
-                  <input type="number" required disabled={paymentType === "full"} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} placeholder="0" className="w-full text-right p-2.5 border border-slate-200 rounded-xl text-xs font-bold font-mono bg-slate-50/50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]" />
-                  <span className="absolute left-3 top-2 text-slate-400 text-xs font-bold">د.ل</span>
-                </div>
-                {paymentType === "full" && <p className="text-[10px] text-slate-400 mt-1">* في الدفع الكامل، يتم جلب رصيد الدين المتبقي للزبون تلقائياً وهو {selectedAccDetails.debtBalance} د.ل.</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">ملاحظة عامة أو بيان السند (اختياري)</label>
-                <div className="relative">
-                  <input type="text" value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} placeholder="مثال: مستلم نقدًا بالكامل" className="w-full text-right pr-9 p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50/50" />
-                  <div className="absolute right-1.5 top-1.5"><VoiceInputButton onResult={(text) => setPaymentNote((prev) => (prev ? prev + " " + text : text))} /></div>
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button type="button" onClick={() => setShowPaymentModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg text-xs">إلغاء التراجع</button>
-                <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-extrabold text-xs px-5 py-2 rounded-lg transition-all">تسجيل السداد والخصم</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* الحاسبة العائمة */}
-      <div className="fixed bottom-6 left-6 z-[100] flex flex-col items-start gap-4">
-        {showCalculator && (
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-[320px] md:w-[380px] flex flex-col transform origin-bottom-left transition-all animate-in fade-in zoom-in-95 duration-200" dir="rtl">
-            <div className="flex items-center justify-between border-b border-slate-100 p-4">
-              <h3 className="font-black text-sm text-slate-800 flex items-center gap-2"><Calculator className="w-4 h-4 text-indigo-600" />مسودة حاسبة تجار</h3>
-              <button onClick={() => setShowCalculator(false)} className="text-slate-400 hover:text-slate-600 p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-4">
-              <div className="max-h-[250px] overflow-y-auto pr-1 space-y-2 mb-3 custom-scrollbar">
-                {calcRows.map((row) => (
-                  <div key={row.id} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-xl border border-slate-100">
-                    <div className="flex-1"><input type="text" readOnly dir="ltr" value={calculateRowResult(row).toLocaleString(undefined, { maximumFractionDigits: 0 })} className="w-full text-center bg-transparent border-none text-[11px] font-bold font-mono text-indigo-700 focus:outline-none" /></div>
-                    <span className="text-slate-400 text-xs font-black">=</span>
-                    <div className="w-[70px]"><input type="number" step="any" dir="ltr" lang="en" placeholder="السعر" value={row.price} onChange={(e) => handleUpdateCalcRow(row.id, "price", e.target.value)} className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
-                    <div className="grid grid-cols-2 gap-0.5 w-[42px]">
-                      <button onClick={() => handleUpdateCalcRow(row.id, "operator", "multiply")} className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === "multiply" ? "bg-indigo-100 text-indigo-700 font-bold" : "text-slate-400 hover:bg-slate-200"}`} title="ضرب">×</button>
-                      <button onClick={() => handleUpdateCalcRow(row.id, "operator", "divide")} className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === "divide" ? "bg-indigo-100 text-indigo-700 font-bold" : "text-slate-400 hover:bg-slate-200"}`} title="قسمة">÷</button>
-                      <button onClick={() => handleUpdateCalcRow(row.id, "operator", "add")} className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === "add" ? "bg-indigo-100 text-indigo-700 font-bold" : "text-slate-400 hover:bg-slate-200"}`} title="جمع">+</button>
-                      <button onClick={() => handleUpdateCalcRow(row.id, "operator", "subtract")} className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition ${row.operator === "subtract" ? "bg-indigo-100 text-indigo-700 font-bold" : "text-slate-400 hover:bg-slate-200"}`} title="طرح">-</button>
-                    </div>
-                    <div className="w-[70px]"><input type="number" step="any" dir="ltr" lang="en" placeholder="القيمة" value={row.value} onChange={(e) => handleUpdateCalcRow(row.id, "value", e.target.value)} className="w-full text-center p-1.5 border border-slate-200 rounded text-xs font-bold font-mono bg-white focus:ring-1 focus:ring-indigo-500 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
-                    <button onClick={() => handleRemoveCalcRow(row.id)} className="p-1 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                ))}
-              </div>
-              <button onClick={handleAddCalcRow} className="w-full py-2 border-2 border-dashed border-slate-200 text-slate-500 hover:text-slate-700 hover:border-slate-300 hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 mb-4"><Plus className="w-3.5 h-3.5" />إضافة صف جديد</button>
-              <div className="bg-slate-900 rounded-xl p-3 flex items-center justify-between">
-                <div className="flex flex-col items-start gap-1">
-                  <span className="text-slate-400 text-[10px] font-bold">الناتج الإجمالي</span>
-                  <span className="text-white font-mono font-black text-sm" dir="ltr">{Math.round(totalCalcResult).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                </div>
-                <button onClick={handleCopyCalcResult} className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition">
-                  {calcCopied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  {calcCopied ? "تم النسخ" : "نسخ الناتج"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        <button onClick={() => setShowCalculator(!showCalculator)} className={`${showCalculator ? "bg-indigo-600 text-white shadow-indigo-500/25" : "bg-slate-900 text-white shadow-[0_8px_30px_rgb(0,0,0,0.15)]"} hover:scale-105 p-3.5 rounded-full shadow-lg transition-all flex items-center justify-center relative group self-start`} title="مسودة حاسبة تجار">
-          <Calculator className="w-5 h-5" />
-          {!showCalculator && <span className="absolute left-full ml-3 bg-slate-800 text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none shadow-lg">مسودة حاسبة تجار</span>}
-        </button>
+        {children}
       </div>
     </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold text-slate-600">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function CollectorChoice({
+  value,
+  onChange,
+}: {
+  value: 'abdullah' | 'ali';
+  onChange: (value: 'abdullah' | 'ali') => void;
+}) {
+  return (
+    <div>
+      <span className="mb-1.5 block text-xs font-bold text-slate-600">محصل الدين</span>
+      <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+        <button type="button" onClick={() => onChange('abdullah')} className={`rounded-lg py-2.5 text-xs font-black ${value === 'abdullah' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>ديون عبد الله</button>
+        <button type="button" onClick={() => onChange('ali')} className={`rounded-lg py-2.5 text-xs font-black ${value === 'ali' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>ديون علي</button>
+      </div>
+    </div>
+  );
+}
+
+function PrimaryButton({ children }: { children: React.ReactNode }) {
+  return (
+    <button type="submit" className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-black text-white hover:bg-indigo-700">
+      <CheckCircle2 className="h-4 w-4" /> {children}
+    </button>
   );
 }

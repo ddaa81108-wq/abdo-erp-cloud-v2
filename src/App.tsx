@@ -34,6 +34,7 @@ import {
   writeMergedErpState,
 } from "./services/erpSyncService";
 import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
+import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -54,6 +55,10 @@ const normalizeBusinessState = (value: ERPState): ERPState => ({
     value.companyTransactions || [],
     value.merchants || [],
     value.merchantTransactions || [],
+  ),
+  cycles: repairLegacyCustomerCycles(
+    value.cycles || [],
+    value.debtTransactions || [],
   ),
 });
 

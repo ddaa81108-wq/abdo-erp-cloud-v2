@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, RotateCcw, AlertTriangle, ShieldCheck, Search, Users, Building, Inbox, Check } from 'lucide-react';
 import { ERPState, Customer, Company, CustomerCycle, Merchant } from '../types';
+import { upsertCustomerPaymentInTreasury } from '../domain/customerAccounts';
 
 interface TrashCanModuleProps {
   state: ERPState;
@@ -54,13 +55,21 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
   const handlePermanentDeleteCustomer = (custId: string) => {
     const updatedCusts = (state.customers || []).filter(c => c.id !== custId);
     const updatedCycles = (state.cycles || []).filter(cy => cy.customerId !== custId);
+    const customerTransactionIds = new Set(
+      (state.debtTransactions || [])
+        .filter(t => t.customerId === custId)
+        .map(t => t.id),
+    );
     const updatedTxs = (state.debtTransactions || []).filter(t => t.customerId !== custId);
 
     onUpdateState({
       ...state,
       customers: updatedCusts,
       cycles: updatedCycles,
-      debtTransactions: updatedTxs
+      debtTransactions: updatedTxs,
+      treasuryTransactions: (state.treasuryTransactions || []).filter(
+        tx => !(tx.source === 'customer_payment' && customerTransactionIds.has(tx.sourceId || '')),
+      ),
     });
     setConfirmingDeleteId(null);
     triggerNotification('تم مسح ملف الزبون وحساباته نهائياً من الذاكرة! 🗑️');
@@ -154,7 +163,21 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
   const handleRestoreTransaction = (txItem: any) => {
     let newState = { ...state };
     if (txItem.source === 'customer') {
+      const cycle = state.cycles.find(item => item.id === txItem.cycleId);
+      if (cycle?.status === 'closed') {
+        triggerNotification('الدورة التاريخية مغلقة للقراءة فقط؛ لا يمكن استرجاع حركة داخلها.');
+        return;
+      }
       newState.debtTransactions = (state.debtTransactions || []).map(tx => tx.id === txItem.id ? { ...tx, isDeleted: false } : tx);
+      const restored = newState.debtTransactions.find(tx => tx.id === txItem.id);
+      const customer = restored ? state.customers.find(item => item.id === restored.customerId) : undefined;
+      if (restored?.type === 'payment') {
+        newState.treasuryTransactions = upsertCustomerPaymentInTreasury(
+          state.treasuryTransactions || [],
+          restored,
+          customer?.name || 'عميل',
+        );
+      }
     } else if (txItem.source === 'company') {
       newState.companyTransactions = (state.companyTransactions || []).map(tx => tx.id === txItem.id ? { ...tx, isDeleted: false } : tx);
     } else if (txItem.source === 'merchant') {
@@ -171,6 +194,9 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
     let newState = { ...state };
     if (txItem.source === 'customer') {
       newState.debtTransactions = (state.debtTransactions || []).filter(tx => tx.id !== txItem.id);
+      newState.treasuryTransactions = (state.treasuryTransactions || []).filter(
+        tx => !(tx.source === 'customer_payment' && tx.sourceId === txItem.id),
+      );
     } else if (txItem.source === 'company') {
       newState.companyTransactions = (state.companyTransactions || []).filter(tx => tx.id !== txItem.id);
     } else if (txItem.source === 'merchant') {

@@ -21,6 +21,7 @@ import {
   upsertBusinessPaymentInTreasury,
 } from '../domain/businessAccounts';
 import { VoiceInputButton } from './VoiceInputButton';
+import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
 
 interface CompaniesModuleProps {
   state: ERPState;
@@ -80,6 +81,7 @@ export default function CompaniesModule({
   const [editDate, setEditDate] = useState('');
   const [deleteTransaction, setDeleteTransaction] = useState<CompanyTransaction | null>(null);
   const [showQuickExport, setShowQuickExport] = useState(false);
+  const [allowSimilarName, setAllowSimilarName] = useState(false);
   const [message, setMessage] = useState('');
 
   const transactions = state.companyTransactions || [];
@@ -107,6 +109,10 @@ export default function CompaniesModule({
   const selectedSummary = selected
     ? calculateBusinessSummary(transactions, selected.id)
     : null;
+  const similarParties = useMemo(
+    () => findSimilarParties(state, name),
+    [state, name],
+  );
 
   const commitLedger = (
     nextTransactions: CompanyTransaction[],
@@ -144,6 +150,10 @@ export default function CompaniesModule({
       setSelectedId(duplicate.id);
       setShowCreate(false);
       showToast('هذا الاسم مسجل بالفعل؛ تم فتح حسابه الحالي.');
+      return;
+    }
+    if (similarParties.length && !allowSimilarName) {
+      showToast('راجع الأسماء المتشابهة أولًا أو أكّد أن هذا حساب مستقل.');
       return;
     }
 
@@ -184,7 +194,52 @@ export default function CompaniesModule({
     setName('');
     setContact('');
     setOpeningBalance('');
+    setAllowSimilarName(false);
     showToast('تم إنشاء الحساب وإضافته إلى السجل الموحد.');
+  };
+
+  const selectSimilarParty = (match: PartyMatch) => {
+    if (match.source !== 'business') {
+      showToast(`هذا الاسم موجود في ${match.source === 'customer' ? 'ديون العملاء' : 'الأمانات'}.`);
+      return;
+    }
+    const account = state.companies.find((item) => item.id === match.id);
+    if (!account) return;
+    if (!account.isDeleted) {
+      setSelectedId(account.id);
+      setShowCreate(false);
+      setName('');
+      return;
+    }
+    const now = new Date().toISOString();
+    const value = Number(openingBalance) || 0;
+    const nextTransactions = [...transactions];
+    if (value > 0) {
+      nextTransactions.push({
+        id: `tx_restore_${account.id}_${Date.now()}`,
+        companyId: account.id,
+        type: 'purchase_invoice',
+        entryKind: 'debt',
+        amount: value,
+        currency: 'د.ل',
+        date: now,
+        referenceNo: nextReference(),
+        note: 'دين جديد بعد استرجاع الحساب',
+        postedToTreasury: false,
+        createdAt: now,
+      });
+    }
+    commitLedger(
+      nextTransactions,
+      state.companies.map((item) =>
+        item.id === account.id ? { ...item, isDeleted: false } : item),
+    );
+    setSelectedId(account.id);
+    setShowCreate(false);
+    setName('');
+    setOpeningBalance('');
+    setAllowSimilarName(false);
+    showToast('تم استرجاع الحساب وربطه بسجله السابق.');
   };
 
   const addEntry = (event: React.FormEvent) => {
@@ -633,10 +688,26 @@ export default function CompaniesModule({
             </div>
             <Field label="الاسم">
               <div className="flex items-center rounded-xl border border-slate-200 bg-white">
-                <input value={name} onChange={(e) => setName(e.target.value)} required autoFocus className="w-full p-3 outline-none" />
+                <input value={name} onChange={(e) => { setName(e.target.value); setAllowSimilarName(false); }} required autoFocus className="w-full p-3 outline-none" />
                 <VoiceInputButton onResult={setName} />
               </div>
             </Field>
+            {similarParties.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                <strong className="mb-2 block text-xs text-amber-900">أسماء متشابهة في المنظومة</strong>
+                <div className="max-h-36 space-y-1 overflow-y-auto">
+                  {similarParties.map((match) => (
+                    <button type="button" key={`${match.source}_${match.id}`} onClick={() => selectSimilarParty(match)} className="flex w-full justify-between rounded-lg bg-white p-2 text-right text-xs hover:bg-amber-100">
+                      <span><strong className="block">{match.name}</strong><span className="text-[9px] text-slate-500">{match.source === 'business' ? 'الشركات والتجار' : match.source === 'customer' ? 'ديون العملاء' : 'الأمانات'} · {match.status === 'active' ? 'نشط' : 'مؤرشف'}</span></span>
+                      <span className="text-[9px] font-bold text-amber-700">{Math.round(match.score * 100)}%</span>
+                    </button>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setAllowSimilarName(true)} className={`mt-2 w-full rounded-lg py-2 text-[10px] font-black text-white ${allowSimilarName ? 'bg-emerald-600' : 'bg-amber-600'}`}>
+                  {allowSimilarName ? 'تم تأكيد الحساب المستقل' : 'هذا حساب مختلف — متابعة الإنشاء'}
+                </button>
+              </div>
+            )}
             <Field label="رقم الهاتف أو وسيلة التواصل">
               <input value={contact} onChange={(e) => setContact(e.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" />
             </Field>

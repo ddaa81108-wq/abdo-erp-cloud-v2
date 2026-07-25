@@ -6,7 +6,9 @@
 export interface Customer {
   id: string;
   name: string;
+  nameAliases?: string[];
   createdAt: string;
+  updatedAt?: string;
   phone?: string;
   collector?: 'abdullah' | 'ali'; // To divide debts into two sections
   isDeleted?: boolean; // track soft deleted accounts for archive discovery
@@ -37,6 +39,8 @@ export interface DebtTransaction {
   postedToTreasury: boolean;
   createdAt: string;
   isDeleted?: boolean;
+  paymentMode?: 'partial' | 'full';
+  updatedAt?: string;
 }
 
 export interface Company {
@@ -44,6 +48,7 @@ export interface Company {
   name: string;
   /** The only business distinction in the unified companies/merchants section. */
   accountType?: 'company' | 'merchant';
+  nameAliases?: string[];
   contact?: string;
   balance: number; // current balance
   previousBalance?: number; // الدين القديم / القيمة السابقة
