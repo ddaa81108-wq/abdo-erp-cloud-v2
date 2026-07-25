@@ -779,6 +779,12 @@ export default function App() {
     sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(updatedUser));
   };
 
+    if (!currentUser) {
+    return (
+      <LoginScreen onLoginSuccess={handleLoginSuccess} />
+    );
+  }
+
   if (isLoading && !isOnlineMode) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center gap-6 font-sans" dir="rtl">
@@ -786,12 +792,6 @@ export default function App() {
         <h2 className="text-white text-xl font-extrabold">جاري تحميل المنظومة...</h2>
         <p className="text-slate-400 text-sm">يتم الاتصال بقاعدة البيانات الآمنة. يرجى الانتظار.</p>
       </div>
-    );
-  }
-
-  if (!currentUser) {
-    return (
-      <LoginScreen onLoginSuccess={handleLoginSuccess} />
     );
   }
 
