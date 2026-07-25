@@ -959,7 +959,7 @@ export default function App() {
                   {activeTab === "merchants" && <MerchantsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTab === "treasury" && <TreasuryModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
-                  {activeTab === "financial_reports" && <FinancialReportsModule state={state} onOpenExporter={handleOpenExporter} />}
+                  {activeTab === "financial_reports" && <FinancialReportsModule />}
                   {activeTab === "purchases" && <PurchasesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
