@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
@@ -26,6 +26,7 @@ import ImageExporter from "./components/ImageExporter";
 import LoginScreen from "./components/LoginScreen";
 import SettingsModule from "./components/SettingsModule";
 import { copyCustomCardImage } from "./utils/imageExporterUtils";
+import { canAccessTab, firstAllowedTab, resolvePermissions } from "./utils/permissions";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -59,13 +60,21 @@ export default function App() {
     const stored = sessionStorage.getItem("ABDO_ERP_V2_ACTIVE_USER");
     if (stored) {
       try {
-        return JSON.parse(stored);
+        const parsed = JSON.parse(stored) as User;
+        return {
+          ...parsed,
+          permissions: resolvePermissions(parsed.role, parsed.permissions),
+        };
       } catch (err) {
         return null;
       }
     }
     return null;
   });
+  const canCurrentUserAccess = useCallback(
+    (section: string) => canAccessTab(currentUser, section),
+    [currentUser],
+  );
 
   const [activeTab, setActiveTab] = useState<string>("debts");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -702,6 +711,10 @@ export default function App() {
   };
 
   const handleNavigateFromItem = (tab: string, filterText: string) => {
+    if (!canCurrentUserAccess(tab)) {
+      triggerCustomToast("هذا القسم غير متاح ضمن صلاحيات حسابك.");
+      return;
+    }
     setActiveTab(tab);
     setSearchPreFilter(filterText);
     setGlobalSearchQuery(filterText);
@@ -709,39 +722,15 @@ export default function App() {
   };
 
   const handleLoginSuccess = (user: User) => {
-    const limitedPermissions = {
-      canViewDebts: false,
-      canViewCompanies: false,
-      canViewTreasury: false,
-      canViewPurchases: false,
-      canViewDeposits: false,
-      canViewBackup: false,
-      canViewArchive: false,
-    };
-
     const secureUser: User = {
       ...user,
-      permissions: {
-        ...limitedPermissions,
-        ...(user.permissions || {}),
-      }
+      permissions: resolvePermissions(user.role, user.permissions)
     };
 
     setCurrentUser(secureUser);
     sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(secureUser));
     
-    const allowed = [
-      { id: "debts", enabled: secureUser.permissions.canViewDebts },
-      { id: "companies", enabled: secureUser.permissions.canViewCompanies },
-      { id: "treasury", enabled: secureUser.permissions.canViewTreasury },
-      { id: "purchases", enabled: secureUser.permissions.canViewPurchases },
-      { id: "deposits", enabled: secureUser.permissions.canViewDeposits },
-      { id: "backup", enabled: secureUser.permissions.canViewBackup },
-      { id: "settings", enabled: secureUser.role === "admin" },
-    ];
-    
-    const firstTab = allowed.find((t) => t.enabled);
-    setActiveTab(firstTab ? firstTab.id : "settings");
+    setActiveTab(firstAllowedTab(secureUser));
   };
 
   const handleLogout = () => setShowLogoutConfirm(true);
@@ -786,9 +775,15 @@ export default function App() {
   };
 
   const handleUpdateCurrentSession = (updatedUser: User) => {
-    setCurrentUser(updatedUser);
-    sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(updatedUser));
+    const securedUser = {
+      ...updatedUser,
+      permissions: resolvePermissions(updatedUser.role, updatedUser.permissions),
+    };
+    setCurrentUser(securedUser);
+    sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(securedUser));
   };
+
+  const activeTabIsAllowed = canCurrentUserAccess(activeTab);
 
     if (!currentUser) {
     return (
@@ -852,7 +847,13 @@ export default function App() {
             </div>
             {globalSearchQuery && (
               <div className="absolute top-full right-0 w-[90vw] md:w-[600px] mt-2 z-50">
-                <GlobalSearch state={state} searchQuery={globalSearchQuery} onNavigateToItem={handleNavigateFromItem} onClose={() => setGlobalSearchQuery("")} />
+                <GlobalSearch
+                  state={state}
+                  searchQuery={globalSearchQuery}
+                  onNavigateToItem={handleNavigateFromItem}
+                  canAccessSection={canCurrentUserAccess}
+                  onClose={() => setGlobalSearchQuery("")}
+                />
               </div>
             )}
           </div>
@@ -875,7 +876,14 @@ export default function App() {
         </div>
       </header>
 
-      <AlertCenter state={state} onNavigateToSection={(sec) => setActiveTab(sec)} onPostPurchaseToTreasury={postUnpostedPurchaseFromAlert} />
+      <AlertCenter
+        state={state}
+        onNavigateToSection={(sec) => {
+          if (canCurrentUserAccess(sec)) setActiveTab(sec);
+          else triggerCustomToast("هذا القسم غير متاح ضمن صلاحيات حسابك.");
+        }}
+        onPostPurchaseToTreasury={postUnpostedPurchaseFromAlert}
+      />
 
       {state.customers.length === 0 && (
         <div className={`w-full px-4 mt-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}>
@@ -919,15 +927,15 @@ export default function App() {
                   { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? false },
                   { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? false },
                   { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? false },
-                  { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: true },
+                  { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: currentUser?.permissions?.canViewMailManual ?? false },
                   { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? false },
                   { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? false },
-                  { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: true },
-                  { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: true },
-                  { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: true },
+                  { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: currentUser?.permissions?.canViewFinancialReports ?? false },
+                  { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: currentUser?.permissions?.canViewTransactionLog ?? false },
+                  { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: currentUser?.permissions?.canViewTrash ?? false },
                   { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
                   { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? false },
-                  { id: "export_pdf", label: "13. تصدير بي دي اف 📤", enabled: true },
+                  { id: "export_pdf", label: "13. تصدير بي دي اف 📤", enabled: currentUser?.permissions?.canViewPdfExport ?? false },
                 ].filter((t) => t.enabled).map((tab) => (
                   <button 
                     key={tab.id} 
@@ -941,14 +949,20 @@ export default function App() {
                 ))}
               </div>
 
-              <div className="p-2.5 border-t border-slate-200 bg-white space-y-1.5 shrink-0" dir="rtl">
-                <button type="button" onClick={() => setShowExcelImportModal(true)} className="w-full bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-emerald-600 shrink-0 cursor-pointer" title="تحميل كشوفات وحسابات من ملف Excel">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-white" /><span>استيراد كشوفات من Excel 📥</span>
-                </button>
-                <button type="button" onClick={handleExportAllToExcel} className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-emerald-500 shrink-0 cursor-pointer" title="تصدير نسخة كاملة من المنظومة كملف Excel">
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /><span>تصدير الحسابات Excel 📤</span>
-                </button>
-              </div>
+              {(currentUser?.permissions?.canImportExcel || currentUser?.permissions?.canExportExcel) && (
+                <div className="p-2.5 border-t border-slate-200 bg-white space-y-1.5 shrink-0" dir="rtl">
+                  {currentUser.permissions.canImportExcel && (
+                    <button type="button" onClick={() => setShowExcelImportModal(true)} className="w-full bg-emerald-700 hover:bg-emerald-600 active:scale-98 text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-emerald-600 shrink-0 cursor-pointer" title="تحميل كشوفات وحسابات من ملف Excel">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-white" /><span>استيراد كشوفات من Excel 📥</span>
+                    </button>
+                  )}
+                  {currentUser.permissions.canExportExcel && (
+                    <button type="button" onClick={handleExportAllToExcel} className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-extrabold text-[11px] py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md border border-emerald-500 shrink-0 cursor-pointer" title="تصدير نسخة كاملة من المنظومة كملف Excel">
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" /><span>تصدير الحسابات Excel 📤</span>
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="p-3 bg-slate-950/60 border-t border-slate-900 text-center text-[10px] text-slate-500 font-mono shrink-0">ABDO Multi-Ledger v2.0</div>
             </motion.aside>
           )}
@@ -965,19 +979,24 @@ export default function App() {
             <div className="transition-all">
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }}>
-                  {activeTab === "debts" && <CustomerDebtsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
-                  {activeTab === "companies" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
-                  {activeTab === "merchants" && <MerchantsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
-                  {activeTab === "treasury" && <TreasuryModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
-                  {activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
-                  {activeTab === "financial_reports" && <FinancialReportsModule />}
-                  {activeTab === "purchases" && <PurchasesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
-                  {activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
-                  {activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
-                  {activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
-                  {activeTab === "backup" && <BackupCenter state={state} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}
-                  {activeTab === "settings" && <SettingsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onUpdateCurrentSession={handleUpdateCurrentSession} />}
-                  {activeTab === "export_pdf" && <PdfExportModule state={state} />}
+                  {!activeTabIsAllowed && (
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center font-bold text-amber-800">
+                      هذا القسم غير متاح ضمن صلاحيات حسابك.
+                    </div>
+                  )}
+                  {activeTabIsAllowed && activeTab === "debts" && <CustomerDebtsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "companies" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "merchants" && <MerchantsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "treasury" && <TreasuryModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
+                  {activeTabIsAllowed && activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
+                  {activeTabIsAllowed && activeTab === "financial_reports" && <FinancialReportsModule />}
+                  {activeTabIsAllowed && activeTab === "purchases" && <PurchasesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
+                  {activeTabIsAllowed && activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
+                  {activeTabIsAllowed && activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
+                  {activeTabIsAllowed && activeTab === "backup" && <BackupCenter state={state} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}
+                  {activeTabIsAllowed && activeTab === "settings" && <SettingsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onUpdateCurrentSession={handleUpdateCurrentSession} />}
+                  {activeTabIsAllowed && activeTab === "export_pdf" && <PdfExportModule state={state} />}
                 </motion.div>
               </AnimatePresence>
             </div>

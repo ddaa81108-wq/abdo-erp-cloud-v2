@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { User as UserType, UserPermissions } from '../types';
+import { User as UserType } from '../types';
 import { normalizeLoginIdentifier } from '../utils/authUtils';
+import { resolvePermissions } from '../utils/permissions';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserType) => void;
@@ -35,31 +36,19 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       const userDocRef = doc(db, "users", fbUser.uid);
       const userDocSnap = await getDoc(userDocRef);
 
-      const limitedPermissions: UserPermissions = {
-        canViewDebts: false,
-        canViewCompanies: false,
-        canViewTreasury: false,
-        canViewPurchases: false,
-        canViewDeposits: false,
-        canViewArchive: false,
-        canViewBackup: false,
-      };
-
       // استكمال الحقول الناقصة محلياً فقط دون تعديل وثيقة المستخدم أو توسيع صلاحياته
       const ensureSafeUser = (data: any): UserType => {
+        const role = data.role || 'assistant';
         return {
           ...data,
           id: fbUser.uid,
           username: data.username || fbUser.email || 'مستخدم',
           name: data.name || data.username || fbUser.email || 'مستخدم',
           email: data.email || fbUser.email,
-          role: data.role || 'assistant',
+          role,
           password: data.password || '',
           createdAt: data.createdAt || '',
-          permissions: {
-            ...limitedPermissions,
-            ...(data.permissions || {})
-          }
+          permissions: resolvePermissions(role, data.permissions)
         } as UserType;
       };
 

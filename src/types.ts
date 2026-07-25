@@ -185,6 +185,13 @@ export interface UserPermissions {
   canViewDeposits: boolean;
   canViewArchive: boolean;
   canViewBackup: boolean;
+  canViewMailManual?: boolean;
+  canViewFinancialReports?: boolean;
+  canViewTransactionLog?: boolean;
+  canViewTrash?: boolean;
+  canViewPdfExport?: boolean;
+  canImportExcel?: boolean;
+  canExportExcel?: boolean;
 }
 
 export interface User {

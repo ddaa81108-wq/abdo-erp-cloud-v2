@@ -296,7 +296,14 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewPurchases: true,
         canViewDeposits: true,
         canViewArchive: true,
-        canViewBackup: true
+        canViewBackup: true,
+        canViewMailManual: true,
+        canViewFinancialReports: true,
+        canViewTransactionLog: true,
+        canViewTrash: true,
+        canViewPdfExport: true,
+        canImportExcel: true,
+        canExportExcel: true
       },
       accountant: {
         canViewDebts: true,
@@ -305,7 +312,14 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewPurchases: true,
         canViewDeposits: true,
         canViewArchive: true,
-        canViewBackup: false
+        canViewBackup: false,
+        canViewMailManual: false,
+        canViewFinancialReports: false,
+        canViewTransactionLog: false,
+        canViewTrash: false,
+        canViewPdfExport: false,
+        canImportExcel: false,
+        canExportExcel: false
       },
       cashier: {
         canViewDebts: true,
@@ -314,7 +328,14 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewPurchases: false,
         canViewDeposits: true,
         canViewArchive: false,
-        canViewBackup: false
+        canViewBackup: false,
+        canViewMailManual: false,
+        canViewFinancialReports: false,
+        canViewTransactionLog: false,
+        canViewTrash: false,
+        canViewPdfExport: false,
+        canImportExcel: false,
+        canExportExcel: false
       },
       warehouse: {
         canViewDebts: false,
@@ -323,7 +344,14 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewPurchases: true,
         canViewDeposits: false,
         canViewArchive: true,
-        canViewBackup: false
+        canViewBackup: false,
+        canViewMailManual: false,
+        canViewFinancialReports: false,
+        canViewTransactionLog: false,
+        canViewTrash: false,
+        canViewPdfExport: false,
+        canImportExcel: false,
+        canExportExcel: false
       },
       assistant: {
         canViewDebts: true,
@@ -332,7 +360,14 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
         canViewPurchases: false,
         canViewDeposits: false,
         canViewArchive: true,
-        canViewBackup: false
+        canViewBackup: false,
+        canViewMailManual: false,
+        canViewFinancialReports: false,
+        canViewTransactionLog: false,
+        canViewTrash: false,
+        canViewPdfExport: false,
+        canImportExcel: false,
+        canExportExcel: false
       }
     };
 
@@ -421,7 +456,14 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
     { key: 'canViewPurchases' as const, label: 'مشتريات' },
     { key: 'canViewDeposits' as const, label: 'ودائع' },
     { key: 'canViewArchive' as const, label: 'أرشيف' },
-    { key: 'canViewBackup' as const, label: 'احتياطي' }
+    { key: 'canViewBackup' as const, label: 'احتياطي' },
+    { key: 'canViewMailManual' as const, label: 'المصراوية' },
+    { key: 'canViewFinancialReports' as const, label: 'تقارير' },
+    { key: 'canViewTransactionLog' as const, label: 'سجل' },
+    { key: 'canViewTrash' as const, label: 'مهملات' },
+    { key: 'canViewPdfExport' as const, label: 'PDF' },
+    { key: 'canImportExcel' as const, label: 'استيراد Excel' },
+    { key: 'canExportExcel' as const, label: 'تصدير Excel' }
   ];
 
   return (

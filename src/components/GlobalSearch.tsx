@@ -6,10 +6,11 @@ interface GlobalSearchProps {
   state: ERPState;
   searchQuery: string;
   onNavigateToItem: (section: string, filterText: string) => void;
+  canAccessSection: (section: string) => boolean;
   onClose?: () => void;
 }
 
-export default function GlobalSearch({ state, searchQuery, onNavigateToItem, onClose }: GlobalSearchProps) {
+export default function GlobalSearch({ state, searchQuery, onNavigateToItem, canAccessSection, onClose }: GlobalSearchProps) {
   const [results, setResults] = useState<{
     customers: any[];
     companies: any[];
@@ -76,15 +77,15 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, onC
     );
 
     setResults({
-      customers: activeCusts,
-      companies: foundCompanies,
-      merchants: foundMerchants,
-      trusts: foundTrusts,
-      archive: foundArchives,
+      customers: canAccessSection('debts') ? activeCusts : [],
+      companies: canAccessSection('companies') ? foundCompanies : [],
+      merchants: canAccessSection('merchants') ? foundMerchants : [],
+      trusts: canAccessSection('deposits') ? foundTrusts : [],
+      archive: canAccessSection('archive') ? foundArchives : [],
       treasury: [],
-      purchases: foundPurchases
+      purchases: canAccessSection('purchases') ? foundPurchases : []
     });
-  }, [searchQuery, state]);
+  }, [searchQuery, state, canAccessSection]);
 
   const totalResults = 
     results.customers.length + 
