@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, HelpCircle, ChevronRight, Play, RefreshCw, Layers } from 'lucide-react';
 import { ERPState, Customer, CustomerCycle, DebtTransaction, Company, CompanyTransaction, Merchant, MerchantTransaction, TrustDeposit } from '../types';
+import { readSpreadsheetRows } from '../utils/spreadsheet';
 
 interface ExcelImporterProps {
   state: ERPState;
@@ -55,13 +55,10 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
-        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        
-        // Read sheet as raw row structures (array of arrays)
-        const rawJson = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+        const rawJson = readSpreadsheetRows(
+          evt.target?.result as ArrayBuffer,
+          file.name,
+        ) as any[][];
         
         if (rawJson.length === 0) {
           setParsingErrors(['الملف المختار فارغ ولا يحتوي على صفوف بيانات.']);
@@ -105,8 +102,14 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
         setMappings(autoMappings);
         showPreview(dataRows, fileHeaders, autoMappings);
 
-      } catch (err) {
-        setParsingErrors(['حدث عطل أثناء فك تشفير مستحضر الإكسل المختار. تأكد من تمديد الملف الصحيح.']);
+      } catch (err: any) {
+        const message =
+          err?.message === 'FILE_TOO_LARGE'
+            ? 'الملف كبير جداً. الحد الأقصى المسموح به 10 ميجابايت.'
+            : err?.message === 'LEGACY_XLS_UNSUPPORTED'
+              ? 'صيغة XLS القديمة غير مدعومة أمنياً. احفظ الملف بصيغة XLSX أو CSV ثم أعد المحاولة.'
+              : 'تعذر قراءة الملف. تأكد من أنه ملف XLSX أو CSV سليم وغير محمي بكلمة مرور.';
+        setParsingErrors([message]);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -480,7 +483,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
           <FileSpreadsheet className="w-5 h-5 text-emerald-600 animate-pulse" />
           <h2 className="font-bold text-sm text-slate-900">📊 محرك استيراد ملفات الإكسل الذكي (Import Sheet)</h2>
         </div>
-        <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded font-bold font-mono">XLSX, XLS, CSV</span>
+        <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded font-bold font-mono">XLSX, CSV</span>
       </div>
 
       {parsingErrors.map((err, i) => (
@@ -525,7 +528,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".xlsx, .xls, .csv"
+          accept=".xlsx, .csv"
           className="hidden"
         />
         <div className="flex flex-col items-center justify-center gap-2">
@@ -539,7 +542,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
             </span>
             <span className="text-slate-500"> أو قم بسحبه وإفلاته هنا</span>
           </div>
-          <p className="text-[10px] text-slate-400">يدعم امتداد xlsx, xls, csv مع الاكتشاف التلقائي الذكي للأعمدة</p>
+          <p className="text-[10px] text-slate-400">يدعم امتداد xlsx وcsv مع الاكتشاف التلقائي الذكي للأعمدة</p>
           {fileName && (
             <div className="mt-2 bg-emerald-50 text-emerald-800 border-emerald-100 border px-3 py-1 rounded-full text-xs font-bold leading-normal flex items-center gap-1.5 font-mono">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { calculateCustomerCycleBalance } from "../domain/financialCalculations";
 import {
   UserPlus,
   Trash2,
@@ -401,11 +402,7 @@ export default function CustomerDebtsModule({
   const recalcCycleBalance = (cycleId: string, transactions: DebtTransaction[]) => {
     const cycle = state.cycles.find((cy) => cy.id === cycleId);
     if (!cycle) return 0;
-    const cycleTxs = transactions.filter((t) => t.cycleId === cycleId);
-    const initial = cycle.initialBalance || 0;
-    const debts = cycleTxs.filter((t) => t.type === "debt").reduce((s, t) => s + t.amount, 0);
-    const payments = cycleTxs.filter((t) => t.type === "payment").reduce((s, t) => s + t.amount, 0);
-    return initial + debts - payments;
+    return calculateCustomerCycleBalance(cycle, transactions);
   };
 
   // ============================================================
@@ -452,7 +449,7 @@ export default function CustomerDebtsModule({
         customerId: id,
         startDate: new Date().toISOString(),
         status: "active",
-        initialBalance: debtAmount,
+        initialBalance: 0,
         currentBalance: debtAmount,
       };
 
@@ -506,7 +503,7 @@ export default function CustomerDebtsModule({
         customerId: restorableCustomer.id,
         startDate: new Date().toISOString(),
         status: "active",
-        initialBalance: debtAmount,
+        initialBalance: 0,
         currentBalance: debtAmount,
       };
 

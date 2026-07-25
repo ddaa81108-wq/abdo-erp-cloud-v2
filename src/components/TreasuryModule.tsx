@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { calculateTreasuryBalance } from "../domain/financialCalculations";
 import {
   Landmark,
   ArrowUpRight,
@@ -117,9 +118,7 @@ export default function TreasuryModule({
   const validTreasuryTxs = (state.treasuryTransactions || []).filter(
     (tx) => !tx.isDeleted,
   );
-  const activeCash = validTreasuryTxs.reduce((sum, tx) => {
-    return tx.type === "in" ? sum + tx.amount : sum - tx.amount;
-  }, 0);
+  const activeCash = calculateTreasuryBalance(validTreasuryTxs);
 
   // 4. Grand Positives (Card 1)
   const grandTotalPositives = activeCash + totalPositiveDebts;

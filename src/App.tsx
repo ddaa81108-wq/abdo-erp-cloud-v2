@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import * as XLSX from "xlsx";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
-import { doc, getDoc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
 import {
@@ -27,6 +26,13 @@ import LoginScreen from "./components/LoginScreen";
 import SettingsModule from "./components/SettingsModule";
 import { copyCustomCardImage } from "./utils/imageExporterUtils";
 import { canAccessTab, firstAllowedTab, resolvePermissions } from "./utils/permissions";
+import { downloadXlsx } from "./utils/spreadsheet";
+import { createErpWorkbookSheets } from "./services/erpSpreadsheetExport";
+import {
+  loadCompleteErpState,
+  mergeErpStateChanges,
+  writeMergedErpState,
+} from "./services/erpSyncService";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -293,61 +299,13 @@ export default function App() {
   }, []);
 
   const syncTimeoutRef = useRef<any>(null);
+  const pendingSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
 
   // 🔄 Auto Backup Logic
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
-
-  // ============================================================
-  // 🆕 Helper: Write state to Firebase in split format
-  // ============================================================
-  const writeSplitState = async (stateToWrite: ERPState) => {
-    if (!db) return;
-
-    // 1. Save each backup's dataJson to its own document
-    const backupPoints = stateToWrite.backupPoints || [];
-    for (const bp of backupPoints) {
-      if (bp.dataJson) {
-        try {
-          await setDoc(doc(db, "erp_system", `backup_${bp.id}`), {
-            id: bp.id,
-            name: bp.name,
-            date: bp.date,
-            description: bp.description,
-            dataJson: bp.dataJson,
-          });
-        } catch (e) {
-          console.error("Failed to save backup doc:", bp.id, e);
-        }
-      }
-    }
-
-    // 2. Prepare main state: remove large arrays + strip dataJson from backups
-    const stateCopy: any = JSON.parse(JSON.stringify(stateToWrite));
-    const debtTransactions = stateCopy.debtTransactions || [];
-    const purchases = stateCopy.purchases || [];
-    delete stateCopy.debtTransactions;
-    delete stateCopy.purchases;
-    stateCopy.backupPoints = (stateCopy.backupPoints || []).map((bp: any) => {
-      const { dataJson, ...rest } = bp;
-      return rest;
-    });
-
-    // 3. Write main state (small)
-    await setDoc(doc(db, "erp_system", "main_state"), stateCopy, { merge: true });
-
-    // 4. Write debtTransactions chunk
-    await setDoc(doc(db, "erp_system", "chunk_debt_transactions"), {
-      debtTransactions,
-    });
-
-    // 5. Write purchases chunk
-    await setDoc(doc(db, "erp_system", "chunk_purchases"), {
-      purchases,
-    });
-  };
 
   // ============================================================
   // 🆕 Auto Backup (keeps last 3 auto-backups only)
@@ -427,52 +385,6 @@ export default function App() {
     if (!currentUser) return; // 🔒 FIX #4: wait for login before any read/write
 
     const mainRef = doc(db, "erp_system", "main_state");
-    const debtRef = doc(db, "erp_system", "chunk_debt_transactions");
-    const purchasesRef = doc(db, "erp_system", "chunk_purchases");
-
-    const reassembleState = async (mainData: any) => {
-      // Start with whatever is in mainData (backward compat with old format)
-      let debtTransactions: any[] = mainData.debtTransactions || [];
-      let purchases: any[] = mainData.purchases || [];
-
-      // Try to load from chunk documents (new format)
-      try {
-        const debtSnap = await getDoc(debtRef);
-        if (debtSnap.exists()) {
-          debtTransactions = debtSnap.data().debtTransactions || [];
-        }
-      } catch (e) { /* fallback to mainData */ }
-
-      try {
-        const purchasesSnap = await getDoc(purchasesRef);
-        if (purchasesSnap.exists()) {
-          purchases = purchasesSnap.data().purchases || [];
-        }
-      } catch (e) { /* fallback to mainData */ }
-
-      // Restore backup dataJson from separate documents
-      const backupPoints = mainData.backupPoints || [];
-      const restoredBackups = await Promise.all(
-        backupPoints.map(async (bp: any) => {
-          if (bp.dataJson) return bp; // already has data (old format in localStorage)
-          try {
-            const bpSnap = await getDoc(doc(db, "erp_system", `backup_${bp.id}`));
-            if (bpSnap.exists()) {
-              return { ...bp, dataJson: bpSnap.data().dataJson };
-            }
-          } catch (e) { /* skip */ }
-          return bp;
-        })
-      );
-
-      return {
-        ...mainData,
-        debtTransactions,
-        purchases,
-        backupPoints: restoredBackups,
-      };
-    };
-
     const unsubscribe = onSnapshot(
       mainRef,
       async (docSnap) => {
@@ -509,21 +421,18 @@ export default function App() {
           if (!data.egyptianCashRecords) data.egyptianCashRecords = [];
 
           // Reassemble full state from chunks
-          const fullState = await reassembleState(data);
+          const fullState = await loadCompleteErpState(db, data);
 
                    if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
-            let safe = fullState as ERPState;
-            try {
-              const loc = localStorage.getItem("ABDO_ERP_V2_DATA");
-              if (loc) {
-                const lp = JSON.parse(loc);
-                const lc = (lp.customers?.length||0)+(lp.companies?.length||0)+(lp.merchants?.length||0);
-                const fc = (fullState.customers?.length||0)+(fullState.companies?.length||0)+(fullState.merchants?.length||0);
-                if (lc > fc && lc > 0) safe = lp;
-              }
-            } catch(e){}
+            let safe = pendingSyncRef.current
+              ? mergeErpStateChanges(
+                  pendingSyncRef.current.base,
+                  pendingSyncRef.current.next,
+                  fullState,
+                )
+              : fullState;
             setState((current) => JSON.stringify(current) === JSON.stringify(safe) ? current : safe);
             try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(safe)); } catch (e) {}
           }
@@ -567,10 +476,12 @@ export default function App() {
   }, [currentUser]);
 
   // ============================================================
-  // 🆕 SECURE THE SYNC FUNCTION - uses writeSplitState
+  // Atomic optimistic synchronization with record-level conflict merging
   // ============================================================
   const updateStateAndSync = async (newState: ERPState) => {
     const cleanedState = JSON.parse(JSON.stringify(newState));
+    const baseState = stateRef.current;
+    stateRef.current = cleanedState;
     setState(cleanedState);
 
     try {
@@ -580,12 +491,32 @@ export default function App() {
     }
 
     if (db) {
+      pendingSyncRef.current = pendingSyncRef.current
+        ? { ...pendingSyncRef.current, next: cleanedState }
+        : { base: baseState, next: cleanedState };
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(async () => {
+        const pending = pendingSyncRef.current;
+        pendingSyncRef.current = null;
+        if (!pending) return;
         try {
-          await writeSplitState(cleanedState);
+          const merged = await writeMergedErpState(db, pending.base, pending.next);
+          const displayState = pendingSyncRef.current
+            ? mergeErpStateChanges(
+                pendingSyncRef.current.base,
+                pendingSyncRef.current.next,
+                merged,
+              )
+            : merged;
+          stateRef.current = displayState;
+          setState(displayState);
+          localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(displayState));
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
+          pendingSyncRef.current = pendingSyncRef.current
+            ? { base: pending.base, next: pendingSyncRef.current.next }
+            : pending;
+          triggerCustomToast("تعذر حفظ آخر تعديل على الخادم. سيُعاد المحاولة مع التعديل القادم.");
         }
       }, 500);
     }
@@ -593,75 +524,10 @@ export default function App() {
 
   const handleExportAllToExcel = () => {
     try {
-      const wb = XLSX.utils.book_new();
-
-      const customersData = state.customers.map((c) => {
-        const activeCycle = state.cycles.find(cy => cy.customerId === c.id && cy.status === "active");
-        return {
-          "معرف الزبون": c.id,
-          "اسم الزبون بالكامل": c.name,
-          الهاتف: c.phone || "غير مسجل",
-          "تاريخ الانضمام والتسجيل": c.createdAt ? new Date(c.createdAt).toLocaleDateString("ar-LY") : "---",
-          "الحالة الحالية": c.isDeleted ? "مؤرشف بالمهملات" : "نشط جاري",
-          "الدين المتبقي الحالي (د.ل)": activeCycle ? activeCycle.currentBalance : 0,
-        };
-      });
-      const wsCustomers = XLSX.utils.json_to_sheet(customersData);
-      XLSX.utils.book_append_sheet(wb, wsCustomers, "ديون العملاء والزبائن");
-
-      const companiesData = state.companies.map((c) => ({
-        "معرف الشركة": c.id,
-        "اسم الجهة الموردة": c.name,
-        "هاتف التواصل": c.contact || "غير مسجل",
-        "القيمة السابقة (د.ل)": c.previousBalance || 0,
-        "فواتير جديدة اليوم (د.ل)": c.newDebt || 0,
-        "المدفوع والمسدد اليوم (د.ل)": c.paymentToday || 0,
-        "صافي الدين المتبقي (د.ل)": c.balance || 0,
-        "حالة الأرشيف": c.isDeleted ? "مؤرشف بالمهملات" : "نشط بالدفتر",
-      }));
-      const wsCompanies = XLSX.utils.json_to_sheet(companiesData);
-      XLSX.utils.book_append_sheet(wb, wsCompanies, "حسابات الشركات والموردين");
-
-      const merchantsData = state.merchants.map((m) => ({
-        "معرف التاجر": m.id,
-        "اسم التاجر": m.name,
-        "هاتف التواصل": m.contact || "غير مسجل",
-        "القيمة السابقة د.ل": m.previousBalance || 0,
-        "سحوبات جديدة اليوم د.ل": m.newDebt || 0,
-        "المدفوع اليوم د.ل": m.paymentToday || 0,
-        "صافي الدين المترصد د.ل": m.balance || 0,
-        "حالة الأرشيف": m.isDeleted ? "مؤرشف بالمهملات" : "نشط جاري",
-      }));
-      const wsMerchants = XLSX.utils.json_to_sheet(merchantsData);
-      XLSX.utils.book_append_sheet(wb, wsMerchants, "دفتر كشوفات التجار");
-
-      const purchasesData = state.purchases.map((p) => ({
-        "رقم الفاتورة المعتمة": p.referenceNo,
-        "تاريخ الاعتماد المالي": p.date ? new Date(p.date).toLocaleDateString("ar-LY") : "---",
-        "اسم الصنف وتفاصيله": p.itemName,
-        "الكمية الواردة": p.quantity,
-        "سعر المفرد المحاسبي": p.unitPrice,
-        "الإجمالي بالعملة الأصلية": p.totalPrice,
-        "المعدل للعملة المحلية (د.ل)": p.conversionRate || 1.0,
-        "الإجمالي المعادل بالليبي (د.ل)": p.totalPrice * (p.conversionRate || 1.0),
-        "حالة الخزينة": p.postedToTreasury ? "✓ تم ترحيلها والخصم" : "سداد خارجي فوري",
-      }));
-      const wsPurchases = XLSX.utils.json_to_sheet(purchasesData);
-      XLSX.utils.book_append_sheet(wb, wsPurchases, "مشتريات وفواتير اليوم");
-
-      const depositsData = state.trustDeposits.map((d) => ({
-        "رقم الأمانة": d.referenceNo,
-        "اسم العميل المودع": d.customerName,
-        "القيمة بالدينار الليبي د.ل": d.amountLyd,
-        "القيمة بالجنيه المصري": d.amountEgp,
-        "تاريخ الإيداع": d.date ? new Date(d.date).toLocaleDateString("ar-LY") : "---",
-        "الحالة المحاسبية الحالية": d.status === "held" ? "محتجزة بالصندوق 🛡️" : d.status === "refunded" ? "مسترجعة للعميل ✕" : "مسواة ومقاصة لدفتر ديونه ✓",
-        "البيان والشرح": d.note,
-      }));
-      const wsDeposits = XLSX.utils.json_to_sheet(depositsData);
-      XLSX.utils.book_append_sheet(wb, wsDeposits, "الأمانات وودائع الزباين");
-
-      XLSX.writeFile(wb, `ABDO_MULTY_LEDGER_MASTER_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      downloadXlsx(
+        createErpWorkbookSheets(state),
+        `ABDO_MULTY_LEDGER_MASTER_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      );
       alert("🎉 تم توليد وتصدير ملف الإكسل الشامل لكافة صفحات كشوفات وحركات المنظومة بنجاح!");
     } catch (error: any) {
       console.error(error);
