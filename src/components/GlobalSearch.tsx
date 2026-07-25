@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, Inbox, Landmark, ShoppingBag, FolderArchive, ArrowUpRight, History, Store } from 'lucide-react';
+import { Search, UserCheck, Inbox, Landmark, ShoppingBag, FolderArchive, ArrowUpRight, History } from 'lucide-react';
 import { ERPState } from '../types';
 
 interface GlobalSearchProps {
@@ -14,7 +14,6 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
   const [results, setResults] = useState<{
     customers: any[];
     companies: any[];
-    merchants: any[];
     trusts: any[];
     archive: any[];
     treasury: any[];
@@ -22,7 +21,6 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
   }>({
     customers: [],
     companies: [],
-    merchants: [],
     trusts: [],
     archive: [],
     treasury: [],
@@ -31,7 +29,7 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
 
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setResults({ customers: [], companies: [], merchants: [], trusts: [], archive: [], treasury: [], purchases: [] });
+      setResults({ customers: [], companies: [], trusts: [], archive: [], treasury: [], purchases: [] });
       return;
     }
 
@@ -50,11 +48,6 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
     // 2. Search Companies / Suppliers
     const foundCompanies = state.companies.filter(c => 
       c.name.toLowerCase().includes(q) || (c.contact && c.contact.includes(q))
-    );
-
-    // 2b. Search Merchants
-    const foundMerchants = (state.merchants || []).filter(m => 
-      m.name.toLowerCase().includes(q) || (m.contact && m.contact.includes(q))
     );
 
     // 2c. Search Trusts / Deposits
@@ -79,7 +72,6 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
     setResults({
       customers: canAccessSection('debts') ? activeCusts : [],
       companies: canAccessSection('companies') ? foundCompanies : [],
-      merchants: canAccessSection('merchants') ? foundMerchants : [],
       trusts: canAccessSection('deposits') ? foundTrusts : [],
       archive: canAccessSection('archive') ? foundArchives : [],
       treasury: [],
@@ -90,7 +82,6 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
   const totalResults = 
     results.customers.length + 
     results.companies.length + 
-    results.merchants.length + 
     results.trusts.length + 
     results.archive.length + 
     results.purchases.length;
@@ -160,31 +151,6 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
                         <span className="font-semibold text-slate-900">{c.name}</span>
                         <div className="flex items-center gap-2 font-mono">
                           <span className="text-amber-700 font-bold">{Math.round(c.balance || 0).toLocaleString("en-US")} د.ل</span>
-                          <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Merchants Row */}
-              {results.merchants && results.merchants.length > 0 && (
-                <div className="bg-slate-50 border border-slate-100 p-3 rounded-lg">
-                  <h4 className="flex items-center gap-1.5 text-purple-800 font-bold text-xs mb-2">
-                    <Store className="w-4 h-4 text-purple-600" />
-                    <span>التجار والموردين الفرعيين</span>
-                  </h4>
-                  <div className="space-y-1">
-                    {results.merchants.slice(0, 4).map(m => (
-                      <div 
-                        key={m.id}
-                        onClick={() => onNavigateToItem('merchants', m.name)}
-                        className="flex items-center justify-between text-[11px] bg-white hover:bg-purple-50 border p-1.5 rounded cursor-pointer transition-all"
-                      >
-                        <span className="font-semibold text-slate-900">{m.name}</span>
-                        <div className="flex items-center gap-2 font-mono">
-                          <span className="text-purple-700 font-bold">{Math.round(m.balance || 0).toLocaleString('en-US')} د.ل</span>
                           <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
                         </div>
                       </div>

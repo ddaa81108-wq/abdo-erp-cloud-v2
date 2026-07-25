@@ -42,6 +42,8 @@ export interface DebtTransaction {
 export interface Company {
   id: string;
   name: string;
+  /** The only business distinction in the unified companies/merchants section. */
+  accountType?: 'company' | 'merchant';
   contact?: string;
   balance: number; // current balance
   previousBalance?: number; // الدين القديم / القيمة السابقة
@@ -64,6 +66,10 @@ export interface CompanyTransaction {
   postedToTreasury: boolean;
   createdAt: string;
   isDeleted?: boolean;
+  /** Classifies the row without creating a second ledger. */
+  entryKind?: 'opening_balance' | 'debt' | 'payment';
+  paymentMode?: 'partial' | 'full';
+  updatedAt?: string;
 }
 
 export interface Merchant {

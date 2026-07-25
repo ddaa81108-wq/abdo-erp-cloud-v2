@@ -27,16 +27,6 @@ export function createErpWorkbookSheets(state: ERPState) {
     'صافي الدين المتبقي (د.ل)': company.balance || 0,
     'حالة الأرشيف': company.isDeleted ? 'مؤرشف بالمهملات' : 'نشط بالدفتر',
   }));
-  const merchants = state.merchants.map((merchant) => ({
-    'معرف التاجر': merchant.id,
-    'اسم التاجر': merchant.name,
-    'هاتف التواصل': merchant.contact || 'غير مسجل',
-    'القيمة السابقة د.ل': merchant.previousBalance || 0,
-    'سحوبات جديدة اليوم د.ل': merchant.newDebt || 0,
-    'المدفوع اليوم د.ل': merchant.paymentToday || 0,
-    'صافي الدين المترصد د.ل': merchant.balance || 0,
-    'حالة الأرشيف': merchant.isDeleted ? 'مؤرشف بالمهملات' : 'نشط جاري',
-  }));
   const purchases = state.purchases.map((purchase) => ({
     'رقم الفاتورة المعتمة': purchase.referenceNo,
     'تاريخ الاعتماد المالي': purchase.date
@@ -69,7 +59,6 @@ export function createErpWorkbookSheets(state: ERPState) {
   return [
     { name: 'ديون العملاء والزبائن', rows: objectRows(customers) },
     { name: 'حسابات الشركات والموردين', rows: objectRows(companies) },
-    { name: 'دفتر كشوفات التجار', rows: objectRows(merchants) },
     { name: 'مشتريات وفواتير اليوم', rows: objectRows(purchases) },
     { name: 'الأمانات وودائع الزباين', rows: objectRows(deposits) },
   ];

@@ -47,12 +47,8 @@ export default function TreasuryModule({
     .filter((c) => !c.isDeleted)
     .reduce((sum, c) => sum + (c.balance || 0), 0);
 
-  const totalMerchantDebts = (state.merchants || [])
-    .filter((m) => !m.isDeleted)
-    .reduce((sum, m) => sum + (m.balance || 0), 0);
-
-  const totalPositiveDebts =
-    totalCustomerDebts + totalCompanyDebts + totalMerchantDebts;
+  // Companies and merchants now live in the same unified accounts array.
+  const totalPositiveDebts = totalCustomerDebts + totalCompanyDebts;
 
   // 2. Calculate Liabilities (Deposits & Purchases)
   const totalDeposits = state.trustDeposits

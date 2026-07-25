@@ -33,6 +33,7 @@ import {
   mergeErpStateChanges,
   writeMergedErpState,
 } from "./services/erpSyncService";
+import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -40,12 +41,21 @@ import CompaniesModule from "./components/CompaniesModule";
 import TreasuryModule from "./components/TreasuryModule";
 import PurchasesModule from "./components/PurchasesModule";
 import DepositsModule from "./components/DepositsModule";
-import MerchantsModule from "./components/MerchantsModule";
 import TransactionLogModule from "./components/TransactionLogModule";
 import TrashCanModule from "./components/TrashCanModule";
 import MailManualModule from "./components/MailManualModule";
 import FinancialReportsModule from "./components/FinancialReportsModule";
 import PdfExportModule from "./components/PdfExportModule";
+
+const normalizeBusinessState = (value: ERPState): ERPState => ({
+  ...value,
+  ...migrateLegacyBusinessAccounts(
+    value.companies || [],
+    value.companyTransactions || [],
+    value.merchants || [],
+    value.merchantTransactions || [],
+  ),
+});
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -56,10 +66,12 @@ export default function App() {
     if (tryLocal) {
       try {
         const parsed = JSON.parse(tryLocal);
-        if (parsed && typeof parsed === "object") return parsed;
+        if (parsed && typeof parsed === "object") {
+          return normalizeBusinessState(parsed);
+        }
       } catch (e) {}
     }
-    return INITIAL_ERP_STATE;
+    return normalizeBusinessState(INITIAL_ERP_STATE);
   });
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -393,35 +405,27 @@ export default function App() {
 
           // Legacy migration: merchants → companies
           if (!data.users || data.users.length === 0) data.users = INITIAL_ERP_STATE.users;
-          if (!data.merchants) data.merchants = INITIAL_ERP_STATE.merchants || [];
-          if (!data.merchantTransactions) data.merchantTransactions = INITIAL_ERP_STATE.merchantTransactions || [];
-          if (!data.companies) data.companies = INITIAL_ERP_STATE.companies || [];
-          if (!data.companyTransactions) data.companyTransactions = INITIAL_ERP_STATE.companyTransactions || [];
-
-          if (data.merchants && Array.isArray(data.merchants) && data.merchants.length > 0) {
-            data.companies.push(
-              ...data.merchants.map((m: any) => ({ ...m, id: m.id.replace("mer_", "comp_") })),
-            );
-            if (data.merchantTransactions && Array.isArray(data.merchantTransactions)) {
-              data.companyTransactions.push(
-                ...data.merchantTransactions.map((tx: any) => ({
-                  ...tx,
-                  id: tx.id.replace("tx_m_", "tx_c_"),
-                  companyId: tx.merchantId.replace("mer_", "comp_"),
-                  type: (tx.type === "debt" ? "purchase_invoice" : tx.type) as "payment" | "purchase_invoice",
-                })),
-              );
-            }
-            data.merchants = [];
-            data.merchantTransactions = [];
-            await setDoc(mainRef, { merchants: [], merchantTransactions: [], companies: data.companies, companyTransactions: data.companyTransactions }, { merge: true });
+          const migratedBusiness = migrateLegacyBusinessAccounts(
+            Array.isArray(data.companies) ? data.companies : [],
+            Array.isArray(data.companyTransactions) ? data.companyTransactions : [],
+            Array.isArray(data.merchants) ? data.merchants : [],
+            Array.isArray(data.merchantTransactions) ? data.merchantTransactions : [],
+          );
+          const businessChanged =
+            JSON.stringify(data.companies || []) !== JSON.stringify(migratedBusiness.companies) ||
+            JSON.stringify(data.companyTransactions || []) !== JSON.stringify(migratedBusiness.companyTransactions) ||
+            (data.merchants?.length || 0) > 0 ||
+            (data.merchantTransactions?.length || 0) > 0;
+          Object.assign(data, migratedBusiness);
+          if (businessChanged) {
+            await setDoc(mainRef, migratedBusiness, { merge: true });
           }
 
           if (!data.trustDeposits) data.trustDeposits = INITIAL_ERP_STATE.trustDeposits || [];
           if (!data.egyptianCashRecords) data.egyptianCashRecords = [];
 
           // Reassemble full state from chunks
-          const fullState = await loadCompleteErpState(db, data);
+          const fullState = normalizeBusinessState(await loadCompleteErpState(db, data));
 
                    if (!unmounted) {
             setIsLoading(false);
@@ -479,7 +483,7 @@ export default function App() {
   // Atomic optimistic synchronization with record-level conflict merging
   // ============================================================
   const updateStateAndSync = async (newState: ERPState) => {
-    const cleanedState = JSON.parse(JSON.stringify(newState));
+    const cleanedState = JSON.parse(JSON.stringify(normalizeBusinessState(newState)));
     const baseState = stateRef.current;
     stateRef.current = cleanedState;
     setState(cleanedState);
@@ -500,14 +504,16 @@ export default function App() {
         pendingSyncRef.current = null;
         if (!pending) return;
         try {
-          const merged = await writeMergedErpState(db, pending.base, pending.next);
-          const displayState = pendingSyncRef.current
+          const merged = normalizeBusinessState(
+            await writeMergedErpState(db, pending.base, pending.next),
+          );
+          const displayState = normalizeBusinessState(pendingSyncRef.current
             ? mergeErpStateChanges(
                 pendingSyncRef.current.base,
                 pendingSyncRef.current.next,
                 merged,
               )
-            : merged;
+            : merged);
           stateRef.current = displayState;
           setState(displayState);
           localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(displayState));
@@ -577,6 +583,7 @@ export default function App() {
   };
 
   const handleNavigateFromItem = (tab: string, filterText: string) => {
+    if (tab === "merchants") tab = "companies";
     if (!canCurrentUserAccess(tab)) {
       triggerCustomToast("هذا القسم غير متاح ضمن صلاحيات حسابك.");
       return;
@@ -852,7 +859,7 @@ export default function App() {
                   )}
                   {activeTabIsAllowed && activeTab === "debts" && <CustomerDebtsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "companies" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
-                  {activeTabIsAllowed && activeTab === "merchants" && <MerchantsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "merchants" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "treasury" && <TreasuryModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTabIsAllowed && activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "financial_reports" && <FinancialReportsModule />}

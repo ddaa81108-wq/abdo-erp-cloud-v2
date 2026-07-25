@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle, HelpCircle, ChevronRight, Play, RefreshCw, Layers } from 'lucide-react';
-import { ERPState, Customer, CustomerCycle, DebtTransaction, Company, CompanyTransaction, Merchant, MerchantTransaction, TrustDeposit } from '../types';
+import { ERPState, Customer, CustomerCycle, DebtTransaction, Company, CompanyTransaction, TrustDeposit } from '../types';
 import { readSpreadsheetRows } from '../utils/spreadsheet';
+import { synchronizeBusinessBalances } from '../domain/businessAccounts';
 
 interface ExcelImporterProps {
   state: ERPState;
@@ -39,7 +40,8 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
     show: boolean;
   } | null>(null);
 
-  const [targetModule, setTargetModule] = useState<'debts' | 'companies' | 'merchants' | 'deposits'>('debts');
+  const [targetModule, setTargetModule] = useState<'debts' | 'companies' | 'deposits'>('debts');
+  const [businessAccountType, setBusinessAccountType] = useState<'company' | 'merchant'>('company');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -188,8 +190,8 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
     newState.debtTransactions = newState.debtTransactions || [];
     newState.companies = newState.companies || [];
     newState.companyTransactions = newState.companyTransactions || [];
-    newState.merchants = newState.merchants || [];
-    newState.merchantTransactions = newState.merchantTransactions || [];
+    newState.merchants = [];
+    newState.merchantTransactions = [];
     newState.trustDeposits = newState.trustDeposits || [];
     newState.purchases = newState.purchases || [];
 
@@ -313,7 +315,6 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
           if (duplicateMode === 'merge') {
             targetCompId = existingComp.id;
             mergedCount++;
-            existingComp.balance += balanceAmount;
           } else {
             return;
           }
@@ -323,6 +324,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
           newState.companies.push({
             id: targetCompId,
             name: rawName,
+            accountType: businessAccountType,
             balance: balanceAmount,
             createdAt: dateStr || new Date().toISOString()
           });
@@ -334,6 +336,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
             id: `tx_comp_d_${Date.now()}_${rowIndex}_${lastRefNum}`,
             companyId: targetCompId,
             type: 'purchase_invoice',
+            entryKind: 'debt',
             amount: debtAmount,
             currency: currency,
             date: dateStr || new Date().toISOString(),
@@ -349,68 +352,11 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
             id: `tx_comp_p_${Date.now()}_${rowIndex}_${lastRefNum}`,
             companyId: targetCompId,
             type: 'payment',
+            entryKind: 'payment',
             amount: paidAmount,
             currency: currency,
             date: dateStr || new Date().toISOString(),
             referenceNo: `TX-COMP-000${lastRefNum}`,
-            note: noteStr,
-            postedToTreasury: true,
-            createdAt: new Date().toISOString()
-          });
-        }
-      } else if (targetModule === 'merchants') {
-        const existingMerch = newState.merchants.find(
-          m => m.name.trim().toLowerCase() === rawName.toLowerCase()
-        );
-        let targetMerchId = '';
-        
-        if (existingMerch) {
-          if (duplicateMode === 'merge') {
-            targetMerchId = existingMerch.id;
-            mergedCount++;
-            existingMerch.balance += balanceAmount;
-          } else {
-            return;
-          }
-        } else {
-          targetMerchId = `mer_imp_${Date.now()}_${rowIndex}`;
-          addedCount++;
-          newState.merchants.push({
-            id: targetMerchId,
-            name: rawName,
-            balance: balanceAmount,
-            previousBalance: debtAmount > 0 ? debtAmount : 0,
-            newDebt: 0,
-            paymentToday: 0,
-            createdAt: dateStr || new Date().toISOString()
-          });
-        }
-
-        if (debtAmount > 0) {
-          lastRefNum++;
-          newState.merchantTransactions.push({
-            id: `tx_mer_d_${Date.now()}_${rowIndex}_${lastRefNum}`,
-            merchantId: targetMerchId,
-            type: 'debt',
-            amount: debtAmount,
-            currency: currency,
-            date: dateStr || new Date().toISOString(),
-            referenceNo: `TX-MER-000${lastRefNum}`,
-            note: noteStr,
-            postedToTreasury: true,
-            createdAt: new Date().toISOString()
-          });
-        }
-        if (paidAmount > 0) {
-          lastRefNum++;
-          newState.merchantTransactions.push({
-            id: `tx_mer_p_${Date.now()}_${rowIndex}_${lastRefNum}`,
-            merchantId: targetMerchId,
-            type: 'payment',
-            amount: paidAmount,
-            currency: currency,
-            date: dateStr || new Date().toISOString(),
-            referenceNo: `TX-MER-000${lastRefNum}`,
             note: noteStr,
             postedToTreasury: true,
             createdAt: new Date().toISOString()
@@ -455,6 +401,10 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
       }
     });
 
+    newState.companies = synchronizeBusinessBalances(
+      newState.companies,
+      newState.companyTransactions,
+    );
     onImportComplete(newState);
 
     setReport({
@@ -502,8 +452,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { id: 'debts', label: 'قسم ديون العملاء', icon: '👥' },
-            { id: 'merchants', label: 'قسم ديون التجار', icon: '💼' },
-            { id: 'companies', label: 'قسم ديون الشركات', icon: '🏭' },
+            { id: 'companies', label: 'قسم الشركات والتجار', icon: '🏭' },
             { id: 'deposits', label: 'قسم الأمانات', icon: '🔒' }
           ].map(mod => (
             <label key={mod.id} className={`flex items-center gap-2 p-3 border rounded-xl cursor-pointer transition ${targetModule === mod.id ? 'bg-indigo-50 border-indigo-400 text-indigo-900 shadow-sm ring-1 ring-indigo-400' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
@@ -520,6 +469,13 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
             </label>
           ))}
         </div>
+        {targetModule === 'companies' && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg border border-indigo-100 bg-indigo-50 p-2">
+            <span className="text-xs font-bold text-indigo-900">نوع الحسابات المستوردة:</span>
+            <button type="button" onClick={() => setBusinessAccountType('company')} className={`rounded-lg px-4 py-2 text-xs font-black ${businessAccountType === 'company' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600'}`}>شركة</button>
+            <button type="button" onClick={() => setBusinessAccountType('merchant')} className={`rounded-lg px-4 py-2 text-xs font-black ${businessAccountType === 'merchant' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600'}`}>تاجر</button>
+          </div>
+        )}
       </div>
 
       {/* STEP 1: Upload input */}
@@ -567,8 +523,7 @@ export default function ExcelImporter({ state, onImportComplete, onClose }: Exce
                 {/* Name Mapping (Required) */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-slate-600 font-semibold">
-                    {targetModule === 'companies' ? 'اسم الشركة / المورد (الاسم) *' : 
-                     targetModule === 'merchants' ? 'اسم التاجر (الاسم) *' : 
+                    {targetModule === 'companies' ? 'اسم الشركة / التاجر (الاسم) *' :
                      targetModule === 'deposits' ? 'اسم المودع (الاسم) *' : 
                      'اسم العميل (الاسم) *'}
                   </span>

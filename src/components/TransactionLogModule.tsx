@@ -10,7 +10,7 @@ interface TransactionLogModuleProps {
 
 export default function TransactionLogModule({ state, onOpenExporter, onUpdateState }: TransactionLogModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'customer' | 'company' | 'merchant' | 'treasury'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'customer' | 'company' | 'treasury'>('all');
 
   const handleDeleteTransaction = (t: any) => {
     if (!onUpdateState) return;
@@ -20,8 +20,6 @@ export default function TransactionLogModule({ state, onOpenExporter, onUpdateSt
       newState.debtTransactions = (state.debtTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
     } else if (t.source === 'company') {
       newState.companyTransactions = (state.companyTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
-    } else if (t.source === 'merchant') {
-      newState.merchantTransactions = (state.merchantTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
     } else if (t.source === 'treasury') {
       newState.treasuryTransactions = (state.treasuryTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
     }
@@ -64,23 +62,6 @@ export default function TransactionLogModule({ state, onOpenExporter, onUpdateSt
     };
   });
 
-  // 3. Merchant transactions
-  const merchantTxs = (state.merchantTransactions || []).filter(t => !t.isDeleted).map(t => {
-    const merch = (state.merchants || []).find(m => m.id === t.merchantId);
-    return {
-      id: t.id,
-      date: t.date,
-      type: t.type === 'debt' ? 'دين إضافي من التاجر' : 'تسوية أو سداد نقدي',
-      isPlus: t.type === 'debt',
-      amount: t.amount,
-      partyName: merch ? merch.name : 'تاجر غير معروف',
-      note: t.note || 'قيد تسوية تاجر',
-      refNo: t.referenceNo,
-      source: 'merchant' as const,
-      color: t.type === 'debt' ? 'text-purple-700 bg-purple-50 border-purple-100' : 'text-teal-700 bg-teal-50 border-teal-105'
-    };
-  });
-
   // 4. Treasury transactions
   const treasuryTxs = (state.treasuryTransactions || []).filter(t => !t.isDeleted).map(t => {
     const label = t.type === 'in' ? 'مقبوضات واردة للخزينة' : 'مدفوعات منصرفة من الخزينة';
@@ -107,7 +88,7 @@ export default function TransactionLogModule({ state, onOpenExporter, onUpdateSt
   });
 
   // Combine and sort
-  const allTxs = [...customerTxs, ...companyTxs, ...merchantTxs, ...treasuryTxs]
+  const allTxs = [...customerTxs, ...companyTxs, ...treasuryTxs]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .filter(t => {
       // Source filter
@@ -194,8 +175,7 @@ export default function TransactionLogModule({ state, onOpenExporter, onUpdateSt
             {[
               { id: 'all', label: 'الكل' },
               { id: 'customer', label: 'العملاء' },
-              { id: 'company', label: 'الشركات' },
-              { id: 'merchant', label: 'التجار' },
+              { id: 'company', label: 'الشركات والتجار' },
               { id: 'treasury', label: 'الخزينة' }
             ].map(tab => (
               <button
