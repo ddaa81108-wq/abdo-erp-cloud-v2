@@ -60,6 +60,19 @@ describe('customer account ledger', () => {
     expect(calculateActiveCycleBalance(cycle, deleted)).toBe(750);
   });
 
+  it('keeps an overpayment as customer credit for future debts', () => {
+    const rows = [
+      tx('d1', 'debt', 5_000, '2026-07-01T00:00:00.000Z'),
+      tx('p1', 'payment', 6_000, '2026-07-02T00:00:00.000Z'),
+    ];
+    expect(calculateActiveCycleBalance(cycle, rows)).toBe(-1_000);
+    const withFutureDebt = [
+      ...rows,
+      tx('d2', 'debt', 400, '2026-07-03T00:00:00.000Z'),
+    ];
+    expect(calculateActiveCycleBalance(cycle, withFutureDebt)).toBe(-600);
+  });
+
   it('ages the oldest amount that is still unpaid', () => {
     const rows = [
       tx('d1', 'debt', 500, '2026-07-01T00:00:00.000Z'),

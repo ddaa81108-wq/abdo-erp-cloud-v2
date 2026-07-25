@@ -9,11 +9,9 @@ import {
   FileText,
   Pencil,
   Plus,
-  Search,
   Send,
   Trash2,
   UserPlus,
-  Users,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -72,6 +70,9 @@ type EntryMode = 'debt' | 'partial' | 'full';
 const money = (value: number) =>
   `${Math.round(value).toLocaleString('en-US')} د.ل`;
 
+const balanceLabel = (value: number) =>
+  value < 0 ? `أمانة ${money(Math.abs(value))}` : money(value);
+
 const uid = (prefix: string) =>
   `${prefix}_${typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -112,7 +113,6 @@ export default function CustomerDebtsModule({
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newDebt, setNewDebt] = useState('');
-  const [newCollector, setNewCollector] = useState<'abdullah' | 'ali'>('abdullah');
   const [allowSimilarName, setAllowSimilarName] = useState(false);
   const [restoreCandidate, setRestoreCandidate] = useState<Customer | null>(null);
 
@@ -127,7 +127,6 @@ export default function CustomerDebtsModule({
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editCollector, setEditCollector] = useState<'abdullah' | 'ali'>('abdullah');
 
   const allAccounts = useMemo<AccountView[]>(() => {
     return (state.customers || [])
@@ -237,7 +236,6 @@ export default function CustomerDebtsModule({
     setNewName('');
     setNewPhone('');
     setNewDebt('');
-    setNewCollector('abdullah');
     setAllowSimilarName(false);
     setRestoreCandidate(null);
   };
@@ -270,7 +268,6 @@ export default function CustomerDebtsModule({
                 ...customer,
                 isDeleted: false,
                 phone: newPhone.trim() || customer.phone,
-                collector: newCollector,
                 updatedAt: now,
               }
             : customer)
@@ -280,7 +277,6 @@ export default function CustomerDebtsModule({
             id: customerId,
             name: cleanName,
             phone: newPhone.trim(),
-            collector: newCollector,
             createdAt: now,
             updatedAt: now,
             isDeleted: false,
@@ -342,7 +338,6 @@ export default function CustomerDebtsModule({
     setRestoreCandidate(customer);
     setNewName(customer.name);
     setNewPhone(customer.phone || '');
-    setNewCollector(customer.collector || 'abdullah');
     setAllowSimilarName(false);
   };
 
@@ -355,11 +350,6 @@ export default function CustomerDebtsModule({
       ? selectedAccount.balance
       : Number(entryAmount);
     if (!Number.isFinite(value) || value <= 0) return;
-    if (isPayment && value > selectedAccount.balance) {
-      toast('قيمة الدفع لا يمكن أن تتجاوز الدين الفعلي.');
-      return;
-    }
-
     let cycleId = selectedAccount.activeCycle?.id;
     let nextCycles = [...state.cycles];
     if (!cycleId) {
@@ -393,7 +383,9 @@ export default function CustomerDebtsModule({
           ? 'إضافة دين'
           : entryMode === 'full'
             ? 'تسديد كلي'
-            : 'دفع جزئي'
+            : value > selectedAccount.balance
+              ? 'دفع زائد — رصيد أمانة للعميل'
+              : 'دفع جزئي'
       ),
       postedToTreasury: isPayment,
       createdAt: now,
@@ -426,7 +418,11 @@ export default function CustomerDebtsModule({
     setEntryMode(null);
     setEntryAmount('');
     setEntryNote('');
-    toast('تم تسجيل الحركة كسطر مستقل وتحديث جميع الأرصدة.');
+    toast(
+      isPayment && nextBalance < 0
+        ? `تم تسجيل الدفع، وأصبح للعميل أمانة قدرها ${money(Math.abs(nextBalance))}.`
+        : 'تم تسجيل الحركة كسطر مستقل وتحديث جميع الأرصدة.',
+    );
   };
 
   const beginEditTransaction = (transaction: DebtTransaction) => {
@@ -523,7 +519,6 @@ export default function CustomerDebtsModule({
         ...customer,
         name: editName.trim(),
         phone: editPhone.trim(),
-        collector: editCollector,
         nameAliases: aliases,
         updatedAt: now,
       };
@@ -580,7 +575,7 @@ export default function CustomerDebtsModule({
         value3: new Date().toLocaleDateString('ar-LY'),
       },
       ['اسم العميل', 'الدين الفعلي'],
-      accounts.map((account) => [account.customer.name, money(account.balance)]),
+      accounts.map((account) => [account.customer.name, balanceLabel(account.balance)]),
     );
     setSelectionMode(false);
     setSelectedForExport([]);
@@ -604,7 +599,7 @@ export default function CustomerDebtsModule({
             transaction.note,
             transaction.type === 'debt' ? money(transaction.amount) : '—',
             transaction.type === 'payment' ? money(transaction.amount) : '—',
-            money(running),
+            balanceLabel(running),
           ]);
         });
     });
@@ -615,8 +610,8 @@ export default function CustomerDebtsModule({
         value1: selectedAccount.customer.name,
         label2: 'عدد الدورات',
         value2: customerCycles.length,
-        label3: 'الدين الحالي',
-        value3: money(selectedAccount.balance),
+        label3: selectedAccount.balance < 0 ? 'أمانة العميل' : 'الدين الحالي',
+        value3: balanceLabel(selectedAccount.balance),
       },
       ['الدورة', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
       rows,
@@ -637,29 +632,29 @@ export default function CustomerDebtsModule({
         <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <TopCard icon={<WalletCards />} title="إجمالي الديون" value={money(totalOutstanding)} />
           <TopCard icon={<UserPlus />} title="إضافة عميل" value="حساب ودين جديد" onClick={() => setShowCreate(true)} />
-          <TopCard icon={<Send />} title="وضع الإرسال" value="تحديد وتصدير" onClick={() => setSelectionMode(true)} />
           <button
             onClick={() => currentTicker && setSelectedCustomerId(currentTicker.customer.id)}
-            className="min-h-24 overflow-hidden rounded-2xl border border-rose-500 bg-gradient-to-l from-rose-700 to-slate-950 p-3 text-right text-white shadow-lg transition hover:-translate-y-0.5"
+            className="min-h-24 overflow-hidden rounded-2xl border border-indigo-600 bg-gradient-to-l from-indigo-800 to-indigo-950 p-4 text-right text-white shadow-lg transition hover:-translate-y-0.5"
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-[10px] font-black text-rose-100">
-                <AlertTriangle className="h-4 w-4" /> تنبيه الديون المتأخرة
+              <span className="flex items-center gap-1.5 text-[10px] font-black text-indigo-100">
+                <AlertTriangle className="h-4 w-4 text-amber-300" /> تنبيه الديون المتأخرة
               </span>
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px]">{overdueAccounts.length}</span>
             </div>
             {currentTicker ? (
-              <div key={currentTicker.customer.id} className="animate-pulse">
+              <div key={currentTicker.customer.id}>
                 <strong className="block truncate text-sm">{currentTicker.customer.name}</strong>
-                <div className="mt-1 flex justify-between text-[10px] text-rose-100">
+                <div className="mt-1 flex justify-between text-[10px] text-indigo-100">
                   <span>{money(currentTicker.balance)}</span>
                   <span>متأخر {currentTicker.debtAge} يوم</span>
                 </div>
               </div>
             ) : (
-              <span className="text-xs text-rose-100">لا توجد ديون تجاوزت يومين</span>
+              <span className="text-xs text-indigo-100">لا توجد ديون تجاوزت يومين</span>
             )}
           </button>
+          <TopCard icon={<Send />} title="وضع الإرسال" value="تحديد وتصدير" onClick={() => setSelectionMode(true)} />
         </section>
       ) : (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
@@ -674,12 +669,7 @@ export default function CustomerDebtsModule({
         </section>
       )}
 
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm">
-        <Search className="h-4 w-4 text-slate-400" />
-        <input readOnly value={searchQuery} placeholder="استخدم البحث العام للعثور على عميل" className="w-full bg-transparent py-3 text-sm outline-none" />
-      </div>
-
-      <section className="max-h-[62vh] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
+      <section className="max-h-[68vh] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9">
           {visibleAccounts.map((account) => {
             const selectedForSend = selectedForExport.includes(account.customer.id);
@@ -714,7 +704,7 @@ export default function CustomerDebtsModule({
                 </button>
                 <div className="flex min-h-24 flex-col items-center justify-center px-4 text-center">
                   <strong className="line-clamp-2 text-xs">{account.customer.name}</strong>
-                  <span className="mt-2 text-sm font-black">{money(account.balance)}</span>
+                  <span className="mt-2 text-sm font-black">{balanceLabel(account.balance)}</span>
                   {account.balance > 0 && (
                     <span className="mt-1 text-[9px] text-white/70">
                       {account.debtAge <= 1 ? 'دين جديد' : `${account.debtAge} يوم`}
@@ -741,7 +731,6 @@ export default function CustomerDebtsModule({
               <ActionButton color="amber" onClick={() => {
                 setEditName(selectedAccount.customer.name);
                 setEditPhone(selectedAccount.customer.phone || '');
-                setEditCollector(selectedAccount.customer.collector || 'abdullah');
                 setShowEditCustomer(true);
               }}><Pencil /> بيانات العميل</ActionButton>
               <button onClick={() => setSelectedCustomerId(null)} className="mr-auto flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600"><X className="h-4 w-4" /> إغلاق</button>
@@ -754,7 +743,9 @@ export default function CustomerDebtsModule({
                     <h3 className="font-black text-slate-900">الدورة الحالية</h3>
                     <p className="text-[10px] text-slate-500">الحركات الحالية فقط قابلة للتعديل والمسح</p>
                   </div>
-                  <strong className="rounded-xl bg-slate-900 px-4 py-2 text-white">{money(selectedAccount.balance)}</strong>
+                  <strong className={`rounded-xl px-4 py-2 text-white ${selectedAccount.balance < 0 ? 'bg-emerald-700' : 'bg-slate-900'}`}>
+                    {balanceLabel(selectedAccount.balance)}
+                  </strong>
                 </div>
                 <LedgerTable
                   transactions={activeTransactions}
@@ -852,7 +843,6 @@ export default function CustomerDebtsModule({
               <Field label="الهاتف"><input value={newPhone} onChange={(event) => setNewPhone(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
               <Field label="الدين الأول"><input type="number" min="0" step="any" value={newDebt} onChange={(event) => setNewDebt(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
             </div>
-            <CollectorChoice value={newCollector} onChange={setNewCollector} />
             <PrimaryButton>{restoreCandidate ? 'استرجاع الحساب وإضافة الدين' : 'إنشاء الحساب'}</PrimaryButton>
           </form>
         </Modal>
@@ -867,7 +857,14 @@ export default function CustomerDebtsModule({
                 <strong className="text-3xl">{money(selectedAccount.balance)}</strong>
               </div>
             ) : (
-              <Field label="المبلغ"><input type="number" min="0.01" step="any" required autoFocus value={entryAmount} onChange={(event) => setEntryAmount(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
+              <>
+                <Field label="المبلغ"><input type="number" min="0.01" step="any" required autoFocus value={entryAmount} onChange={(event) => setEntryAmount(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
+                {entryMode === 'partial' && Number(entryAmount) > selectedAccount.balance && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-bold text-emerald-800">
+                    الزيادة وقدرها {money(Number(entryAmount) - selectedAccount.balance)} ستُسجل أمانة لصالح العميل، وتُخصم تلقائيًا من أي دين جديد.
+                  </div>
+                )}
+              </>
             )}
             <Field label="البيان"><textarea rows={3} value={entryNote} onChange={(event) => setEntryNote(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none" /></Field>
             <PrimaryButton>حفظ الحركة كسطر مستقل</PrimaryButton>
@@ -899,7 +896,6 @@ export default function CustomerDebtsModule({
           <form onSubmit={saveCustomerEdit} className="space-y-4">
             <Field label="الاسم"><input required value={editName} onChange={(event) => setEditName(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
             <Field label="الهاتف"><input value={editPhone} onChange={(event) => setEditPhone(event.target.value)} className="w-full rounded-xl border border-slate-200 p-3" /></Field>
-            <CollectorChoice value={editCollector} onChange={setEditCollector} />
             <PrimaryButton>حفظ البيانات والاسم السابق</PrimaryButton>
           </form>
         </Modal>
@@ -970,7 +966,7 @@ function LedgerTable({
               <td className="p-3 font-bold text-indigo-700">رصيد افتتاحي مرحّل</td>
               <td className="p-3 font-black text-rose-600">{money(initialBalance)}</td>
               <td className="p-3">—</td>
-              <td className="p-3 font-black">{money(initialBalance)}</td>
+              <td className="p-3 font-black">{balanceLabel(initialBalance)}</td>
               {editable && <td />}
               {editable && <td />}
             </tr>
@@ -985,13 +981,17 @@ function LedgerTable({
                   <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold ${transaction.type === 'debt' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                     {transaction.type === 'debt'
                       ? 'إضافة دين'
-                      : transaction.paymentMode === 'full' || running === 0 ? 'تسديد كلي' : 'دفع جزئي'}
+                      : running < 0
+                        ? 'دفع زائد — أمانة'
+                        : transaction.paymentMode === 'full' || running === 0
+                          ? 'تسديد كلي'
+                          : 'دفع جزئي'}
                   </span>
                   <span className="block truncate font-semibold text-slate-700">{transaction.note}</span>
                 </td>
                 <td className="p-3 font-black text-rose-600">{transaction.type === 'debt' ? money(transaction.amount) : '—'}</td>
                 <td className="p-3 font-black text-emerald-600">{transaction.type === 'payment' ? money(transaction.amount) : '—'}</td>
-                <td className="p-3 font-black text-slate-900">{money(running)}</td>
+                <td className={`p-3 font-black ${running < 0 ? 'text-emerald-700' : 'text-slate-900'}`}>{balanceLabel(running)}</td>
                 {editable && (
                   <td className="p-3 text-center">
                     <button onClick={() => onEdit?.(transaction)} className="rounded-lg bg-amber-50 p-2 text-amber-700"><Pencil className="h-4 w-4" /></button>
@@ -1067,24 +1067,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="mb-1.5 block text-xs font-bold text-slate-600">{label}</span>
       {children}
     </label>
-  );
-}
-
-function CollectorChoice({
-  value,
-  onChange,
-}: {
-  value: 'abdullah' | 'ali';
-  onChange: (value: 'abdullah' | 'ali') => void;
-}) {
-  return (
-    <div>
-      <span className="mb-1.5 block text-xs font-bold text-slate-600">محصل الدين</span>
-      <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-        <button type="button" onClick={() => onChange('abdullah')} className={`rounded-lg py-2.5 text-xs font-black ${value === 'abdullah' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>ديون عبد الله</button>
-        <button type="button" onClick={() => onChange('ali')} className={`rounded-lg py-2.5 text-xs font-black ${value === 'ali' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>ديون علي</button>
-      </div>
-    </div>
   );
 }
 

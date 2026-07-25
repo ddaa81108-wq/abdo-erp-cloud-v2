@@ -104,12 +104,20 @@ export default function App() {
 
   type AppTheme =
     | "banker-light"
-    | "royal-dark"
-    | "corporate-navy"
-    | "graphite-gray"
-    | "terminal-market";
+    | "midnight-cobalt"
+    | "sahara-aurora"
+    | "emerald-glass";
   const [appTheme, setAppTheme] = useState<AppTheme>(() => {
-    return (localStorage.getItem("ABDO_ERP_THEME") as AppTheme) || "banker-light";
+    const savedTheme = localStorage.getItem("ABDO_ERP_THEME");
+    const availableThemes: AppTheme[] = [
+      "banker-light",
+      "midnight-cobalt",
+      "sahara-aurora",
+      "emerald-glass",
+    ];
+    return availableThemes.includes(savedTheme as AppTheme)
+      ? savedTheme as AppTheme
+      : "banker-light";
   });
 
   useEffect(() => {
@@ -681,10 +689,9 @@ export default function App() {
 
   const getThemeButtonConfig = () => {
     switch (appTheme) {
-      case "royal-dark": return { icon: "👑", label: "التيتانيوم الأسود", bg: "bg-[#141414] hover:bg-[#222222] text-[#d4af37] border-[#333333]" };
-      case "corporate-navy": return { icon: "🏦", label: "الأزرق المؤسسي", bg: "bg-[#0f172a] hover:bg-[#1e293b] text-[#38bdf8] border-[#1e293b]" };
-      case "graphite-gray": return { icon: "⚙️", label: "رمادي جرافيت", bg: "bg-[#2d2d2d] hover:bg-[#404040] text-[#fbbf24] border-[#404040]" };
-      case "terminal-market": return { icon: "📈", label: "شاشة التداول", bg: "bg-[#111111] hover:bg-[#222222] text-[#10b981] border-[#222222]" };
+      case "midnight-cobalt": return { icon: "🌌", label: "ليل الكوبالت", bg: "bg-[#071329] hover:bg-[#0b2144] text-[#67e8f9] border-[#164e63]" };
+      case "sahara-aurora": return { icon: "🌅", label: "شفق الصحراء", bg: "bg-[#241331] hover:bg-[#3a1d46] text-[#fbbf24] border-[#9f3f68]" };
+      case "emerald-glass": return { icon: "💎", label: "الزمرد الزجاجي", bg: "bg-[#062923] hover:bg-[#0a3f35] text-[#99f6e4] border-[#0f766e]" };
       case "banker-light":
       default: return { icon: "☀️", label: "الوضع النهاري", bg: "bg-white hover:bg-slate-50 text-slate-900 border-slate-200" };
     }
@@ -1013,15 +1020,14 @@ export default function App() {
             <button onClick={() => setIsThemeModalOpen(false)} className="absolute top-5 left-5 text-slate-400 hover:text-white p-2 bg-slate-900 rounded-full cursor-pointer hover:bg-slate-800 transition" title="إغلاق النافذة"><X className="w-5 h-5" /></button>
             <div className="text-right border-b border-white/5 pb-4 mb-6">
               <h2 className="text-xl font-black text-white flex items-center gap-2">🎨 اختيار مظهر لوحة التحكم والموديلات</h2>
-              <p className="text-slate-400 text-xs mt-1 font-medium">الرجاء اختيار المظهر المناسب الذي ترغب في استخدامه في المنظومة (يتوفر 5 مظاهر)</p>
+              <p className="text-slate-400 text-xs mt-1 font-medium">اختر من أربعة مظاهر متكاملة ومريحة للعين.</p>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] p-1">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 overflow-y-auto max-h-[60vh] p-1">
               {[
                 { id: "banker-light", icon: "☀️", label: "الوضع النهاري", bgThemeClass: "bg-slate-100 text-slate-800" },
-                { id: "royal-dark", icon: "👑", label: "التيتانيوم الأسود", bgThemeClass: "bg-zinc-900 text-amber-500" },
-                { id: "corporate-navy", icon: "🏦", label: "الأزرق المؤسسي", bgThemeClass: "bg-slate-800 text-sky-400" },
-                { id: "graphite-gray", icon: "⚙️", label: "رمادي جرافيت", bgThemeClass: "bg-stone-800 text-amber-400" },
-                { id: "terminal-market", icon: "📈", label: "شاشة التداول", bgThemeClass: "bg-black text-emerald-500" },
+                { id: "midnight-cobalt", icon: "🌌", label: "ليل الكوبالت", bgThemeClass: "bg-[#071329] text-cyan-300" },
+                { id: "sahara-aurora", icon: "🌅", label: "شفق الصحراء", bgThemeClass: "bg-[#2a1535] text-amber-300" },
+                { id: "emerald-glass", icon: "💎", label: "الزمرد الزجاجي", bgThemeClass: "bg-[#062923] text-teal-200" },
               ].map((theme) => (
                 <button key={theme.id} onClick={() => { setAppTheme(theme.id as any); localStorage.setItem("ABDO_ERP_THEME", theme.id); setIsThemeModalOpen(false); }} className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all cursor-pointer active:scale-95 group overflow-hidden ${appTheme === theme.id ? "border-amber-500 scale-105 shadow-[0_0_20px_rgba(245,158,11,0.2)] z-10 block" : "border-slate-800/50 opacity-80 hover:opacity-100 hover:border-slate-600 block"}`}>
                   <div className={`absolute inset-0 opacity-20 group-hover:opacity-100 transition-opacity blur-xl ${theme.bgThemeClass}`}></div>

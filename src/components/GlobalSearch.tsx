@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, Inbox, Landmark, ShoppingBag, FolderArchive, ArrowUpRight, History } from 'lucide-react';
+import { UserCheck, Inbox, Landmark, ShoppingBag, FolderArchive, ArrowUpRight } from 'lucide-react';
 import { ERPState } from '../types';
+import { calculateActiveCycleBalance } from '../domain/customerAccounts';
+import { normalizeArabicName } from '../domain/partyNameMatcher';
 
 interface GlobalSearchProps {
   state: ERPState;
@@ -33,26 +35,39 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
       return;
     }
 
-    const q = searchQuery.toLowerCase();
+    const q = normalizeArabicName(searchQuery);
+    const matches = (value?: string) =>
+      Boolean(value && normalizeArabicName(value).includes(q));
 
-    // 1. Search Active Customers
-    const activeCusts = state.customers.filter(c => {
-      // Find active cycle for customer
-      const hasActiveCycle = state.cycles.some(cy => cy.customerId === c.id && cy.status === 'active');
-      return hasActiveCycle && c.name.toLowerCase().includes(q);
-    }).map(c => {
+    // البحث في كل العملاء النشطين، حتى لو كان رصيدهم الحالي صفراً.
+    const activeCusts = state.customers.filter(c =>
+      !c.isDeleted &&
+      (
+        matches(c.name) ||
+        matches(c.phone) ||
+        (c.nameAliases || []).some(alias => matches(alias))
+      )
+    ).map(c => {
       const activeCycle = state.cycles.find(cy => cy.customerId === c.id && cy.status === 'active');
-      return { ...c, activeBalance: activeCycle?.currentBalance || 0 };
+      return {
+        ...c,
+        activeBalance: calculateActiveCycleBalance(activeCycle, state.debtTransactions),
+      };
     });
 
     // 2. Search Companies / Suppliers
-    const foundCompanies = state.companies.filter(c => 
-      c.name.toLowerCase().includes(q) || (c.contact && c.contact.includes(q))
+    const foundCompanies = state.companies.filter(c =>
+      !c.isDeleted &&
+      (
+        matches(c.name) ||
+        matches(c.contact) ||
+        (c.nameAliases || []).some(alias => matches(alias))
+      )
     );
 
     // 2c. Search Trusts / Deposits
     const foundTrusts = (state.trustDeposits || []).filter(t => 
-      t.status === 'held' && (t.customerName.toLowerCase().includes(q) || t.referenceNo.toLowerCase().includes(q))
+      t.status === 'held' && (matches(t.customerName) || matches(t.referenceNo))
     );
 
     // 3. Search Archive / Closed accounts or old fully resolved cycles
@@ -60,13 +75,13 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
     const foundArchives = state.cycles.filter(cy => cy.status === 'closed').map(cy => {
       const parentCustomer = state.customers.find(c => c.id === cy.customerId);
       return { ...cy, customerName: parentCustomer?.name || 'عميل مجهول' };
-    }).filter(cy => cy.customerName.toLowerCase().includes(q));
+    }).filter(cy => matches(cy.customerName));
 
     // 4. Removed logic
 
     // 5. Search Purchases ledger
     const foundPurchases = state.purchases.filter(p => 
-      p.itemName.toLowerCase().includes(q) || p.referenceNo.toLowerCase().includes(q)
+      matches(p.itemName) || matches(p.referenceNo)
     );
 
     setResults({

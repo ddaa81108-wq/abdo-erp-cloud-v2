@@ -36,44 +36,34 @@ input[type="number"] {
     --border-color: #cbd5e1;
 }
 
-/* 2. الوضع الليلي (الأسود الملكي) */
-[data-theme="royal-dark"] {
-    --bg-main: #0a0a0a;
-    --bg-surface: #141414;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --accent-color: #d4af37; /* ذهبي ملكي */
-    --border-color: #333333;
+/* ليل الكوبالت: أزرق عميق مع إضاءة سماوية */
+[data-theme="midnight-cobalt"] {
+    --bg-main: #030b19;
+    --bg-surface: #07162c;
+    --text-primary: #e6f7ff;
+    --text-secondary: #8fb7c9;
+    --accent-color: #22d3ee;
+    --border-color: #164e63;
 }
 
-/* 3. الأزرق المؤسسي (لون البنوك) */
-[data-theme="corporate-navy"] {
-    --bg-main: #020617;
-    --bg-surface: #0f172a;
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --accent-color: #38bdf8; /* أزرق سماوي */
-    --border-color: #1e293b;
+/* شفق الصحراء: بنفسجي داكن ولمسات ذهبية ومرجانية */
+[data-theme="sahara-aurora"] {
+    --bg-main: #160c20;
+    --bg-surface: #281532;
+    --text-primary: #fff7ed;
+    --text-secondary: #d8b4c8;
+    --accent-color: #f59e0b;
+    --border-color: #713f62;
 }
 
-/* 4. الرمادي الجرافيت (مريح جداً للعين) */
-[data-theme="graphite-gray"] {
-    --bg-main: #1e1e1e;
-    --bg-surface: #2d2d2d;
-    --text-primary: #e0e0e0;
-    --text-secondary: #a0a0a0;
-    --accent-color: #fbbf24; /* أصفر هادي */
-    --border-color: #404040;
-}
-
-/* 5. وضع التداول (شاشات البورصة) */
-[data-theme="terminal-market"] {
-    --bg-main: #050505;
-    --bg-surface: #111111;
-    --text-primary: #ffffff;
-    --text-secondary: #888888;
-    --accent-color: #10b981; /* أخضر فوركس */
-    --border-color: #222222;
+/* الزمرد الزجاجي: أخضر عميق هادئ بسطوح زجاجية */
+[data-theme="emerald-glass"] {
+    --bg-main: #031713;
+    --bg-surface: #082a24;
+    --text-primary: #ecfdf5;
+    --text-secondary: #99c9bd;
+    --accent-color: #2dd4bf;
+    --border-color: #115e59;
 }
 
 /* تطبيق المتغيرات على أساسيات المنظومة */
@@ -114,6 +104,30 @@ select, input, textarea {
 /* Some highlight text overrides if needed */
 .text-indigo-600, .text-indigo-500, .text-indigo-400 {
     color: var(--accent-color) !important;
+}
+
+[data-theme]:not([data-theme="banker-light"]) .text-emerald-600,
+[data-theme]:not([data-theme="banker-light"]) .text-emerald-500,
+[data-theme]:not([data-theme="banker-light"]) .text-emerald-400 {
+  color: var(--accent-color) !important;
+}
+
+[data-theme]:not([data-theme="banker-light"]) .bg-emerald-600,
+[data-theme]:not([data-theme="banker-light"]) .bg-indigo-600 {
+  background-color: var(--accent-color) !important;
+  color: #02110f !important;
+}
+
+[data-theme]:not([data-theme="banker-light"]) .border-emerald-500,
+[data-theme]:not([data-theme="banker-light"]) .border-emerald-400,
+[data-theme]:not([data-theme="banker-light"]) .border-indigo-500,
+[data-theme]:not([data-theme="banker-light"]) .border-indigo-600 {
+  border-color: var(--accent-color) !important;
+}
+
+[data-theme]:not([data-theme="banker-light"]) header,
+[data-theme]:not([data-theme="banker-light"]) aside {
+  background-image: linear-gradient(135deg, var(--bg-surface), var(--bg-main));
 }
 
 table th {
