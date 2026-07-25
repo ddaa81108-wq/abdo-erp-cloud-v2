@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Shield, Lock, Save, Users, Check, AlertCircle, RefreshCw, Key, Eye, EyeOff, UserPlus, Trash2, X } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
 import { User, ERPState, UserPermissions } from '../types';
+import { createFirebaseUserAccount, db } from '../firebase';
 
 interface SettingsModuleProps {
   state: ERPState;
@@ -33,6 +35,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
   const [regPassword, setRegPassword] = useState('');
   const [regRole, setRegRole] = useState<'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant'>('accountant');
   const [isRegPasswordShown, setIsRegPasswordShown] = useState(false);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
   // Custom modal states to avoid synchronous iframe blocks
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -77,12 +80,13 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
   };
 
   // Toggle specific permission for a user
-  const handleTogglePermission = (userId: string, key: keyof UserPermissions) => {
+  const handleTogglePermission = async (userId: string, key: keyof UserPermissions) => {
     if (!isAdmin) {
       triggerToast('⚠️ عذراً! تعديل الصلاحيات مقتصر على مدير النظام فقط.');
       return;
     }
 
+    let updatedTarget: User | null = null;
     const updatedUsers = state.users.map(u => {
       if (u.id === userId) {
         // Prevention: cannot disable canViewBackup or others for main admin
@@ -95,6 +99,7 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
           [key]: !u.permissions[key]
         };
         const updated = { ...u, permissions: newPerms };
+        updatedTarget = updated;
         
         if (currentUser && u.id === currentUser.id) {
           onUpdateCurrentSession(updated);
@@ -104,11 +109,23 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
       return u;
     });
 
-    onUpdateState({
-      ...state,
-      users: updatedUsers
-    });
-    triggerToast('⚙️ تم تحديث مستويات الوصول للموظف بنجاح.');
+    if (!updatedTarget) return;
+
+    try {
+      await setDoc(
+        doc(db, 'users', userId),
+        { permissions: updatedTarget.permissions },
+        { merge: true },
+      );
+      onUpdateState({
+        ...state,
+        users: updatedUsers
+      });
+      triggerToast('⚙️ تم تحديث مستويات الوصول للموظف بنجاح.');
+    } catch (error) {
+      console.error('Failed to update user permissions:', error);
+      triggerToast('❌ تعذر حفظ الصلاحيات في حساب الدخول. حاول مرة أخرى.');
+    }
   };
 
   // Change user password
@@ -250,10 +267,15 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
   };
 
   // Add / Create Employee Account on Settings UI
-  const handleCreateNewUser = (e: React.FormEvent) => {
+  const handleCreateNewUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!regFullName.trim() || !regUsername.trim() || !regPassword.trim()) {
       triggerToast('⚠️ يرجى ملء كافة البيانات لإنشاء حساب الموظف الجديد.');
+      return;
+    }
+
+    if (regPassword.trim().length < 6) {
+      triggerToast('⚠️ كلمة المرور يجب ألا تقل عن 6 أحرف أو أرقام.');
       return;
     }
 
@@ -314,39 +336,53 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
       }
     };
 
-    const newUser: User = {
-      id: `u_${Date.now()}`,
-      username: regUsername.trim().toLowerCase(),
-      name: regFullName.trim(),
-      role: regRole,
-      password: regPassword.trim(),
-      permissions: presetPermissions[regRole],
-      createdAt: new Date().toISOString()
-    };
+    setIsCreatingUser(true);
+    try {
+      const newUser = await createFirebaseUserAccount(
+        regUsername,
+        regPassword,
+        {
+          username: regUsername.trim().toLowerCase(),
+          name: regFullName.trim(),
+          role: regRole,
+          permissions: presetPermissions[regRole],
+          createdAt: new Date().toISOString(),
+        },
+      );
 
-    const updatedUsers = [...state.users, newUser];
+      onUpdateState({
+        ...state,
+        users: [...state.users, newUser]
+      });
 
-    onUpdateState({
-      ...state,
-      users: updatedUsers
-    });
+      setPasswordsState(prev => ({
+        ...prev,
+        [newUser.id]: ''
+      }));
 
-    // Sync input password state
-    setPasswordsState(prev => ({
-      ...prev,
-      [newUser.id]: newUser.password
-    }));
+      setRegFullName('');
+      setRegUsername('');
+      setRegPassword('');
+      setIsRegPasswordShown(false);
 
-    // Reset fields
-    setRegFullName('');
-    setRegUsername('');
-    setRegPassword('');
-    setIsRegPasswordShown(false);
-
-    triggerToast(`👤 تم تسجيل حساب الموظف الجديد "${newUser.name}" بنظام الصلاحيات.`);
+      triggerToast(`👤 تم إنشاء حساب الدخول والصلاحيات للموظف "${newUser.name}" بنجاح.`);
+    } catch (error: any) {
+      console.error('Failed to create Firebase user:', error);
+      const message =
+        error?.code === 'auth/email-already-in-use'
+          ? '⚠️ اسم الدخول أو البريد الإلكتروني مستخدم بالفعل.'
+          : error?.code === 'auth/weak-password'
+            ? '⚠️ كلمة المرور ضعيفة؛ استخدم 6 أحرف أو أرقام على الأقل.'
+            : error?.code === 'auth/invalid-email'
+              ? '⚠️ البريد الإلكتروني غير صالح.'
+              : '❌ تعذر إنشاء حساب الدخول. تحقق من الاتصال والصلاحيات ثم حاول مرة أخرى.';
+      triggerToast(message);
+    } finally {
+      setIsCreatingUser(false);
+    }
   };
 
-  const executeDeleteUser = (id: string) => {
+  const executeDeleteUser = async (id: string) => {
     const usr = state.users.find(u => u.id === id);
     if (!usr) return;
 
@@ -362,14 +398,20 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
       return;
     }
 
-    const updatedUsers = state.users.filter(u => u.id !== id);
-    onUpdateState({
-      ...state,
-      users: updatedUsers
-    });
+    try {
+      await setDoc(doc(db, 'users', id), { isActive: false }, { merge: true });
+      const updatedUsers = state.users.filter(u => u.id !== id);
+      onUpdateState({
+        ...state,
+        users: updatedUsers
+      });
 
-    setUserToDeleteId(null);
-    triggerToast(`🗑️ تم إيقاف وحذف معرّف الموظف (${usr.name}) نهائياً من كشف الصلاحيات.`);
+      setUserToDeleteId(null);
+      triggerToast(`🗑️ تم إيقاف حساب الموظف (${usr.name}) ومنع دخوله.`);
+    } catch (error) {
+      console.error('Failed to disable user:', error);
+      triggerToast('❌ تعذر إيقاف حساب المستخدم. حاول مرة أخرى.');
+    }
   };
 
   const permColumns = [
@@ -657,11 +699,11 @@ export default function SettingsModule({ state, currentUser, onUpdateState, onUp
 
             <button
               type="submit"
-              disabled={!isAdmin}
+              disabled={!isAdmin || isCreatingUser}
               className="w-full bg-[#e0dfe3] hover:bg-[#d4d0c8] text-slate-900 border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] font-extrabold py-2 active:border-t-[#808080] active:border-l-[#808080] active:border-r-white active:border-b-white text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-45"
             >
               <UserPlus className="w-4 h-4" />
-              <span>تسجيل وإقحام الموظف بالجدول ✓</span>
+              <span>{isCreatingUser ? 'جاري إنشاء حساب الدخول...' : 'إنشاء حساب الدخول والصلاحيات ✓'}</span>
             </button>
           </form>
         </div>

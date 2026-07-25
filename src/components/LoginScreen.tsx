@@ -3,6 +3,7 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { User as UserType, UserPermissions } from '../types';
+import { normalizeLoginIdentifier } from '../utils/authUtils';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: UserType) => void;
@@ -23,8 +24,9 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     try {
       // 1. Firebase Authentication
-      console.log('📧 Attempting auth with:', emailInput);
-      const userCredential = await signInWithEmailAndPassword(auth, emailInput.trim(), passwordInput);
+      const loginEmail = normalizeLoginIdentifier(emailInput);
+      console.log('📧 Attempting authentication...');
+      const userCredential = await signInWithEmailAndPassword(auth, loginEmail, passwordInput);
       const fbUser = userCredential.user;
       console.log('✅ Auth successful! UID:', fbUser.uid);
 
@@ -82,7 +84,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       let msg = 'حدث خطأ أثناء تسجيل الدخول.';
       
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-        msg = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+        msg = 'اسم المستخدم/البريد الإلكتروني أو كلمة المرور غير صحيحة.';
       } else if (error.code === 'permission-denied') {
         msg = 'خطأ في الصلاحيات. تأكد من قواعد الأمان في Firebase.';
       }
@@ -122,8 +124,8 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
           <div className="input-group">
             <input 
-              type="email" 
-              placeholder="البريد الإلكتروني" 
+              type="text"
+              placeholder="اسم المستخدم أو البريد الإلكتروني"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               required
