@@ -1018,6 +1018,14 @@
             return integerPart.toLocaleString('en-US'); 
         }
 
+        function formatSignedInteger(numStr) {
+            if (!numStr) return "0";
+            const clean = String(numStr).replace(/,/g, '').trim();
+            const parsed = Number(clean);
+            if (!Number.isFinite(parsed)) return "0";
+            return Math.trunc(parsed).toLocaleString('en-US');
+        }
+
         function formatDecimal(numStr) {
             if (!numStr) return "0";
             let clean = String(numStr).replace(/,/g, '').replace(/-/g, '').trim();
@@ -1107,10 +1115,10 @@
                 document.getElementById('name-input-label').innerText = "عنوان الكشف / التاجر:";
                 document.getElementById('stmt-header-title').innerText = currentType === 'masraweya' ? 'التقرير النهائى' : (nameValue !== '...' ? nameValue : 'الكشف النهائي');
                 document.getElementById('stmt-date-display').innerText = 'التاريخ: ' + currentFormattedDate;
-                document.getElementById('val-previous').innerText = formatInteger(document.getElementById('input-prev').value);
-                document.getElementById('val-received').innerText = formatInteger(document.getElementById('input-recv').value);
-                document.getElementById('val-total').innerText = formatInteger(document.getElementById('input-total').value);
-                document.getElementById('val-remaining').innerText = formatInteger(document.getElementById('input-remain').value);
+                document.getElementById('val-previous').innerText = formatSignedInteger(document.getElementById('input-prev').value);
+                document.getElementById('val-received').innerText = formatSignedInteger(document.getElementById('input-recv').value);
+                document.getElementById('val-total').innerText = formatSignedInteger(document.getElementById('input-total').value);
+                document.getElementById('val-remaining').innerText = formatSignedInteger(document.getElementById('input-remain').value);
             }
             else if (currentType === 'purchases') {
                 document.getElementById('purchases-box').classList.remove('hidden-element');

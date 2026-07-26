@@ -155,49 +155,6 @@ export default function PdfExportModule({ state }: PdfExportModuleProps) {
             </div>
           </div>
         `;
-      } else if (type === 'egyptian') {
-        reportTitle = 'الملخص';
-        tableHeaders = [];
-        
-        const record = state.egyptianCashRecords?.[state.egyptianCashRecords.length - 1] || null;
-        if (record) {
-          const rowsToPrint = record.rows.filter(r => Number(r.value) > 0 || Number(r.commission) > 0) || [];
-          let table1GrandTotal = 0;
-          rowsToPrint.forEach(r => {
-            table1GrandTotal += (Number(r.value) || 0) - (Number(r.commission) || 0);
-          });
-
-          const previous = Number(record.previousValue) || 0;
-          const received = Number(record.receivedValue) || 0;
-          const remainder = (previous + received) - table1GrandTotal;
-
-          tableRowsHtml = '';
-          summaryHtml = `
-            <div style="margin-top: 25px;">
-              <table style="width: 100%; border-collapse: collapse; margin-top: 15px; border: 2px solid #312e81;">
-                <thead>
-                  <tr style="background-color: #e0e7ff; color: #312e81;">
-                    <th style="padding: 10px; border: 1px solid #c7d2fe; text-align: center;">القيمة السابقة</th>
-                    <th style="padding: 10px; border: 1px solid #c7d2fe; text-align: center;">المستلمة اليوم</th>
-                    <th style="padding: 10px; border: 1px solid #c7d2fe; text-align: center;">إجمالي الشغل</th>
-                    <th style="padding: 10px; border: 1px solid #c7d2fe; text-align: center; background-color: #ede9fe; color: #4c1d95;">الباقي النهائي</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #c7d2fe;">${previous.toLocaleString()}</td>
-                    <td style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #c7d2fe;">${received.toLocaleString()}</td>
-                    <td style="padding: 12px; text-align: center; font-weight: bold; border: 1px solid #c7d2fe;">${table1GrandTotal.toLocaleString()}</td>
-                    <td style="padding: 12px; text-align: center; font-weight: 900; background-color: #f5f3ff; color: ${remainder < 0 ? '#b91c1c' : '#86198f'}; border: 1px solid #c7d2fe; font-size: 18px;">${remainder.toLocaleString()}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          `;
-        } else {
-          tableRowsHtml = '';
-          summaryHtml = `<div style="text-align: center; padding: 20px;">لا توجد سجلات مصراوية</div>`;
-        }
       } else if (type === 'purchases') {
         reportTitle = 'سجل التوريدات وفواتير المشتريات للشركة';
         tableHeaders = ['م', 'البيان ومورد البضاعة', 'رقم المرجع', 'تاريخ الشراء', 'القيمة المقيدة'];
@@ -649,7 +606,6 @@ export default function PdfExportModule({ state }: PdfExportModuleProps) {
                   { id: 'treasury', icon: '💸', label: 'تقرير حركة الخزنة المركزية اليومية' },
                   { id: 'purchases', icon: '📦', label: 'سجل فواتير وحركة المشتريات للشركة' },
                   { id: 'sales', icon: '🛒', label: 'سجل حركة المبيعات وفواتير الزبائن' },
-                  { id: 'egyptian', icon: '🇪🇬', label: 'الكشف النهائي للمنظومة الماسيه الملكيه' },
                 ].map((opt) => (
                   <button
                     key={opt.id}

@@ -229,10 +229,9 @@ export interface EgyptianCashRow {
 
 export interface EgyptianCashRecord {
   date: string; // "YYYY-MM-DD"
-  rows: EgyptianCashRow[]; // Array of 25 rows
+  rows: EgyptianCashRow[];
   previousValue: number;
   receivedValue: number;
-  isPostedToTreasury?: boolean;
 }
 
 export interface ERPState {
