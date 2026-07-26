@@ -25,6 +25,7 @@ const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'users',
   'egyptianCashRecords',
   'notesAndReminders',
+  'systemAuditLog',
 ]);
 
 const CHUNK_ARRAY_KEYS: Array<keyof ERPState> = [

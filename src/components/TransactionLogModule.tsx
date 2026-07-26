@@ -1,280 +1,325 @@
-import React, { useState } from 'react';
-import { FileText, Search, Calendar, ArrowRightLeft, ArrowUpRight, ArrowDownLeft, Landmark, ShoppingBag, FolderSymlink, X } from 'lucide-react';
-import { ERPState } from '../types';
-import { upsertCustomerPaymentInTreasury } from '../domain/customerAccounts';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  FileText,
+  FolderSymlink,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react';
+import type { ERPState, SystemAuditEntry } from '../types';
+import { seedSystemAuditLog } from '../domain/systemAudit';
 
 interface TransactionLogModuleProps {
   state: ERPState;
-  onOpenExporter: (section: string, metrics: any, headers: string[], rows: any[][]) => void;
-  onUpdateState?: (newState: ERPState) => void;
+  onOpenExporter: (
+    section: string,
+    metrics: unknown,
+    headers: string[],
+    rows: unknown[][],
+  ) => void;
+  onUpdateState: (newState: ERPState) => void;
 }
 
-export default function TransactionLogModule({ state, onOpenExporter, onUpdateState }: TransactionLogModuleProps) {
+const actionLabel: Record<SystemAuditEntry['action'], string> = {
+  create: 'إضافة',
+  update: 'تعديل',
+  delete: 'مسح',
+  restore: 'استرجاع',
+};
+
+const actionColor: Record<SystemAuditEntry['action'], string> = {
+  create: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  update: 'border-sky-200 bg-sky-50 text-sky-800',
+  delete: 'border-rose-200 bg-rose-50 text-rose-800',
+  restore: 'border-violet-200 bg-violet-50 text-violet-800',
+};
+
+export default function TransactionLogModule({
+  state,
+  onOpenExporter,
+  onUpdateState,
+}: TransactionLogModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<'all' | 'customer' | 'company' | 'treasury'>('all');
+  const [sectionFilter, setSectionFilter] = useState('الكل');
+  const [deleteEntry, setDeleteEntry] = useState<SystemAuditEntry | null>(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [message, setMessage] = useState('');
 
-  const handleDeleteTransaction = (t: any) => {
-    if (!onUpdateState) return;
+  useEffect(() => {
+    if ((state.systemAuditMigrationVersion || 0) >= 1) return;
+    onUpdateState({
+      ...state,
+      systemAuditLog: state.systemAuditLog?.length
+        ? state.systemAuditLog
+        : seedSystemAuditLog(state, null),
+      systemAuditMigrationVersion: 1,
+    });
+  }, [state.systemAuditMigrationVersion]);
 
-    let newState = { ...state };
-    if (t.source === 'customer') {
-      const target = (state.debtTransactions || []).find(tx => tx.id === t.id);
-      const cycle = target ? state.cycles.find(item => item.id === target.cycleId) : undefined;
-      if (cycle?.status === 'closed') {
-        alert('حركات الدورات التاريخية المغلقة للقراءة فقط ولا يمكن مسحها.');
-        return;
-      }
-      newState.debtTransactions = (state.debtTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true, updatedAt: new Date().toISOString() } : tx);
-      const deleted = newState.debtTransactions.find(tx => tx.id === t.id);
-      const customer = deleted ? state.customers.find(item => item.id === deleted.customerId) : undefined;
-      if (deleted?.type === 'payment') {
-        newState.treasuryTransactions = upsertCustomerPaymentInTreasury(
-          state.treasuryTransactions || [],
-          deleted,
-          customer?.name || 'عميل',
-        );
-      }
-    } else if (t.source === 'company') {
-      newState.companyTransactions = (state.companyTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
-    } else if (t.source === 'treasury') {
-      newState.treasuryTransactions = (state.treasuryTransactions || []).map(tx => tx.id === t.id ? { ...tx, isDeleted: true } : tx);
-    }
-    
-    onUpdateState(newState);
+  const entries = state.systemAuditLog || [];
+  const sections = useMemo(
+    () => ['الكل', ...new Set(entries.map((entry) => entry.section))],
+    [entries],
+  );
+  const visibleEntries = useMemo(() => {
+    const query = searchQuery.trim().toLocaleLowerCase('ar');
+    return entries
+      .filter((entry) =>
+        sectionFilter === 'الكل' || entry.section === sectionFilter)
+      .filter((entry) =>
+        !query
+        || entry.title.toLocaleLowerCase('ar').includes(query)
+        || entry.details.toLocaleLowerCase('ar').includes(query)
+        || entry.section.toLocaleLowerCase('ar').includes(query)
+        || (entry.actorName || '').toLocaleLowerCase('ar').includes(query)
+        || entry.entityId.toLocaleLowerCase('ar').includes(query))
+      .sort(
+        (left, right) =>
+          new Date(right.occurredAt).getTime()
+          - new Date(left.occurredAt).getTime(),
+      );
+  }, [entries, searchQuery, sectionFilter]);
+
+  const toast = (text: string) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(''), 2800);
   };
 
-  // Gather transactions from all modules
-  // 1. Customer debt transactions
-  const customerTxs = (state.debtTransactions || []).filter(t => !t.isDeleted).map(t => {
-    const cust = (state.customers || []).find(c => c.id === t.customerId);
-    return {
-      id: t.id,
-      date: t.date,
-      type: t.type === 'debt' ? 'دين للزبون' : 'سداد من زبون',
-      isPlus: t.type === 'debt',
-      amount: t.amount,
-      partyName: cust ? cust.name : 'زبون غير معروف',
-      note: t.note || 'بدون تفاصيل',
-      refNo: t.referenceNo,
-      source: 'customer' as const,
-      color: t.type === 'debt' ? 'text-rose-600 bg-rose-50 border-rose-100' : 'text-emerald-700 bg-emerald-50 border-emerald-100'
-    };
-  });
-
-  // 2. Company transactions
-  const companyTxs = (state.companyTransactions || []).filter(t => !t.isDeleted).map(t => {
-    const comp = (state.companies || []).find(c => c.id === t.companyId);
-    return {
-      id: t.id,
-      date: t.date,
-      type: t.type === 'purchase_invoice' ? 'شراء بالآجل (مستورد)' : 'سداد دفعة للمورد',
-      isPlus: t.type === 'purchase_invoice',
-      amount: t.amount,
-      partyName: comp ? comp.name : 'شركة غير معروفة',
-      note: t.note || 'توريد مالي',
-      refNo: t.referenceNo,
-      source: 'company' as const,
-      color: t.type === 'purchase_invoice' ? 'text-amber-700 bg-amber-50 border-amber-100' : 'text-blue-700 bg-blue-50 border-blue-105'
-    };
-  });
-
-  // 4. Treasury transactions
-  const treasuryTxs = (state.treasuryTransactions || []).filter(t => !t.isDeleted).map(t => {
-    const label = t.type === 'in' ? 'مقبوضات واردة للخزينة' : 'مدفوعات منصرفة من الخزينة';
-    let party = 'الخزينة العامة';
-    if (t.source === 'customer_payment') party = 'تحصيل زبون';
-    else if (t.source === 'purchase') party = 'فاتورة شراء سلعة';
-    else if (t.source === 'company_payment') party = 'سداد مستحقات شركة';
-    else if (t.source === 'manual_deposit') party = 'إيداع صندوف يدوي';
-    else if (t.source === 'manual_withdraw') party = 'سحب مصروفات يدوي';
-    else if (t.source === 'deposit_escrow') party = 'إيداع أمانة عميل';
-
-    return {
-      id: t.id,
-      date: t.date,
-      type: label,
-      isPlus: t.type === 'in',
-      amount: t.amount,
-      partyName: party,
-      note: t.description || 'حركة صندوق مباشر',
-      refNo: t.referenceNo,
-      source: 'treasury' as const,
-      color: t.type === 'in' ? 'text-emerald-700 bg-lime-50' : 'text-slate-700 bg-slate-100'
-    };
-  });
-
-  // Combine and sort
-  const allTxs = [...customerTxs, ...companyTxs, ...treasuryTxs]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .filter(t => {
-      // Source filter
-      if (sourceFilter !== 'all' && t.source !== sourceFilter) return false;
-      // Search matching
-      const matchesSearch = 
-        t.partyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.refNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.type.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSearch;
+  const removeOne = () => {
+    if (!deleteEntry) return;
+    onUpdateState({
+      ...state,
+      systemAuditLog: entries.filter((entry) => entry.id !== deleteEntry.id),
+      systemAuditMigrationVersion: 1,
     });
+    setDeleteEntry(null);
+    toast('تم مسح السطر من السجل فقط، بدون التأثير على أي حساب.');
+  };
 
-  // Export to Image exporter
-  const handleExportClick = () => {
-    const headers = ['تاريخ الحركة', 'النوع / التصنيف', 'الطرف المعني', 'القيمة المالية', 'الملاحظات والمرجعية'];
-    const rows = allTxs.map(t => [
-      new Date(t.date).toLocaleDateString('ar-LY'),
-      t.type,
-      t.partyName,
-      t.amount.toLocaleString() + ' د.ل',
-      `${t.note} [${t.refNo}]`
-    ]);
+  const clearAll = () => {
+    onUpdateState({
+      ...state,
+      systemAuditLog: [],
+      systemAuditMigrationVersion: 1,
+    });
+    setShowClearConfirm(false);
+    toast('تم مسح سجل المعاملات بالكامل دون تغيير بيانات المنظومة.');
+  };
 
+  const handleExport = () => {
     onOpenExporter(
-      'تقرير سجل العمليات والحركات الشامل الموحد',
+      'سجل المعاملات الشامل',
       {
-        label1: 'عدد العمليات المفحصونة',
-        value1: `${allTxs.length} حركة مسجلة`,
-        label2: 'إجمالي الحركات الصادرة والواردة',
-        value2: allTxs.reduce((sum, item) => sum + item.amount, 0).toLocaleString() + ' د.ل',
-        label3: 'نظام التدقيق المالي',
-        value3: 'مطابق للمعايير القياسية'
+        label1: 'عدد الحركات',
+        value1: `${visibleEntries.length} حركة`,
+        label2: 'طبيعة السجل',
+        value2: 'قراءة ومراقبة فقط',
+        label3: 'التأثير المحاسبي',
+        value3: 'لا يؤثر على الحسابات',
       },
-      headers,
-      rows
+      ['التاريخ', 'القسم', 'الإجراء', 'العملية', 'التفاصيل', 'المنفذ'],
+      visibleEntries.map((entry) => [
+        new Date(entry.occurredAt).toLocaleString('ar-LY'),
+        entry.section,
+        actionLabel[entry.action],
+        entry.title,
+        entry.details,
+        entry.actorName || 'غير محدد',
+      ]),
     );
   };
 
   return (
-    <div className="space-y-4 text-right" dir="rtl">
-      
-      {/* 1. Header and quick metrics */}
-      <div className="bg-white border rounded-2xl p-4 md:p-6 shadow-xs border-indigo-100 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h2 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-600" />
-            <span>سجل العمليات التاريخي الشامل 📝</span>
-          </h2>
-          <p className="text-[11px] text-slate-500 mt-1 leading-normal">
-            كشف محاسبي مركزي يسرد بالتوقيت الفوري كل حركة تم تسجيلها في دفتر ديون الزبائن، والشركات الموردة، والتجار، والخزينة العامة.
-          </p>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={handleExportClick}
-            className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 transition-all shadow-sm shadow-indigo-950"
-            title="تصدير كرت صورة للسجل الموحد"
-          >
-            <FolderSymlink className="w-4 h-4" />
-            <span>تصدير تقرير العمليات 📸</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Filters & Searches */}
-      <div className="bg-white border p-3 rounded-xl shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row gap-3 items-center">
-          
-          <div className="relative flex-1 w-full">
-            <input
-              type="text"
-              placeholder="🔍 ابحث بقيد الحركة، الطرف المعني، الكود المرجعي، أو الملاحظة..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-right text-xs pr-9 pl-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold bg-slate-50/60"
-            />
-            <Search className="absolute right-3 top-2.5 w-4 h-4 text-slate-400" />
-          </div>
-
-          {/* Quick source selector filter cards */}
-          <div className="flex items-center gap-1 overflow-x-auto w-full md:w-auto shrink-0 py-0.5">
-            {[
-              { id: 'all', label: 'الكل' },
-              { id: 'customer', label: 'العملاء' },
-              { id: 'company', label: 'الشركات والتجار' },
-              { id: 'treasury', label: 'الخزينة' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setSourceFilter(tab.id as any)}
-                className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all border shrink-0 cursor-pointer ${
-                  sourceFilter === tab.id
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-        </div>
-      </div>
-
-      {/* 3. Consolidated Log Table List */}
-      {allTxs.length === 0 ? (
-        <div className="bg-white border rounded-2xl p-12 text-center text-slate-400 text-xs">
-          🚫 لم يتم العثور على أي حركات مسجلة تطابق خيارات التصفية أو كلمة البحث الحالية.
-        </div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-extrabold">
-                  <th className="p-3 w-32">تاريخ القيد</th>
-                  <th className="p-3 w-40">التصنيف</th>
-                  <th className="p-3 w-48">الطرف ذو العلاقة</th>
-                  <th className="p-3">تفاصيل المعاملة والبيان</th>
-                  <th className="p-3 w-32 text-left">القيمة المالية</th>
-                  <th className="p-3 w-16 text-center">حذف</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {allTxs.map((t) => {
-                  return (
-                    <tr key={t.id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="p-3 font-mono text-[9.5px] text-slate-400">
-                        {new Date(t.date).toLocaleDateString('ar-LY')} {new Date(t.date).toLocaleTimeString('ar-LY', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="p-3">
-                        <span className={`inline-block font-sans font-bold text-[9px] px-2 py-0.5 rounded-full border ${t.color}`}>
-                          {t.type}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="font-extrabold text-slate-900">{t.partyName}</span>
-                      </td>
-                      <td className="p-3 text-slate-600 leading-relaxed max-w-sm">
-                        <div className="font-sans text-xs">{t.note}</div>
-                        <div className="text-[9px] font-mono text-slate-400 mt-0.5">رمز القيد المحاسبي: {t.refNo}</div>
-                      </td>
-                      <td className="p-3 text-left font-mono shrink-0">
-                        <span className={`font-black text-xs ${t.isPlus ? 'text-amber-600' : 'text-emerald-700'}`}>
-                          {t.isPlus ? '+' : '-'}{t.amount.toLocaleString()} د.ل
-                        </span>
-                      </td>
-                      <td className="p-3 text-center">
-                        <button
-                          onClick={() => handleDeleteTransaction(t)}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 p-1 rounded-md transition-all cursor-pointer hover:scale-105 inline-block"
-                          title="مسح ونقل للأرشيف ❌"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="bg-slate-50 p-3 text-[10px] text-slate-400 text-left border-t border-slate-100 font-mono">
-            نهاية كشف سجل العمليات التاريخي الموحد • تم رصد {allTxs.length} معاملة بالكامل.
-          </div>
+    <div className="space-y-3 text-right" dir="rtl">
+      {message && (
+        <div className="fixed right-5 top-20 z-[120] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-2xl">
+          {message}
         </div>
       )}
 
+      <header className="flex flex-col gap-3 rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-sm font-black text-slate-900">
+            <FileText className="h-5 w-5 text-indigo-700" />
+            سجل المعاملات الشامل
+          </h2>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">
+            يسجل الإضافة والتعديل والمسح والاسترجاع في جميع الأقسام. حذف السجل لا يغير أي حساب.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleExport}
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-700 px-3 py-2 text-xs font-black text-white hover:bg-indigo-800"
+          >
+            <FolderSymlink className="h-4 w-4" />
+            تصدير السجل
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowClearConfirm(true)}
+            disabled={entries.length === 0}
+            className="flex items-center gap-1.5 rounded-xl bg-rose-700 px-3 py-2 text-xs font-black text-white hover:bg-rose-800 disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+            مسح السجل بالكامل
+          </button>
+        </div>
+      </header>
+
+      <section className="space-y-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-col gap-2 md:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="ابحث في العملية أو القسم أو المنفذ..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-3 pr-9 text-xs font-bold outline-none focus:border-indigo-500"
+            />
+          </div>
+          <div className="flex max-w-full gap-1 overflow-x-auto">
+            {sections.map((section) => (
+              <button
+                type="button"
+                key={section}
+                onClick={() => setSectionFilter(section)}
+                className={`shrink-0 rounded-xl border px-3 py-2 text-[10px] font-black ${
+                  sectionFilter === section
+                    ? 'border-indigo-700 bg-indigo-700 text-white'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {section}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="max-h-[70vh] overflow-auto rounded-xl border border-slate-200">
+          <table className="min-w-[1000px] w-full border-collapse text-[11px]">
+            <thead className="sticky top-0 z-20 bg-slate-900 text-white">
+              <tr>
+                <th className="p-2">ت</th>
+                <th className="p-2">التاريخ والوقت</th>
+                <th className="p-2">القسم</th>
+                <th className="p-2">الإجراء</th>
+                <th className="p-2">العملية</th>
+                <th className="p-2">التفاصيل</th>
+                <th className="p-2">القيمة</th>
+                <th className="p-2">المنفذ</th>
+                <th className="p-2">مسح</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleEntries.map((entry, index) => (
+                <tr key={entry.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="p-2 text-center font-mono font-black">{index + 1}</td>
+                  <td className="p-2 text-center font-mono text-[10px]">
+                    {new Date(entry.occurredAt).toLocaleString('ar-LY')}
+                  </td>
+                  <td className="p-2 font-black text-slate-800">{entry.section}</td>
+                  <td className="p-2 text-center">
+                    <span className={`rounded-full border px-2 py-1 text-[9px] font-black ${actionColor[entry.action]}`}>
+                      {actionLabel[entry.action]}
+                    </span>
+                  </td>
+                  <td className="p-2 font-bold">{entry.title}</td>
+                  <td className="max-w-[320px] truncate p-2 text-slate-600" title={entry.details}>
+                    {entry.details}
+                  </td>
+                  <td className="p-2 text-center font-mono font-black">
+                    {entry.amount === undefined
+                      ? '—'
+                      : `${entry.amount.toLocaleString('en-US')} د.ل`}
+                  </td>
+                  <td className="p-2 text-center">{entry.actorName || 'غير محدد'}</td>
+                  <td className="p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteEntry(entry)}
+                      className="rounded-lg bg-rose-50 p-1.5 text-rose-700 hover:bg-rose-100"
+                      title="مسح من السجل فقط"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {visibleEntries.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="p-12 text-center font-bold text-slate-400">
+                    لا توجد حركات مطابقة.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-left text-[10px] font-bold text-slate-400">
+          إجمالي السجل: {entries.length.toLocaleString('en-US')} حركة
+        </p>
+      </section>
+
+      {deleteEntry && (
+        <ConfirmModal title="مسح سطر من السجل" onClose={() => setDeleteEntry(null)}>
+          <p className="mb-4 text-sm font-bold leading-7 text-slate-700">
+            سيتم حذف هذا السطر من سجل المراقبة فقط، ولن تتغير المعاملة الأصلية أو أي إجمالي.
+          </p>
+          <button
+            type="button"
+            onClick={removeOne}
+            className="w-full rounded-xl bg-rose-700 py-3 text-sm font-black text-white"
+          >
+            تأكيد مسح السطر
+          </button>
+        </ConfirmModal>
+      )}
+
+      {showClearConfirm && (
+        <ConfirmModal title="مسح سجل المعاملات بالكامل" onClose={() => setShowClearConfirm(false)}>
+          <p className="mb-4 text-sm font-bold leading-7 text-slate-700">
+            سيتم تفريغ سجل المراقبة فقط. بيانات العملاء والخزينة والأمانات والمشتريات والصلاحيات لن تتأثر.
+          </p>
+          <button
+            type="button"
+            onClick={clearAll}
+            className="w-full rounded-xl bg-rose-700 py-3 text-sm font-black text-white"
+          >
+            تأكيد مسح السجل بالكامل
+          </button>
+        </ConfirmModal>
+      )}
+    </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+        <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+          <h3 className="font-black text-slate-900">{title}</h3>
+          <button type="button" onClick={onClose} className="rounded-lg bg-slate-100 p-2">
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        {children}
+      </section>
     </div>
   );
 }

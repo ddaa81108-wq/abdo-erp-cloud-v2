@@ -1,8 +1,22 @@
-import React, { useState } from 'react';
-import { Shield, Lock, Save, Users, Check, AlertCircle, RefreshCw, Key, Eye, EyeOff, UserPlus, Trash2, X } from 'lucide-react';
-import { doc, setDoc } from 'firebase/firestore';
-import { User, ERPState, UserPermissions } from '../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CheckCircle2,
+  Mail,
+  Shield,
+  Trash2,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react';
+import { collection, doc, getDocs, setDoc } from 'firebase/firestore';
+import type { ERPState, User, UserPermissions } from '../types';
 import { createFirebaseUserAccount, db } from '../firebase';
+import { normalizeLoginIdentifier } from '../utils/authUtils';
+import {
+  DENIED_PERMISSIONS,
+  FULL_PERMISSIONS,
+  resolvePermissions,
+} from '../utils/permissions';
 
 interface SettingsModuleProps {
   state: ERPState;
@@ -11,921 +25,501 @@ interface SettingsModuleProps {
   onUpdateCurrentSession: (user: User) => void;
 }
 
-export default function SettingsModule({ state, currentUser, onUpdateState, onUpdateCurrentSession }: SettingsModuleProps) {
+const permissionColumns: Array<{
+  key: keyof UserPermissions;
+  label: string;
+}> = [
+  { key: 'canViewDebts', label: 'ديون العملاء' },
+  { key: 'canViewCompanies', label: 'الشركات والتجار' },
+  { key: 'canViewDeposits', label: 'الأمانات' },
+  { key: 'canViewMailManual', label: 'المصراوية' },
+  { key: 'canViewPurchases', label: 'المشتريات' },
+  { key: 'canViewTreasury', label: 'الخزينة' },
+  { key: 'canViewFinancialReports', label: 'التقارير المالية' },
+  { key: 'canViewTransactionLog', label: 'سجل المعاملات' },
+  { key: 'canViewTrash', label: 'سلة المهملات' },
+  { key: 'canViewBackup', label: 'النسخ الاحتياطي' },
+  { key: 'canViewPdfExport', label: 'تصدير PDF' },
+  { key: 'canImportExcel', label: 'استيراد Excel' },
+  { key: 'canExportExcel', label: 'تصدير Excel' },
+];
+
+const roleLabels: Record<User['role'], string> = {
+  admin: 'مدير النظام',
+  accountant: 'محاسب',
+  cashier: 'كاشير',
+  warehouse: 'أمين مخزن',
+  assistant: 'مساعد',
+};
+
+const rolePresets: Record<User['role'], UserPermissions> = {
+  admin: FULL_PERMISSIONS,
+  accountant: {
+    ...DENIED_PERMISSIONS,
+    canViewDebts: true,
+    canViewCompanies: true,
+    canViewDeposits: true,
+    canViewPurchases: true,
+    canViewArchive: true,
+  },
+  cashier: {
+    ...DENIED_PERMISSIONS,
+    canViewDebts: true,
+    canViewDeposits: true,
+  },
+  warehouse: {
+    ...DENIED_PERMISSIONS,
+    canViewPurchases: true,
+    canViewArchive: true,
+  },
+  assistant: {
+    ...DENIED_PERMISSIONS,
+    canViewDebts: true,
+    canViewArchive: true,
+  },
+};
+
+const isRole = (value: unknown): value is User['role'] =>
+  ['admin', 'accountant', 'cashier', 'warehouse', 'assistant'].includes(
+    String(value),
+  );
+
+export default function SettingsModule({
+  state,
+  currentUser,
+  onUpdateState,
+  onUpdateCurrentSession,
+}: SettingsModuleProps) {
   const isAdmin = currentUser?.role === 'admin';
-  
-  // Single selected user concept (kept for delegating or detail focus if needed, but table handles all)
-  const [selectedUserId, setSelectedUserId] = useState<string>(state.users[0]?.id || '');
-  
-  // Local password inputs per user
-  const [passwordsState, setPasswordsState] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
-    state.users.forEach(u => {
-      map[u.id] = u.password;
-    });
-    return map;
-  });
+  const reconciledRef = useRef(false);
+  const [fullName, setFullName] = useState('');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<User['role']>('accountant');
+  const [creating, setCreating] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [userToDisable, setUserToDisable] = useState<User | null>(null);
+  const [message, setMessage] = useState('');
 
-  // Password visibility states per user
-  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
+  const activeUsers = useMemo(
+    () =>
+      (state.users || [])
+        .filter((user) => user.isActive !== false)
+        .sort((left, right) => {
+          if (left.role === 'admin' && right.role !== 'admin') return -1;
+          if (right.role === 'admin' && left.role !== 'admin') return 1;
+          return left.name.localeCompare(right.name, 'ar');
+        }),
+    [state.users],
+  );
 
-  // Form states for creating a new user
-  const [regFullName, setRegFullName] = useState('');
-  const [regUsername, setRegUsername] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regRole, setRegRole] = useState<'admin' | 'accountant' | 'cashier' | 'warehouse' | 'assistant'>('accountant');
-  const [isRegPasswordShown, setIsRegPasswordShown] = useState(false);
-  const [isCreatingUser, setIsCreatingUser] = useState(false);
-
-  // Custom modal states to avoid synchronous iframe blocks
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [delegateToDelete, setDelegateToDelete] = useState<string | null>(null);
-  const [userToDeleteId, setUserToDeleteId] = useState<string | null>(null);
-  const [showSuccessToast, setShowSuccessToast] = useState('');
-
-  const delegatesList = state.delegates || [];
-  const [newDelegateInput, setNewDelegateInput] = useState('');
-
-  // Helper to trigger custom toast
-  const triggerToast = (msg: string) => {
-    setShowSuccessToast(msg);
-    setTimeout(() => setShowSuccessToast(''), 3500);
+  const toast = (text: string) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(''), 3200);
   };
 
-  const handleAddDelegate = () => {
-    const trimmed = newDelegateInput.trim();
-    if (!trimmed) {
-      triggerToast('⚠️ الرجاء إدخال اسم المندوب أولاً!');
-      return;
-    }
-    if (delegatesList.includes(trimmed)) {
-      triggerToast('⚠️ هذا الاسم مسجل بالفعل كاسم مندوب!');
-      return;
-    }
-    onUpdateState({
-      ...state,
-      delegates: [...delegatesList, trimmed]
-    });
-    setNewDelegateInput('');
-    triggerToast(`💼 تم إضافة المندوب "${trimmed}" بنجاح.`);
-  };
+  // Firestore user profiles are the source of truth for active login accounts.
+  useEffect(() => {
+    if (!isAdmin || reconciledRef.current) return;
+    reconciledRef.current = true;
 
-  const executeDeleteDelegate = (name: string) => {
-    onUpdateState({
-      ...state,
-      delegates: delegatesList.filter(d => d !== name)
-    });
-    setDelegateToDelete(null);
-    triggerToast(`🗑️ تم إزالة المندوب "${name}" من النظام.`);
-  };
+    const reconcileActiveUsers = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'users'));
+        const existingById = new Map(
+          (state.users || []).map((user) => [user.id, user]),
+        );
+        const syncedUsers = snapshot.docs
+          .map((userDoc): User | null => {
+            const data = userDoc.data() as any;
+            if (
+              data.isActive === false
+              || data.role === 'pending'
+              || !isRole(data.role)
+            ) return null;
+            const existing = existingById.get(userDoc.id);
+            return {
+              id: userDoc.id,
+              username:
+                data.username
+                || data.email
+                || existing?.username
+                || 'مستخدم',
+              email: data.email || existing?.email,
+              name:
+                data.name
+                || data.username
+                || data.email
+                || existing?.name
+                || 'مستخدم',
+              role: data.role,
+              password: '',
+              permissions: resolvePermissions(
+                data.role,
+                data.permissions || existing?.permissions,
+              ),
+              createdAt:
+                data.createdAt
+                || existing?.createdAt
+                || new Date().toISOString(),
+              isActive: true,
+            };
+          })
+          .filter((user): user is User => Boolean(user));
 
-  // Toggle specific permission for a user
-  const handleTogglePermission = async (userId: string, key: keyof UserPermissions) => {
-    if (!isAdmin) {
-      triggerToast('⚠️ عذراً! تعديل الصلاحيات مقتصر على مدير النظام فقط.');
-      return;
-    }
+        const ordered = syncedUsers.sort((left, right) =>
+          left.id.localeCompare(right.id));
+        const currentOrdered = [...(state.users || [])]
+          .filter((user) => user.isActive !== false)
+          .map((user) => ({ ...user, password: '' }))
+          .sort((left, right) => left.id.localeCompare(right.id));
 
-    let updatedTarget: User | null = null;
-    const updatedUsers = state.users.map(u => {
-      if (u.id === userId) {
-        // Prevention: cannot disable canViewBackup or others for main admin
-        if (u.role === 'admin') {
-          return u; 
+        if (JSON.stringify(ordered) !== JSON.stringify(currentOrdered)) {
+          onUpdateState({ ...state, users: ordered });
         }
-
-        const newPerms = {
-          ...u.permissions,
-          [key]: !u.permissions[key]
-        };
-        const updated = { ...u, permissions: newPerms };
-        updatedTarget = updated;
-        
-        if (currentUser && u.id === currentUser.id) {
-          onUpdateCurrentSession(updated);
-        }
-        return updated;
+      } catch (error) {
+        console.error('Failed to load active Firebase users:', error);
+        toast('تعذر تحديث قائمة الحسابات من Firebase؛ تم الإبقاء على القائمة الحالية.');
+      } finally {
+        setLoadingUsers(false);
       }
-      return u;
-    });
+    };
 
-    if (!updatedTarget) return;
+    void reconcileActiveUsers();
+  }, [isAdmin]);
+
+  const togglePermission = async (
+    user: User,
+    key: keyof UserPermissions,
+  ) => {
+    if (!isAdmin || user.role === 'admin') return;
+    const permissions = {
+      ...user.permissions,
+      [key]: !user.permissions[key],
+    };
+    try {
+      await setDoc(doc(db, 'users', user.id), { permissions }, { merge: true });
+      const users = state.users.map((item) =>
+        item.id === user.id ? { ...item, permissions } : item);
+      onUpdateState({ ...state, users });
+      if (currentUser?.id === user.id) {
+        onUpdateCurrentSession({ ...user, permissions });
+      }
+      toast('تم حفظ الصلاحيات وتفعيلها على حساب الموظف.');
+    } catch (error) {
+      console.error('Failed to update permissions:', error);
+      toast('تعذر حفظ الصلاحيات. تحقق من الاتصال وحاول مرة أخرى.');
+    }
+  };
+
+  const createUser = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const cleanName = fullName.trim();
+    const cleanIdentifier = identifier.trim();
+    const cleanPassword = password.trim();
+    if (!isAdmin || !cleanName || !cleanIdentifier || cleanPassword.length < 6) {
+      toast('أدخل الاسم واسم الدخول أو البريد وكلمة مرور لا تقل عن 6 خانات.');
+      return;
+    }
+
+    const loginEmail = normalizeLoginIdentifier(cleanIdentifier);
+    const duplicate = activeUsers.some(
+      (user) =>
+        user.username.toLocaleLowerCase('ar')
+          === cleanIdentifier.toLocaleLowerCase('ar')
+        || user.email?.toLowerCase() === loginEmail,
+    );
+    if (duplicate) {
+      toast('اسم الدخول أو البريد مستخدم بالفعل.');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const newUser = await createFirebaseUserAccount(
+        cleanIdentifier,
+        cleanPassword,
+        {
+          username: cleanIdentifier.toLocaleLowerCase('ar'),
+          name: cleanName,
+          role,
+          permissions: rolePresets[role],
+          createdAt: new Date().toISOString(),
+          isActive: true,
+        },
+      );
+      onUpdateState({
+        ...state,
+        users: [...activeUsers, { ...newUser, isActive: true }],
+      });
+      setFullName('');
+      setIdentifier('');
+      setPassword('');
+      setRole('accountant');
+      toast(`تم إنشاء وتفعيل حساب ${newUser.name} بنجاح.`);
+    } catch (error: any) {
+      console.error('Failed to create Firebase user:', error);
+      const text =
+        error?.code === 'auth/email-already-in-use'
+          ? 'البريد أو اسم الدخول مستخدم بالفعل.'
+          : error?.code === 'auth/invalid-email'
+            ? 'صيغة البريد الإلكتروني غير صحيحة.'
+            : error?.code === 'auth/weak-password'
+              ? 'كلمة المرور ضعيفة.'
+              : 'تعذر إنشاء الحساب. تحقق من الاتصال ثم حاول مرة أخرى.';
+      toast(text);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const disableUser = async () => {
+    if (!userToDisable || !isAdmin) return;
+    if (userToDisable.id === currentUser?.id) {
+      toast('لا يمكن إيقاف الحساب الذي تعمل به الآن.');
+      setUserToDisable(null);
+      return;
+    }
+    const otherAdmins = activeUsers.filter(
+      (user) => user.role === 'admin' && user.id !== userToDisable.id,
+    );
+    if (userToDisable.role === 'admin' && otherAdmins.length === 0) {
+      toast('لا يمكن إيقاف آخر مدير نشط في المنظومة.');
+      setUserToDisable(null);
+      return;
+    }
 
     try {
       await setDoc(
-        doc(db, 'users', userId),
-        { permissions: updatedTarget.permissions },
+        doc(db, 'users', userToDisable.id),
+        { isActive: false },
         { merge: true },
       );
       onUpdateState({
         ...state,
-        users: updatedUsers
+        users: state.users.filter((user) => user.id !== userToDisable.id),
       });
-      triggerToast('⚙️ تم تحديث مستويات الوصول للموظف بنجاح.');
-    } catch (error) {
-      console.error('Failed to update user permissions:', error);
-      triggerToast('❌ تعذر حفظ الصلاحيات في حساب الدخول. حاول مرة أخرى.');
-    }
-  };
-
-  // Change user password
-  const handleSavePassword = (userId: string) => {
-    const rawPass = passwordsState[userId];
-    if (!rawPass || !rawPass.trim()) {
-      triggerToast('⚠️ كلمة المرور لا يمكن أن تكون فارغة!');
-      return;
-    }
-
-    const updatedUsers = state.users.map(u => {
-      if (u.id === userId) {
-        const updated = { ...u, password: rawPass.trim() };
-        if (currentUser && u.id === currentUser.id) {
-          onUpdateCurrentSession(updated);
-        }
-        return updated;
-      }
-      return u;
-    });
-
-    onUpdateState({
-      ...state,
-      users: updatedUsers
-    });
-
-    triggerToast('🔒 تم تعيين كلمة المرور الجديدة وتحديث حساب الأمان بنجاح.');
-  };
-
-  // Reset users to defaults
-  const executeResetUsers = () => {
-    const defaultUsersList: User[] = [
-      {
-        id: 'u_1',
-        username: 'abdo',
-        name: 'المدير عبدو (المالك)',
-        role: 'admin',
-        password: 'abdo',
-        permissions: {
-          canViewDebts: true,
-          canViewCompanies: true,
-          canViewTreasury: true,
-          canViewPurchases: true,
-          canViewDeposits: true,
-          canViewArchive: true,
-          canViewBackup: true
-        },
-        createdAt: '2026-06-15T00:00:00'
-      },
-      {
-        id: 'u_2',
-        username: 'tareq',
-        name: 'المحاسب طارق (المالية)',
-        role: 'accountant',
-        password: '1111',
-        permissions: {
-          canViewDebts: true,
-          canViewCompanies: true,
-          canViewTreasury: true,
-          canViewPurchases: true,
-          canViewDeposits: true,
-          canViewArchive: true,
-          canViewBackup: false
-        },
-        createdAt: '2026-06-15T00:00:00'
-      },
-      {
-        id: 'u_3',
-        username: 'mohamed',
-        name: 'الكاشير محمد (المبيعات)',
-        role: 'cashier',
-        password: '2222',
-        permissions: {
-          canViewDebts: true,
-          canViewCompanies: false,
-          canViewTreasury: true,
-          canViewPurchases: false,
-          canViewDeposits: true,
-          canViewArchive: false,
-          canViewBackup: false
-        },
-        createdAt: '2026-06-15T00:00:00'
-      },
-      {
-        id: 'u_4',
-        username: 'ali',
-        name: 'أمين المخزن علي (التجهيز)',
-        role: 'warehouse',
-        password: '3333',
-        permissions: {
-          canViewDebts: false,
-          canViewCompanies: false,
-          canViewTreasury: false,
-          canViewPurchases: true,
-          canViewDeposits: false,
-          canViewArchive: true,
-          canViewBackup: false
-        },
-        createdAt: '2026-06-15T00:00:00'
-      },
-      {
-        id: 'u_5',
-        username: 'salem',
-        name: 'المساعد سالم (المتابعة)',
-        role: 'assistant',
-        password: '4444',
-        permissions: {
-          canViewDebts: true,
-          canViewCompanies: false,
-          canViewTreasury: false,
-          canViewPurchases: false,
-          canViewDeposits: false,
-          canViewArchive: true,
-          canViewBackup: false
-        },
-        createdAt: '2026-06-15T00:00:00'
-      }
-    ];
-
-    onUpdateState({
-      ...state,
-      users: defaultUsersList
-    });
-
-    // Reset password temp state
-    const map: Record<string, string> = {};
-    defaultUsersList.forEach(u => {
-      map[u.id] = u.password;
-    });
-    setPasswordsState(map);
-
-    const matchingActive = defaultUsersList.find(u => u.username === currentUser?.username);
-    if (matchingActive) {
-      onUpdateCurrentSession(matchingActive);
-    }
-
-    setShowResetConfirm(false);
-    triggerToast('🔄 تم إعادة تهيئة الصلاحيات والحسابات الافتراضية للنسخة الأصلية.');
-  };
-
-  // Add / Create Employee Account on Settings UI
-  const handleCreateNewUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regFullName.trim() || !regUsername.trim() || !regPassword.trim()) {
-      triggerToast('⚠️ يرجى ملء كافة البيانات لإنشاء حساب الموظف الجديد.');
-      return;
-    }
-
-    if (regPassword.trim().length < 6) {
-      triggerToast('⚠️ كلمة المرور يجب ألا تقل عن 6 أحرف أو أرقام.');
-      return;
-    }
-
-    const isConflict = state.users.some(
-      u => u.username.toLowerCase() === regUsername.trim().toLowerCase()
-    );
-
-    if (isConflict) {
-      triggerToast('⚠️ اسم المستخدم المحاسبي مسجل سابقاً بالنظام، اختر اسماً آخر.');
-      return;
-    }
-
-    const presetPermissions = {
-      admin: {
-        canViewDebts: true,
-        canViewCompanies: true,
-        canViewTreasury: true,
-        canViewPurchases: true,
-        canViewDeposits: true,
-        canViewArchive: true,
-        canViewBackup: true,
-        canViewMailManual: true,
-        canViewFinancialReports: true,
-        canViewTransactionLog: true,
-        canViewTrash: true,
-        canViewPdfExport: true,
-        canImportExcel: true,
-        canExportExcel: true
-      },
-      accountant: {
-        canViewDebts: true,
-        canViewCompanies: true,
-        canViewTreasury: true,
-        canViewPurchases: true,
-        canViewDeposits: true,
-        canViewArchive: true,
-        canViewBackup: false,
-        canViewMailManual: false,
-        canViewFinancialReports: false,
-        canViewTransactionLog: false,
-        canViewTrash: false,
-        canViewPdfExport: false,
-        canImportExcel: false,
-        canExportExcel: false
-      },
-      cashier: {
-        canViewDebts: true,
-        canViewCompanies: false,
-        canViewTreasury: true,
-        canViewPurchases: false,
-        canViewDeposits: true,
-        canViewArchive: false,
-        canViewBackup: false,
-        canViewMailManual: false,
-        canViewFinancialReports: false,
-        canViewTransactionLog: false,
-        canViewTrash: false,
-        canViewPdfExport: false,
-        canImportExcel: false,
-        canExportExcel: false
-      },
-      warehouse: {
-        canViewDebts: false,
-        canViewCompanies: false,
-        canViewTreasury: false,
-        canViewPurchases: true,
-        canViewDeposits: false,
-        canViewArchive: true,
-        canViewBackup: false,
-        canViewMailManual: false,
-        canViewFinancialReports: false,
-        canViewTransactionLog: false,
-        canViewTrash: false,
-        canViewPdfExport: false,
-        canImportExcel: false,
-        canExportExcel: false
-      },
-      assistant: {
-        canViewDebts: true,
-        canViewCompanies: false,
-        canViewTreasury: false,
-        canViewPurchases: false,
-        canViewDeposits: false,
-        canViewArchive: true,
-        canViewBackup: false,
-        canViewMailManual: false,
-        canViewFinancialReports: false,
-        canViewTransactionLog: false,
-        canViewTrash: false,
-        canViewPdfExport: false,
-        canImportExcel: false,
-        canExportExcel: false
-      }
-    };
-
-    setIsCreatingUser(true);
-    try {
-      const newUser = await createFirebaseUserAccount(
-        regUsername,
-        regPassword,
-        {
-          username: regUsername.trim().toLowerCase(),
-          name: regFullName.trim(),
-          role: regRole,
-          permissions: presetPermissions[regRole],
-          createdAt: new Date().toISOString(),
-        },
-      );
-
-      onUpdateState({
-        ...state,
-        users: [...state.users, newUser]
-      });
-
-      setPasswordsState(prev => ({
-        ...prev,
-        [newUser.id]: ''
-      }));
-
-      setRegFullName('');
-      setRegUsername('');
-      setRegPassword('');
-      setIsRegPasswordShown(false);
-
-      triggerToast(`👤 تم إنشاء حساب الدخول والصلاحيات للموظف "${newUser.name}" بنجاح.`);
-    } catch (error: any) {
-      console.error('Failed to create Firebase user:', error);
-      const message =
-        error?.code === 'auth/email-already-in-use'
-          ? '⚠️ اسم الدخول أو البريد الإلكتروني مستخدم بالفعل.'
-          : error?.code === 'auth/weak-password'
-            ? '⚠️ كلمة المرور ضعيفة؛ استخدم 6 أحرف أو أرقام على الأقل.'
-            : error?.code === 'auth/invalid-email'
-              ? '⚠️ البريد الإلكتروني غير صالح.'
-              : '❌ تعذر إنشاء حساب الدخول. تحقق من الاتصال والصلاحيات ثم حاول مرة أخرى.';
-      triggerToast(message);
-    } finally {
-      setIsCreatingUser(false);
-    }
-  };
-
-  const executeDeleteUser = async (id: string) => {
-    const usr = state.users.find(u => u.id === id);
-    if (!usr) return;
-
-    if (usr.id === currentUser?.id) {
-      triggerToast('🚨 خطأ: لا يمكنك حذف الحساب النشط الذي تسجل به دخولك حالياً!');
-      setUserToDeleteId(null);
-      return;
-    }
-
-    if (usr.role === 'admin') {
-      triggerToast('🚨 خطأ: لا يمكنك حذف الحساب الإداري الرئيسي لدفتر المالك!');
-      setUserToDeleteId(null);
-      return;
-    }
-
-    try {
-      await setDoc(doc(db, 'users', id), { isActive: false }, { merge: true });
-      const updatedUsers = state.users.filter(u => u.id !== id);
-      onUpdateState({
-        ...state,
-        users: updatedUsers
-      });
-
-      setUserToDeleteId(null);
-      triggerToast(`🗑️ تم إيقاف حساب الموظف (${usr.name}) ومنع دخوله.`);
+      toast(`تم إيقاف حساب ${userToDisable.name} ومنع تسجيل الدخول.`);
+      setUserToDisable(null);
     } catch (error) {
       console.error('Failed to disable user:', error);
-      triggerToast('❌ تعذر إيقاف حساب المستخدم. حاول مرة أخرى.');
+      toast('تعذر إيقاف الحساب. حاول مرة أخرى.');
     }
   };
 
-  const permColumns = [
-    { key: 'canViewDebts' as const, label: 'ديون' },
-    { key: 'canViewCompanies' as const, label: 'شركات' },
-    { key: 'canViewTreasury' as const, label: 'خزينة' },
-    { key: 'canViewPurchases' as const, label: 'مشتريات' },
-    { key: 'canViewDeposits' as const, label: 'ودائع' },
-    { key: 'canViewArchive' as const, label: 'أرشيف' },
-    { key: 'canViewBackup' as const, label: 'احتياطي' },
-    { key: 'canViewMailManual' as const, label: 'المصراوية' },
-    { key: 'canViewFinancialReports' as const, label: 'تقارير' },
-    { key: 'canViewTransactionLog' as const, label: 'سجل' },
-    { key: 'canViewTrash' as const, label: 'مهملات' },
-    { key: 'canViewPdfExport' as const, label: 'PDF' },
-    { key: 'canImportExcel' as const, label: 'استيراد Excel' },
-    { key: 'canExportExcel' as const, label: 'تصدير Excel' }
-  ];
-
   return (
-    <div className="bg-[#e0dfe3] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-4 text-right select-none font-sans" dir="rtl">
-      
-      {/* 2001 Windows-Style Simulated System Bar */}
-      <div className="bg-gradient-to-r from-[#0a246a] to-[#a6caf0] text-white px-3 py-1.5 flex items-center justify-between mb-4 shadow-[inset_1px_1px_0px_rgba(255,255,255,0.3)]">
-        <h2 className="font-extrabold text-[12.5px] flex items-center gap-2 font-sans">
-          <Shield className="w-4 h-4 text-amber-300 shrink-0" />
-          <span>منظومة إدارة صلاحيات الموظفين المدمجة - إصدار عام 2001 المعتمد</span>
-        </h2>
-        <div className="flex items-center gap-1">
-          {isAdmin && (
-            <button
-              onClick={() => setShowResetConfirm(true)}
-              className="bg-[#e0dfe3] hover:bg-[#d0cfe3] text-slate-800 border border-t-white border-l-white border-r-[#808080] border-b-[#808080] text-[10px] font-bold px-2 py-0.5 active:border-t-[#808080] active:border-l-[#808080] active:border-r-white active:border-b-white"
-              title="إعادة تعيين الحسابات الافتراضية الخمسة وتصفير التخصيص"
-            >
-              إعادة تهيئة داتا الأمان
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Info Warning Bar */}
-      {!isAdmin && (
-        <div className="bg-[#ffffcc] border border-[#808080] text-amber-900 text-xs p-3 mb-4 leading-relaxed flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <strong className="block font-bold mb-0.5">⚠️ وضع المعاينة المحدودة للموظف: {currentUser?.name}</strong>
-            لا تمتلك امتيازات إدارية لتغيير تصاريح زملائك أو تعديل بياناتهم. يعرض لك هذا الجدول نظرة عامة دقيقة عن مستوى وصولك الشخصي الحركي في المنظومة.
-          </div>
+    <div className="space-y-4 text-right" dir="rtl">
+      {message && (
+        <div className="fixed right-5 top-20 z-[130] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-2xl">
+          {message}
         </div>
       )}
 
-      {/* SECTION 1: THE UNIFIED INTEGRATED SECURITY TABLE (CLASSIC 2001 DESIGN) */}
-      <div className="bg-[#f0f0f0] border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-3 mb-6">
-        <div className="bg-[#3a6ea5] text-white px-3 py-1 text-xs font-bold mb-2 flex items-center justify-between">
-          <span>جدول التحكم المتكامل للشبكة: الحسابات، كلمات المرور، والصلاحيات</span>
-          <span className="font-mono text-[10px]">TOTAL SCHEDULERS: {state.users.length}</span>
+      <header className="flex flex-col gap-3 rounded-3xl border border-emerald-100 bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
+            <Shield className="h-6 w-6 text-emerald-700" />
+            صلاحيات الموظفين
+          </h2>
+          <p className="mt-1 text-[11px] font-bold text-slate-500">
+            الحسابات النشطة المتزامنة مع Firebase فقط، مع تحكم المدير في جميع الصلاحيات.
+          </p>
         </div>
+        <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-2 text-emerald-900">
+          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <div>
+            <strong className="block text-sm">{activeUsers.length} حساب نشط</strong>
+            <span className="text-[9px] font-bold">
+              {loadingUsers ? 'جاري التحقق من Firebase...' : 'تم التحقق من الحسابات'}
+            </span>
+          </div>
+        </div>
+      </header>
 
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-4 py-3">
+          <h3 className="flex items-center gap-2 text-sm font-black text-slate-900">
+            <Users className="h-5 w-5 text-indigo-700" />
+            الموظفون النشطون وصلاحياتهم
+          </h3>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-[#808080] text-xs text-right bg-white font-sans">
-            <thead>
-              <tr className="bg-[#e0dfe3] text-slate-800 font-bold border-b border-[#808080]">
-                <th className="border border-[#808080] p-1.5 text-center w-8">م</th>
-                <th className="border border-[#808080] p-1.5">الاسم والوظيفة ميكانيكياً</th>
-                <th className="border border-[#808080] p-1.5 text-center">المعرّف</th>
-                <th className="border border-[#808080] p-1.5 w-[205px]">تغيير كلمة المرور المؤمّنة (Password)</th>
-                {permColumns.map((col) => (
-                  <th key={col.key} className="border border-[#808080] p-1.5 text-center whitespace-nowrap bg-[#d4d0c8]/60 w-[64px]" title={col.label}>
-                    {col.label}
+          <table className="min-w-[1450px] w-full border-collapse text-[10px]">
+            <thead className="sticky top-0 z-20 bg-slate-900 text-white">
+              <tr>
+                <th className="p-2">الموظف</th>
+                <th className="p-2">اسم الدخول / البريد</th>
+                <th className="p-2">الدور</th>
+                {permissionColumns.map((permission) => (
+                  <th key={permission.key} className="min-w-[78px] p-2 text-center">
+                    {permission.label}
                   </th>
                 ))}
-                <th className="border border-[#808080] p-1.5 text-center w-16">إرسال</th>
+                <th className="p-2">إيقاف</th>
               </tr>
             </thead>
             <tbody>
-              {state.users.map((u, idx) => {
-                const isSelected = u.id === selectedUserId;
-                const isMe = u.id === currentUser?.id;
-                const isUserAdmin = u.role === 'admin';
-                const isTargetPassShown = !!visiblePasswords[u.id];
-                
-                // Allow admin or self to adjust password input
-                const canModifyPassword = isAdmin || isMe;
-                const showPasswordMask = canModifyPassword;
-
-                return (
-                  <tr 
-                    key={u.id} 
-                    className={`hover:bg-[#f6f6f6] transition-colors ${isMe ? 'bg-indigo-50/40' : ''}`}
-                    onClick={() => setSelectedUserId(u.id)}
-                  >
-                    {/* Index */}
-                    <td className="border border-[#808080] p-1 text-center font-mono text-slate-500 font-bold bg-[#e0dfe3]/50">
-                      {idx + 1}
+              {activeUsers.map((user) => (
+                <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="p-2">
+                    <strong className="block text-xs text-slate-900">{user.name}</strong>
+                    <span className="text-[9px] font-bold text-emerald-600">● نشط ومتزامن</span>
+                  </td>
+                  <td className="p-2 font-mono text-[10px] text-slate-600">
+                    {user.email || user.username}
+                  </td>
+                  <td className="p-2 text-center">
+                    <span className="rounded-lg bg-indigo-50 px-2 py-1 font-black text-indigo-800">
+                      {roleLabels[user.role]}
+                    </span>
+                  </td>
+                  {permissionColumns.map((permission) => (
+                    <td key={permission.key} className="p-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          user.role === 'admin'
+                          || user.permissions[permission.key] === true
+                        }
+                        disabled={!isAdmin || user.role === 'admin'}
+                        onChange={() => void togglePermission(user, permission.key)}
+                        className="h-4 w-4 cursor-pointer accent-emerald-600 disabled:cursor-not-allowed disabled:opacity-65"
+                      />
                     </td>
-
-                    {/* Employee Name & role info */}
-                    <td className="border border-[#808080] p-1.5">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <strong className="block text-slate-900">{u.name}</strong>
-                          <span className="text-[10px] text-slate-500">{u.role === 'admin' ? '👑 مدير عام' : `🔑 موظف ${u.role}`}</span>
-                        </div>
-                        {isMe && (
-                          <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1 py-0.5 border border-indigo-200 font-bold ml-1">
-                            أنت
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Username always visible */}
-                    <td className="border border-[#808080] p-1.5 text-center font-mono font-bold text-slate-700 bg-slate-50">
-                      {u.username}
-                    </td>
-
-                    {/* Password change control with eye visibility */}
-                    <td className="border border-[#808080] p-1 w-[205px]">
-                      {showPasswordMask ? (
-                        <div className="flex items-center gap-1">
-                          <input
-                            type={isTargetPassShown ? 'text' : 'password'}
-                            dir="ltr"
-                            value={passwordsState[u.id] ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPasswordsState(prev => ({
-                                ...prev,
-                                [u.id]: val
-                              }));
-                            }}
-                            className="w-full px-1.5 py-0.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white font-mono text-xs font-bold text-slate-800 text-center"
-                          />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setVisiblePasswords(prev => ({
-                                ...prev,
-                                [u.id]: !prev[u.id]
-                              }));
-                            }}
-                            className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-1 hover:bg-[#d0cfe3] shrink-0"
-                            title={isTargetPassShown ? 'تشفير وحجب' : 'إظهار كلمة المرور'}
-                          >
-                            {isTargetPassShown ? <EyeOff className="w-3 h-3 text-slate-650" /> : <Eye className="w-3 h-3 text-slate-650" />}
-                          </button>
-                          
-                          {/* Save Inline */}
-                          {passwordsState[u.id] !== u.password && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSavePassword(u.id);
-                              }}
-                              className="bg-emerald-600 font-extrabold text-[10px] text-white px-1.5 py-1 border border-t-emerald-400 border-l-emerald-400 border-r-emerald-850 border-b-emerald-850 shadow-sm shrink-0 flex items-center justify-center"
-                              title="حفظ الكلمة الجديدة"
-                            >
-                              <Save className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center text-slate-400 text-[10.5px] select-none py-1 bg-slate-150/40">
-                          🔒 محجوب بالكامل للأمان
-                        </div>
-                      )}
-                    </td>
-
-                    {/* Interactive Checkboxes Grid for permissions */}
-                    {permColumns.map((col) => {
-                      const hasPerm = u.permissions[col.key];
-                      const disabled = !isAdmin || isUserAdmin; // Can't toggle if not admin or if user is main system admin
-                      return (
-                        <td key={col.key} className="border border-[#808080] p-1.5 text-center bg-[#fdfdfd]">
-                          <input
-                            type="checkbox"
-                            checked={hasPerm}
-                            disabled={disabled}
-                            onChange={() => handleTogglePermission(u.id, col.key)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-4 h-4 cursor-pointer accent-indigo-600 align-middle disabled:opacity-65"
-                          />
-                        </td>
-                      );
-                    })}
-
-                    {/* Actions column */}
-                    <td className="border border-[#808080] p-1 text-center bg-[#e0dfe3]/30">
-                      {isUserAdmin ? (
-                        <span className="text-[10px] text-slate-500 font-bold block">رئيسي</span>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={!isAdmin}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setUserToDeleteId(u.id);
-                          }}
-                          className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] hover:bg-rose-50 text-rose-700 px-1.5 py-0.5 text-[10.5px] rounded-xs disabled:opacity-40"
-                          title="إزالة هذا المستخدم كلياً"
-                        >
-                          حذف
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
+                  ))}
+                  <td className="p-2 text-center">
+                    {user.id === currentUser?.id ? (
+                      <span className="text-[9px] font-black text-slate-400">الحساب الحالي</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setUserToDisable(user)}
+                        className="rounded-lg bg-rose-50 p-1.5 text-rose-700 hover:bg-rose-100"
+                        title="إيقاف الحساب ومنع دخوله"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {!loadingUsers && activeUsers.length === 0 && (
+                <tr>
+                  <td colSpan={permissionColumns.length + 4} className="p-10 text-center font-bold text-slate-400">
+                    لا توجد حسابات نشطة.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        {/* NEW USER ACCOUNT ENTRY GATEWAY (2001 FORM WINDOW CONFLICT-FREE) - 5 Cols */}
-        <div className="col-span-1 lg:col-span-5 bg-[#f0f0f0] border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-3">
-          <div className="bg-[#0a246a] text-white px-3 py-1 text-xs font-bold mb-3 flex items-center justify-between">
-            <span>➕ إنشاء حساب مستخدم للشبكة المحاسبية</span>
-            <span>ADD_USER.EXE</span>
-          </div>
-
-          <form onSubmit={handleCreateNewUser} className="space-y-3.5">
-            <div>
-              <label className="block text-slate-800 text-xs font-bold mb-1">الاسم الكامل للموظف (ثنائي أو ثلاثي) *</label>
+      <section className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <h3 className="flex items-center gap-2 text-sm font-black text-slate-900">
+            <UserPlus className="h-5 w-5 text-emerald-700" />
+            إضافة موظف جديد
+          </h3>
+          <p className="mt-1 text-[10px] font-bold text-slate-500">
+            يقبل بريدًا إلكترونيًا حقيقيًا أو اسم دخول عاديًا، ويتم إنشاء حساب Firebase وصلاحياته معًا.
+          </p>
+        </div>
+        <form onSubmit={createUser} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <Field label="اسم الموظف">
+            <input
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold outline-none focus:border-emerald-500"
+              placeholder="الاسم الكامل"
+            />
+          </Field>
+          <Field label="البريد أو اسم الدخول">
+            <div className="relative">
+              <Mail className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
               <input
-                type="text"
-                required
-                value={regFullName}
-                onChange={(e) => setRegFullName(e.target.value)}
-                placeholder="مثال: منذر الفيتوري"
-                className="w-full px-2.5 py-1.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white text-slate-800 text-xs font-bold focus:outline-none"
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 py-2.5 pl-3 pr-9 text-xs font-bold outline-none focus:border-emerald-500"
+                placeholder="name أو name@example.com"
+                dir="ltr"
               />
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-800 text-xs font-bold mb-1">اسم الدخول (اسم المستخدم) *</label>
-                <input
-                  type="text"
-                  required
-                  value={regUsername}
-                  onChange={(e) => setRegUsername(e.target.value)}
-                  placeholder="مثال: monther"
-                  className="w-full px-2.5 py-1.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white text-slate-800 font-mono text-xs font-bold text-center focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-800 text-xs font-bold mb-1">رمز الدور الافتراضي *</label>
-                <select
-                  value={regRole}
-                  onChange={(e) => setRegRole(e.target.value as any)}
-                  className="w-full px-2 py-1 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white text-slate-800 text-xs font-bold focus:outline-none"
-                >
-                  <option value="accountant">محاسب</option>
-                  <option value="cashier">كاشير</option>
-                  <option value="warehouse">أمين مخزن</option>
-                  <option value="assistant">مساعد عام</option>
-                  <option value="admin">مسؤول رئيسي</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-slate-800 text-xs font-bold mb-1">كلمة مرور الحساب المؤمنة *</label>
-              <div className="flex gap-1">
-                <input
-                  type={isRegPasswordShown ? 'text' : 'password'}
-                  required
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  placeholder="أدخل الرمز"
-                  className="flex-1 px-2.5 py-1.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white text-slate-800 font-mono text-xs text-center font-bold focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsRegPasswordShown(!isRegPasswordShown)}
-                  className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] px-2 py-1.5 hover:bg-[#d0cfe3] shrink-0"
-                  title="عرض/حجب كلمة المرور"
-                >
-                  {isRegPasswordShown ? <EyeOff className="w-4 h-4 text-slate-700" /> : <Eye className="w-4 h-4 text-slate-700" />}
-                </button>
-              </div>
-              <span className="text-[10px] text-slate-500 mt-1 block">
-                تنبيه: يتم تعيين حزم الصلاحيات تلقائياً، وبعد الإنشاء يمكنك تغييرها لكل تطبيق بالجدول العلوي.
-              </span>
-            </div>
-
+          </Field>
+          <Field label="كلمة المرور">
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold outline-none focus:border-emerald-500"
+              placeholder="6 خانات على الأقل"
+              dir="ltr"
+            />
+          </Field>
+          <Field label="الدور المبدئي">
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value as User['role'])}
+              className="w-full rounded-xl border border-slate-300 bg-white p-2.5 text-xs font-bold outline-none focus:border-emerald-500"
+            >
+              {Object.entries(roleLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="flex items-end">
             <button
               type="submit"
-              disabled={!isAdmin || isCreatingUser}
-              className="w-full bg-[#e0dfe3] hover:bg-[#d4d0c8] text-slate-900 border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] font-extrabold py-2 active:border-t-[#808080] active:border-l-[#808080] active:border-r-white active:border-b-white text-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-45"
+              disabled={!isAdmin || creating}
+              className="w-full rounded-xl bg-emerald-700 py-2.5 text-xs font-black text-white hover:bg-emerald-800 disabled:opacity-50"
             >
-              <UserPlus className="w-4 h-4" />
-              <span>{isCreatingUser ? 'جاري إنشاء حساب الدخول...' : 'إنشاء حساب الدخول والصلاحيات ✓'}</span>
+              {creating ? 'جاري إنشاء الحساب...' : 'إنشاء وتفعيل الحساب'}
             </button>
-          </form>
-        </div>
-
-        {/* FIELD DELEGATES SECTOR - 7 Cols */}
-        <div className="col-span-1 lg:col-span-7 bg-[#f0f0f0] border-2 border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-3">
-          <div className="bg-[#0a246a] text-white px-3 py-1 text-xs font-bold mb-3 flex items-center justify-between">
-            <span>💼 قائمة مناديب ومحملي الديون الميدانيين</span>
-            <span>DELEGATES_MANAGER.EXE</span>
           </div>
+        </form>
+      </section>
 
-          <p className="text-[11px] text-slate-600 mb-3 leading-relaxed">
-            المناديب والمحصلين هم الأشخاص المسؤولون عن سحب مستحقات الديون بالخارج. يتم استيراد القائمة أدناه تلقائياً لتقارير تصفية وتخفيض ديون الزبائن.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-start">
-            {/* Input delegate */}
-            <div className="sm:col-span-5 space-y-2">
-              <label className="block text-xs font-bold text-slate-800">اسم المندوب المطلوب مخصّص:</label>
-              <input
-                type="text"
-                value={newDelegateInput}
-                onChange={(e) => setNewDelegateInput(e.target.value)}
-                placeholder="مثال: منذر الفيتوري"
-                className="w-full px-2.5 py-1.5 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white text-slate-800 text-xs font-black text-center focus:outline-none"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddDelegate();
-                  }
-                }}
-              />
+      {userToDisable && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <section className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+            <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="font-black text-slate-900">إيقاف حساب الموظف</h3>
               <button
                 type="button"
-                onClick={handleAddDelegate}
-                className="w-full bg-[#e0dfe3] text-slate-900 border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] font-extrabold py-1 px-2 rounded-xs active:border-t-[#808080] active:border-l-[#808080] active:border-r-white active:border-b-white text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-all"
+                onClick={() => setUserToDisable(null)}
+                className="rounded-lg bg-slate-100 p-2"
               >
-                <span>إضافة لدفتر المندوبية (+)</span>
+                <X className="h-4 w-4" />
               </button>
-            </div>
-
-            {/* List */}
-            <div className="sm:col-span-7 bg-white border border-t-[#808080] border-l-[#808080] border-r-white border-b-white p-2.5 min-h-[125px]">
-              <label className="block text-xs font-bold text-slate-700 mb-2 border-b pb-1">المناديب النشطين للتحصيل:</label>
-              {delegatesList.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[140px] overflow-y-auto">
-                  {delegatesList.map((delegate, index) => (
-                    <div
-                      key={index}
-                      className="bg-slate-50 border border-slate-300 px-2 py-1 flex items-center justify-between text-xs"
-                    >
-                      <span className="font-bold text-slate-800 font-sans">{delegate}</span>
-                      <button
-                        onClick={() => setDelegateToDelete(delegate)}
-                        className="text-slate-400 hover:text-rose-700 font-bold p-0.5 font-sans"
-                        title="مسح من النظام"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 text-center text-amber-800 text-[10.5px] font-bold bg-[#fffff2] border border-[#d4d0c8]">
-                  ⚠️ دفتر المناديب فارغ، المرجو تسجيل الأسماء.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {/* ⚠️ DIALOGS SECTION DECLARED WITH CUSTOM MODALS INSTEAD OF BLOCKED BROWSER DIALOGS */}
-
-      {/* Confirm RESET Users Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]" dir="rtl">
-          <div className="bg-[#e0dfe3] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-4 max-w-sm w-full shadow-2xl relative text-right">
-            <div className="bg-gradient-to-r from-[#0a246a] to-[#a6caf0] text-white px-2 py-1 text-xs font-bold mb-3 flex items-center gap-1">
-              <span>تأكيد تهيئة الداتا الإفتراضية</span>
-            </div>
-            <p className="text-xs text-slate-800 mb-4 leading-relaxed font-bold">
-              هل أنت واثق من رغبتك في إعادة ضبط مستخدمي النظام وصلاحياتهم الفردية إلى وضع المصنع الأصلي والافتراضي؟ <br />
-              <strong className="text-rose-700">(سيؤدي ذلك لتصفير أي تخصيص وحذف أي حساب موظف تم إضافته مؤخراً!)</strong>
+            </header>
+            <p className="mb-4 text-sm font-bold leading-7 text-slate-700">
+              سيتم إيقاف حساب <strong>{userToDisable.name}</strong> ومنع تسجيل دخوله، دون المساس بالمعاملات التي نفذها سابقًا.
             </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={executeResetUsers}
-                className="bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold px-3 py-1.5 border border-t-rose-500 border-l-rose-500 border-r-rose-900 border-b-rose-900"
-              >
-                تحديث واستعادة الافتراضي ✓
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] hover:bg-[#d0cfe3] text-xs font-bold px-3 py-1.5"
-              >
-                إلغاء التراجع
-              </button>
-            </div>
-          </div>
+            <button
+              type="button"
+              onClick={() => void disableUser()}
+              className="w-full rounded-xl bg-rose-700 py-3 text-sm font-black text-white"
+            >
+              تأكيد إيقاف الحساب
+            </button>
+          </section>
         </div>
       )}
-
-      {/* Confirm Delete Delegate Modal */}
-      {delegateToDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]" dir="rtl">
-          <div className="bg-[#e0dfe3] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-4 max-w-sm w-full shadow-2xl relative text-right">
-            <div className="bg-gradient-to-r from-[#0a246a] to-[#a6caf0] text-white px-2 py-1 text-xs font-bold mb-3 flex items-center gap-1">
-              <span>تأكيد حذف المندوب</span>
-            </div>
-            <p className="text-xs text-slate-800 mb-4 leading-relaxed">
-              هل أنت متأكد من مسح المندوب الميداني <strong className="text-slate-900 font-sans">[{delegateToDelete}]</strong> من منظومة التحصيل تماماً؟
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => executeDeleteDelegate(delegateToDelete)}
-                className="bg-rose-700 text-white text-xs font-bold px-3 py-1.5 border border-t-rose-500 border-l-rose-500 border-r-rose-900 border-b-rose-900"
-              >
-                نعم، إزالة المندوب
-              </button>
-              <button
-                type="button"
-                onClick={() => setDelegateToDelete(null)}
-                className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] hover:bg-[#d0cfe3] text-xs font-bold px-3 py-1.5"
-              >
-                تراجع وإلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Delete Employee Account Modal */}
-      {userToDeleteId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]" dir="rtl">
-          <div className="bg-[#e0dfe3] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-4 max-w-sm w-full shadow-2xl relative text-right">
-            <div className="bg-gradient-to-r from-[#0a246a] to-[#a6caf0] text-white px-2 py-1 text-xs font-bold mb-3 flex items-center gap-1">
-              <span>تأكيد إقصاء الموظف</span>
-            </div>
-            <p className="text-xs text-slate-800 mb-4 leading-relaxed">
-              هل أنت متأكد من حذف الحساب الحركي للموظف <strong className="text-slate-900">({state.users.find(u => u.id === userToDeleteId)?.name})</strong>؟ سيتم إغلاق تصاريحه وحجب وصوله نهائياً عن التطبيقات.
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => executeDeleteUser(userToDeleteId)}
-                className="bg-rose-700 text-white text-xs font-bold px-3 py-1.5 border border-t-rose-500 border-l-rose-500 border-r-rose-900 border-b-rose-900"
-              >
-                نعم، حجب وحذف الحساب
-              </button>
-              <button
-                type="button"
-                onClick={() => setUserToDeleteId(null)}
-                className="bg-[#e0dfe3] border border-t-white border-l-white border-r-[#808080] border-b-[#808080] hover:bg-[#d0cfe3] text-xs font-bold px-3 py-1.5"
-              >
-                إلغاء الحذف
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Beautiful Simulated 2001 Windows Task Message Dialog for general Alerts */}
-      {showSuccessToast && (
-        <div className="fixed bottom-4 left-4 max-w-sm bg-[#e0dfe3] border-2 border-t-white border-l-white border-r-[#808080] border-b-[#808080] p-3 z-[99999] shadow-2xl text-right animate-slide-up" dir="rtl">
-          <div className="bg-gradient-to-r from-[#0a246a] to-[#a6caf0] text-white px-2 py-0.5 text-[11px] font-sans font-bold flex items-center justify-between mb-2">
-            <span>تحديث في النظام المحاسبي</span>
-            <button onClick={() => setShowSuccessToast('')}>✕</button>
-          </div>
-          <div className="text-xs font-bold text-slate-800 leading-normal flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-emerald-700 text-white text-[10px] font-black flex items-center justify-center shrink-0">✓</div>
-            <span>{showSuccessToast}</span>
-          </div>
-        </div>
-      )}
-
     </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[10px] font-black text-slate-700">{label}</span>
+      {children}
+    </label>
   );
 }

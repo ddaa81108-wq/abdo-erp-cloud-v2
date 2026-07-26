@@ -260,6 +260,21 @@ export interface User {
   password: string;
   permissions: UserPermissions;
   createdAt: string;
+  isActive?: boolean;
+}
+
+export interface SystemAuditEntry {
+  id: string;
+  occurredAt: string;
+  action: 'create' | 'update' | 'delete' | 'restore';
+  section: string;
+  entityType: string;
+  entityId: string;
+  title: string;
+  details: string;
+  amount?: number;
+  actorId?: string;
+  actorName?: string;
 }
 
 export interface EgyptianCashRow {
@@ -296,6 +311,8 @@ export interface ERPState {
   egyptianCashRecords: EgyptianCashRecord[];
   delegates?: string[]; // Custom delegates list
   notesAndReminders: NoteReminder[];
+  systemAuditLog?: SystemAuditEntry[];
+  systemAuditMigrationVersion?: number;
 }
 
 // ----------------------------------------------------
@@ -513,4 +530,6 @@ export const INITIAL_ERP_STATE: ERPState = {
   egyptianCashRecords: [],
   delegates: [],
   notesAndReminders: [],
+  systemAuditLog: [],
+  systemAuditMigrationVersion: 0,
 };

@@ -35,6 +35,7 @@ import {
 } from "./services/erpSyncService";
 import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
+import { collectSystemAuditEntries } from "./domain/systemAudit";
 import {
   synchronizeTrustDeposit,
 } from "./domain/trustAccounts";
@@ -521,8 +522,20 @@ export default function App() {
   // Atomic optimistic synchronization with record-level conflict merging
   // ============================================================
   const updateStateAndSync = async (newState: ERPState) => {
-    const cleanedState = JSON.parse(JSON.stringify(normalizeBusinessState(newState)));
     const baseState = stateRef.current;
+    const normalizedState = normalizeBusinessState(newState);
+    const auditEntries = collectSystemAuditEntries(
+      baseState,
+      normalizedState,
+      currentUser,
+    );
+    const cleanedState = JSON.parse(JSON.stringify({
+      ...normalizedState,
+      systemAuditLog: [
+        ...(normalizedState.systemAuditLog || []),
+        ...auditEntries,
+      ],
+    }));
     stateRef.current = cleanedState;
     setState(cleanedState);
 

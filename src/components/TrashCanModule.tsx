@@ -10,7 +10,9 @@ interface TrashCanModuleProps {
 
 export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'customers' | 'companies'>('all');
+  const [activeTab, setActiveTab] = useState<
+    'all' | 'customers' | 'companies' | 'merchants' | 'transactions'
+  >('all');
   
   // State for inline deletion confirmation to bypass window.confirm
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
@@ -20,6 +22,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
   // Find all deleted records
   const deletedCustomers = (state.customers || []).filter(c => c.isDeleted);
   const deletedCompanies = (state.companies || []).filter(c => c.isDeleted);
+  const deletedMerchants = (state.merchants || []).filter(m => m.isDeleted);
   const deletedDeposits = (state.trustDeposits || []).filter(d => d.isDeleted);
   const deletedPurchases = (state.purchases || []).filter(p => p.merchant && p.isDeleted);
   
@@ -267,6 +270,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
   const allTrashItems = [
     ...deletedCustomers.map(c => ({ id: c.id, name: c.name, details: c.phone ? `تلفونه: ${c.phone}` : 'من غير تلفون', type: 'customer' as const, label: 'زبون / عميل 👥', color: 'bg-rose-50 text-rose-700 border-rose-150', itemRef: c })),
     ...deletedCompanies.map(c => ({ id: c.id, name: c.name, details: c.contact ? `المسئول عنه: ${c.contact}` : 'من غير تفاصيل اتفاق', type: 'company' as const, label: 'مورد / شركة توريد 🏭', color: 'bg-amber-50 text-amber-700 border-amber-150', itemRef: c })),
+    ...deletedMerchants.map(m => ({ id: m.id, name: m.name, details: m.contact ? `بيانات التواصل: ${m.contact}` : 'من غير بيانات تواصل', type: 'merchant' as const, label: 'تاجر محذوف 🧾', color: 'bg-orange-50 text-orange-700 border-orange-200', itemRef: m })),
     ...deletedDeposits.map(d => ({ id: d.id, name: `أمانة العميل: ${d.customerName}`, details: `مرجع: ${d.referenceNo} | متبقي ليبي: ${d.amountLyd} د.ل | مصري: ${d.amountEgp} ج.م`, type: 'deposit' as const, label: 'سند أمانة جاري 🔒', color: 'bg-indigo-50 text-indigo-700 border-indigo-150', itemRef: d })),
     ...deletedTxs.map(t => ({
       id: t.id,
@@ -283,7 +287,8 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
     // Tab filter
     if (activeTab === 'customers' && item.type !== 'customer') return false;
     if (activeTab === 'companies' && item.type !== 'company') return false;
-    if (activeTab as any === 'transactions' && item.type !== 'transaction') return false;
+    if (activeTab === 'merchants' && item.type !== 'merchant') return false;
+    if (activeTab === 'transactions' && item.type !== 'transaction') return false;
 
     // Search query Matching
     return item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.details.toLowerCase().includes(searchQuery.toLowerCase());
@@ -368,7 +373,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all border shrink-0 cursor-pointer ${
                   activeTab === tab.id
                     ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
@@ -424,6 +429,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                           onClick={() => {
                             if (item.type === 'customer') handlePermanentDeleteCustomer(item.id);
                             else if (item.type === 'company') handlePermanentDeleteCompany(item.id);
+                            else if (item.type === 'merchant') handlePermanentDeleteMerchant(item.id);
                             else if (item.type === 'deposit') handlePermanentDeleteDeposit(item.id);
                             else if (item.type === 'transaction') handlePermanentDeleteTransaction((item as any).itemRef);
                           }}
@@ -445,6 +451,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                         onClick={() => {
                           if (item.type === 'customer') handleRestoreCustomer(item.id);
                           else if (item.type === 'company') handleRestoreCompany(item.id);
+                          else if (item.type === 'merchant') handleRestoreMerchant(item.id);
                           else if (item.type === 'deposit') handleRestoreDeposit(item.id);
                           else if (item.type === 'transaction') handleRestoreTransaction((item as any).itemRef);
                         }}
