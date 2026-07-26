@@ -100,6 +100,27 @@ function mergeEntityArray<T extends { id?: string }>(
     .filter((item): item is T => Boolean(item));
 }
 
+function mergeEgyptianCashRecords(
+  base: ERPState['egyptianCashRecords'] = [],
+  next: ERPState['egyptianCashRecords'] = [],
+  remote: ERPState['egyptianCashRecords'] = [],
+) {
+  const baseByDate = new Map(base.map((record) => [record.date, record]));
+  const nextByDate = new Map(next.map((record) => [record.date, record]));
+  const mergedByDate = new Map(remote.map((record) => [record.date, record]));
+  const changedDates = new Set([...baseByDate.keys(), ...nextByDate.keys()]);
+
+  for (const date of changedDates) {
+    if (same(baseByDate.get(date), nextByDate.get(date))) continue;
+    const nextRecord = nextByDate.get(date);
+    if (nextRecord) mergedByDate.set(date, nextRecord);
+    else mergedByDate.delete(date);
+  }
+
+  return [...mergedByDate.values()]
+    .sort((left, right) => left.date.localeCompare(right.date));
+}
+
 /**
  * Applies only the local changes made between base and next on top of the latest
  * remote snapshot. Separate users adding/updating different records no longer
@@ -113,7 +134,13 @@ export function mergeErpStateChanges(
   const merged = structuredClone(remote) as ERPState;
   for (const key of Object.keys(next) as Array<keyof ERPState>) {
     if (same(base[key], next[key])) continue;
-    if (ENTITY_ARRAY_KEYS.has(key) && Array.isArray(next[key])) {
+    if (key === 'egyptianCashRecords') {
+      merged.egyptianCashRecords = mergeEgyptianCashRecords(
+        base.egyptianCashRecords,
+        next.egyptianCashRecords,
+        remote.egyptianCashRecords,
+      );
+    } else if (ENTITY_ARRAY_KEYS.has(key) && Array.isArray(next[key])) {
       (merged as any)[key] = mergeEntityArray(
         (base[key] as any[]) || [],
         (next[key] as any[]) || [],

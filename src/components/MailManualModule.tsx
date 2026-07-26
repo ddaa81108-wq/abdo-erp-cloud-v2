@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CalendarDays,
   ClipboardList,
@@ -23,6 +23,19 @@ interface MailManualModuleProps {
 }
 
 export default function MailManualModule({ state, onUpdateState }: MailManualModuleProps) {
+  const latestStateRef = useRef(state);
+  const latestUpdateRef = useRef(onUpdateState);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    latestStateRef.current = state;
+    latestUpdateRef.current = onUpdateState;
+  }, [state, onUpdateState]);
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  }, []);
+
   const [selectedDay, setSelectedDay] = useState<string>(() => {
     const today = new Date();
     return today.toISOString().slice(0, 10);
@@ -62,6 +75,23 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
     }
   }, [state.egyptianCashRecords, selectedDay]);
 
+  const queueRecordSave = (
+    record: NonNullable<typeof localEgyptRecord>,
+    delay = 650,
+  ) => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      saveTimerRef.current = null;
+      const latestState = latestStateRef.current;
+      const others = (latestState.egyptianCashRecords || [])
+        .filter((item) => item.date !== record.date);
+      latestUpdateRef.current({
+        ...latestState,
+        egyptianCashRecords: [...others, record],
+      });
+    }, delay);
+  };
+
   const handleEgyptRowChange = (index: number, field: 'value' | 'commission', val: string) => {
     if (!localEgyptRecord) return;
     const numVal = parseFloat(val) || 0;
@@ -73,12 +103,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
       rows: updatedRows
     };
     setLocalEgyptRecord(newRec);
-
-    const others = state.egyptianCashRecords?.filter(r => r.date !== selectedDay) || [];
-    onUpdateState({
-      ...state,
-      egyptianCashRecords: [...others, newRec]
-    });
+    queueRecordSave(newRec);
   };
 
   const handleEgyptSummaryChange = (val: string) => {
@@ -89,12 +114,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
       receivedValue: numVal,
     };
     setLocalEgyptRecord(newRec);
-
-    const others = state.egyptianCashRecords?.filter(r => r.date !== selectedDay) || [];
-    onUpdateState({
-      ...state,
-      egyptianCashRecords: [...others, newRec]
-    });
+    queueRecordSave(newRec);
   };
 
   const handleOpenSmartImage = () => {
@@ -130,12 +150,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
         const updatedRows = [...localEgyptRecord.rows, { value: 0, commission: 0 }];
         const newRec = { ...localEgyptRecord, rows: updatedRows };
         setLocalEgyptRecord(newRec);
-        
-        const others = state.egyptianCashRecords?.filter(r => r.date !== selectedDay) || [];
-        onUpdateState({
-          ...state,
-          egyptianCashRecords: [...others, newRec]
-        });
+        queueRecordSave(newRec);
 
         setTimeout(() => {
           const nextInput = document.getElementById(`masr-${fieldName}-${nextIndex}`);
@@ -256,6 +271,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                             placeholder="0"
                             value={row.value || ''}
                             onChange={(event) => handleEgyptRowChange(index, 'value', event.target.value)}
+                            onBlur={() => localEgyptRecord && queueRecordSave(localEgyptRecord, 0)}
                             onKeyDown={(event) => handleKeyDown(event, index, 'value')}
                             className="h-full w-full border-0 bg-transparent px-3 py-2 text-center font-mono font-bold text-slate-900 outline-none focus:bg-indigo-50"
                             aria-label={`القيمة في الصف ${index + 1}`}
@@ -269,6 +285,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                             placeholder="0"
                             value={row.commission || ''}
                             onChange={(event) => handleEgyptRowChange(index, 'commission', event.target.value)}
+                            onBlur={() => localEgyptRecord && queueRecordSave(localEgyptRecord, 0)}
                             onKeyDown={(event) => handleKeyDown(event, index, 'commission')}
                             className="h-full w-full border-0 bg-transparent px-3 py-2 text-center font-mono font-bold text-rose-900 outline-none focus:bg-rose-100/70"
                             aria-label={`العمولة في الصف ${index + 1}`}
@@ -314,6 +331,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                     placeholder="0"
                     value={localEgyptRecord.receivedValue || ''}
                     onChange={(event) => handleEgyptSummaryChange(event.target.value)}
+                    onBlur={() => localEgyptRecord && queueRecordSave(localEgyptRecord, 0)}
                     className="min-w-0 flex-1 bg-transparent py-3 text-left font-mono text-2xl font-black text-slate-900 outline-none"
                     dir="ltr"
                     aria-label="المستلم اليوم"

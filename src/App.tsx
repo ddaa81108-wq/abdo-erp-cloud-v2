@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu, Calculator } from "lucide-react";
-import { doc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
 import {
@@ -232,6 +232,7 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       const keys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter"];
       if (!keys.includes(e.key)) return;
 
@@ -454,22 +455,6 @@ export default function App() {
         if (docSnap.exists()) {
           const data = docSnap.data() as any;
 
-          // Legacy migration: merchants → companies
-          const migratedBusiness = migrateLegacyBusinessAccounts(
-            Array.isArray(data.companies) ? data.companies : [],
-            Array.isArray(data.companyTransactions) ? data.companyTransactions : [],
-            Array.isArray(data.merchants) ? data.merchants : [],
-            Array.isArray(data.merchantTransactions) ? data.merchantTransactions : [],
-          );
-          const businessChanged =
-            JSON.stringify(data.companies || []) !== JSON.stringify(migratedBusiness.companies) ||
-            JSON.stringify(data.companyTransactions || []) !== JSON.stringify(migratedBusiness.companyTransactions) ||
-            (data.merchants?.length || 0) > 0 ||
-            (data.merchantTransactions?.length || 0) > 0;
-          Object.assign(data, migratedBusiness);
-          if (businessChanged) {
-            await setDoc(mainRef, migratedBusiness, { merge: true });
-          }
           const incomingRevision = Number(data._syncRevision || 0);
           const changedKeys = Array.isArray(data._changedChunks)
             ? data._changedChunks.filter(
@@ -591,6 +576,14 @@ export default function App() {
         : { base: baseState, next: cleanedState };
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(async () => {
+        // Serialize writes from this browser. Rapid entry in Masraweya is
+        // queued instead of opening two conflicting Firestore transactions.
+        if (inFlightSyncRef.current) {
+          syncTimeoutRef.current = setTimeout(() => {
+            void updateStateAndSync(stateRef.current);
+          }, 250);
+          return;
+        }
         const pending = pendingSyncRef.current;
         pendingSyncRef.current = null;
         if (!pending) return;

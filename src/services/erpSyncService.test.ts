@@ -46,6 +46,31 @@ describe('ERP concurrent merge', () => {
     expect(merged.debtTransactions.some((transaction) => transaction.id === 'remote-tx')).toBe(true);
   });
 
+  it('preserves Masraweya days edited concurrently on different devices', () => {
+    const base = state();
+    base.egyptianCashRecords = [];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.egyptianCashRecords.push({
+      date: '2026-07-27',
+      rows: [{ value: 100, commission: 5 }],
+      previousValue: 0,
+      receivedValue: 200,
+    });
+    remote.egyptianCashRecords.push({
+      date: '2026-07-26',
+      rows: [{ value: 50, commission: 2 }],
+      previousValue: 0,
+      receivedValue: 100,
+    });
+
+    const merged = mergeErpStateChanges(base, local, remote);
+    expect(merged.egyptianCashRecords.map((record) => record.date)).toEqual([
+      '2026-07-26',
+      '2026-07-27',
+    ]);
+  });
+
   it('keeps growing arrays out of the Firestore main document', () => {
     const source = state();
     const { mainState, chunks } = splitErpStateForStorage(source);
