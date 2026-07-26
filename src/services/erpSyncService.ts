@@ -27,6 +27,17 @@ const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'notesAndReminders',
 ]);
 
+const CHUNK_ARRAY_KEYS: Array<keyof ERPState> = [
+  ...ENTITY_ARRAY_KEYS,
+  'delegates',
+];
+
+const chunkDocumentId = (key: keyof ERPState) => {
+  if (key === 'debtTransactions') return 'chunk_debt_transactions';
+  if (key === 'purchases') return 'chunk_purchases';
+  return `chunk_${String(key).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`;
+};
+
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 
 function mergeEntityArray<T extends { id?: string }>(
@@ -84,23 +95,31 @@ export function mergeErpStateChanges(
   return merged;
 }
 
-function splitState(state: ERPState) {
+export function splitErpStateForStorage(state: ERPState) {
   const mainState: any = structuredClone(state);
-  const debtTransactions = mainState.debtTransactions || [];
-  const purchases = mainState.purchases || [];
-  delete mainState.debtTransactions;
-  delete mainState.purchases;
-  mainState.backupPoints = (mainState.backupPoints || []).map(({ dataJson, ...backup }: BackupPoint) => backup);
-  return { mainState, debtTransactions, purchases };
+  const chunks: Partial<Record<keyof ERPState, unknown[]>> = {};
+
+  for (const key of CHUNK_ARRAY_KEYS) {
+    const values = Array.isArray(mainState[key]) ? mainState[key] : [];
+    chunks[key] = key === 'backupPoints'
+      ? values.map(({ dataJson, ...backup }: BackupPoint) => backup)
+      : values;
+    delete mainState[key];
+  }
+
+  return { mainState, chunks };
 }
 
-function assembleState(mainData: any, debtData: any, purchaseData: any): ERPState {
+export function assembleErpStateFromStorage(
+  mainData: any,
+  chunks: Partial<Record<keyof ERPState, any>> = {},
+): ERPState {
   const { _syncRevision, _updatedAt, ...cleanMainData } = mainData;
-  return {
-    ...cleanMainData,
-    debtTransactions: debtData?.debtTransactions || mainData.debtTransactions || [],
-    purchases: purchaseData?.purchases || mainData.purchases || [],
-  } as ERPState;
+  const assembled: any = { ...cleanMainData };
+  for (const key of CHUNK_ARRAY_KEYS) {
+    assembled[key] = chunks[key]?.[key] || mainData[key] || [];
+  }
+  return assembled as ERPState;
 }
 
 async function saveBackupDocuments(db: Firestore, backupPoints: BackupPoint[]) {
@@ -116,20 +135,27 @@ export async function writeMergedErpState(
 ): Promise<ERPState> {
   await saveBackupDocuments(db, next.backupPoints || []);
   const mainRef = doc(db, 'erp_system', 'main_state');
-  const debtRef = doc(db, 'erp_system', 'chunk_debt_transactions');
-  const purchasesRef = doc(db, 'erp_system', 'chunk_purchases');
+  const chunkRefs = CHUNK_ARRAY_KEYS.map((key) => ({
+    key,
+    ref: doc(db, 'erp_system', chunkDocumentId(key)),
+  }));
 
   return runTransaction(db, async (transaction) => {
-    const [mainSnapshot, debtSnapshot, purchasesSnapshot] = await Promise.all([
+    const [mainSnapshot, ...chunkSnapshots] = await Promise.all([
       transaction.get(mainRef),
-      transaction.get(debtRef),
-      transaction.get(purchasesRef),
+      ...chunkRefs.map(({ ref }) => transaction.get(ref)),
     ]);
+    const remoteChunks = Object.fromEntries(
+      chunkRefs.map(({ key }, index) => [
+        key,
+        chunkSnapshots[index]?.exists() ? chunkSnapshots[index].data() : null,
+      ]),
+    ) as Partial<Record<keyof ERPState, any>>;
     const remote = mainSnapshot.exists()
-      ? assembleState(mainSnapshot.data(), debtSnapshot.data(), purchasesSnapshot.data())
+      ? assembleErpStateFromStorage(mainSnapshot.data(), remoteChunks)
       : base;
     const merged = mergeErpStateChanges(base, next, remote);
-    const split = splitState(merged);
+    const split = splitErpStateForStorage(merged);
     const revision = (mainSnapshot.data()?._syncRevision || 0) + 1;
 
     transaction.set(mainRef, {
@@ -137,8 +163,12 @@ export async function writeMergedErpState(
       _syncRevision: revision,
       _updatedAt: new Date().toISOString(),
     });
-    transaction.set(debtRef, { debtTransactions: split.debtTransactions, _syncRevision: revision });
-    transaction.set(purchasesRef, { purchases: split.purchases, _syncRevision: revision });
+    for (const { key, ref } of chunkRefs) {
+      transaction.set(ref, {
+        [key]: split.chunks[key] || [],
+        _syncRevision: revision,
+      });
+    }
     return merged;
   });
 }
@@ -147,16 +177,19 @@ export async function loadCompleteErpState(
   db: Firestore,
   mainData: any,
 ): Promise<ERPState> {
-  const debtRef = doc(db, 'erp_system', 'chunk_debt_transactions');
-  const purchasesRef = doc(db, 'erp_system', 'chunk_purchases');
-  const [debtSnapshot, purchasesSnapshot] = await Promise.all([
-    getDoc(debtRef).catch(() => null),
-    getDoc(purchasesRef).catch(() => null),
-  ]);
-  const assembled = assembleState(
+  const chunkSnapshots = await Promise.all(CHUNK_ARRAY_KEYS.map(async (key) => ({
+    key,
+    snapshot: await getDoc(
+      doc(db, 'erp_system', chunkDocumentId(key)),
+    ).catch(() => null),
+  })));
+  const chunks = Object.fromEntries(chunkSnapshots.map(({ key, snapshot }) => [
+    key,
+    snapshot?.exists() ? snapshot.data() : null,
+  ])) as Partial<Record<keyof ERPState, any>>;
+  const assembled = assembleErpStateFromStorage(
     mainData,
-    debtSnapshot?.exists() ? debtSnapshot.data() : null,
-    purchasesSnapshot?.exists() ? purchasesSnapshot.data() : null,
+    chunks,
   );
   assembled.backupPoints = await Promise.all((assembled.backupPoints || []).map(async (backup) => {
     if (backup.dataJson) return backup;

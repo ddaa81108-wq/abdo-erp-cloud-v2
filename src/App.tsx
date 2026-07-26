@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu } from "lucide-react";
+import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu, Calculator } from "lucide-react";
 import { doc, setDoc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
@@ -51,6 +51,7 @@ import TrashCanModule from "./components/TrashCanModule";
 import MailManualModule from "./components/MailManualModule";
 import FinancialReportsModule from "./components/FinancialReportsModule";
 import PdfExportModule from "./components/PdfExportModule";
+import GlobalCalculator from "./components/GlobalCalculator";
 
 const normalizeBusinessState = (value: ERPState): ERPState => {
   const trustDeposits = (value.trustDeposits || []).map(synchronizeTrustDeposit);
@@ -137,6 +138,7 @@ export default function App() {
   }, [appTheme]);
 
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [showGlobalCalculator, setShowGlobalCalculator] = useState(false);
   const handleToggleTheme = () => setIsThemeModalOpen(true);
 
   const [showExcelImportModal, setShowExcelImportModal] = useState(false);
@@ -337,6 +339,7 @@ export default function App() {
 
   const syncTimeoutRef = useRef<any>(null);
   const pendingSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
+  const inFlightSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
 
   // 🔄 Auto Backup Logic
   const stateRef = useRef(state);
@@ -455,13 +458,21 @@ export default function App() {
                    if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
-            let safe = pendingSyncRef.current
-              ? mergeErpStateChanges(
-                  pendingSyncRef.current.base,
-                  pendingSyncRef.current.next,
-                  fullState,
-                )
-              : fullState;
+            let safe = fullState;
+            if (inFlightSyncRef.current) {
+              safe = mergeErpStateChanges(
+                inFlightSyncRef.current.base,
+                inFlightSyncRef.current.next,
+                safe,
+              );
+            }
+            if (pendingSyncRef.current) {
+              safe = mergeErpStateChanges(
+                pendingSyncRef.current.base,
+                pendingSyncRef.current.next,
+                safe,
+              );
+            }
             setState((current) => JSON.stringify(current) === JSON.stringify(safe) ? current : safe);
             try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(safe)); } catch (e) {}
           }
@@ -528,6 +539,7 @@ export default function App() {
         const pending = pendingSyncRef.current;
         pendingSyncRef.current = null;
         if (!pending) return;
+        inFlightSyncRef.current = pending;
         try {
           const merged = normalizeBusinessState(
             await writeMergedErpState(db, pending.base, pending.next),
@@ -542,11 +554,13 @@ export default function App() {
           stateRef.current = displayState;
           setState(displayState);
           localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(displayState));
+          inFlightSyncRef.current = null;
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
           pendingSyncRef.current = pendingSyncRef.current
             ? { base: pending.base, next: pendingSyncRef.current.next }
             : pending;
+          inFlightSyncRef.current = null;
           triggerCustomToast("تعذر حفظ آخر تعديل على الخادم. سيُعاد المحاولة مع التعديل القادم.");
         }
       }, 500);
@@ -759,6 +773,16 @@ export default function App() {
             <span className="text-sm">👑</span><span>منظومة الكروت الذكية</span>
           </button>
 
+          <button
+            type="button"
+            onClick={() => setShowGlobalCalculator(true)}
+            className="flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-500 bg-emerald-600 px-3 py-2 text-xs font-extrabold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-lg"
+            title="فتح الآلة الحاسبة العامة"
+          >
+            <Calculator className="h-4 w-4" />
+            <span>الآلة الحاسبة</span>
+          </button>
+
           <div className="flex items-center gap-1.5 flex-wrap">
             <button onClick={handleToggleTheme} className={`font-black text-xs px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer border border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-700`} title="تغيير مظهر المنظومة">
               <span className="text-sm">{themeBtnData.icon}</span><span>{themeBtnData.label}</span>
@@ -772,6 +796,11 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      <GlobalCalculator
+        open={showGlobalCalculator}
+        onClose={() => setShowGlobalCalculator(false)}
+      />
 
       <AlertCenter
         state={state}

@@ -150,11 +150,6 @@ export default function DepositsModule({
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
-  const [showCalculator, setShowCalculator] = useState(false);
-  const [calcLeft, setCalcLeft] = useState('');
-  const [calcRight, setCalcRight] = useState('');
-  const [calcOperator, setCalcOperator] = useState<'add' | 'subtract' | 'multiply' | 'divide'>('multiply');
-
   const accounts = useMemo<AccountView[]>(() =>
     (state.trustDeposits || [])
       .filter((deposit) => !deposit.isDeleted)
@@ -568,15 +563,6 @@ export default function DepositsModule({
     }
   };
 
-  const calcResult = (() => {
-    const left = Number(calcLeft) || 0;
-    const right = Number(calcRight) || 0;
-    if (calcOperator === 'add') return left + right;
-    if (calcOperator === 'subtract') return left - right;
-    if (calcOperator === 'divide') return right === 0 ? 0 : left / right;
-    return left * right;
-  })();
-
   return (
     <div dir="rtl" className="space-y-4 text-right">
       {message && (
@@ -785,20 +771,6 @@ export default function DepositsModule({
         </Modal>
       )}
 
-      <div className="fixed bottom-6 left-6 z-[80]">
-        {showCalculator && (
-          <div className="mb-3 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl">
-            <div className="mb-3 flex items-center justify-between"><strong className="text-xs">حاسبة الأمانات</strong><button onClick={() => setShowCalculator(false)}><X className="h-4 w-4" /></button></div>
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-              <input type="number" step="any" value={calcLeft} onChange={(event) => setCalcLeft(event.target.value)} className="min-w-0 rounded-lg border p-2 text-center text-xs" />
-              <select value={calcOperator} onChange={(event) => setCalcOperator(event.target.value as typeof calcOperator)} className="rounded-lg border p-2 text-xs"><option value="multiply">×</option><option value="divide">÷</option><option value="add">+</option><option value="subtract">−</option></select>
-              <input type="number" step="any" value={calcRight} onChange={(event) => setCalcRight(event.target.value)} className="min-w-0 rounded-lg border p-2 text-center text-xs" />
-            </div>
-            <div className="mt-3 rounded-xl bg-slate-900 p-3 text-center font-mono font-black text-white">{calcResult.toLocaleString('en-US')}</div>
-          </div>
-        )}
-        <button onClick={() => setShowCalculator((value) => !value)} className="rounded-full bg-slate-900 p-3.5 text-white shadow-xl"><Calculator className="h-5 w-5" /></button>
-      </div>
     </div>
   );
 }

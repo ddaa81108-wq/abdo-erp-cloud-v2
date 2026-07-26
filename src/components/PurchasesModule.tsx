@@ -1,11 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Archive,
-  Calculator,
   Check,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Edit3,
   FileText,
   Plus,
@@ -104,17 +102,17 @@ export default function PurchasesModule({
   currentUser,
   onUpdateState,
 }: PurchasesModuleProps) {
+  const latestStateRef = useRef(state);
+  useEffect(() => {
+    latestStateRef.current = state;
+  }, [state]);
+
   const [activeMerchant, setActiveMerchant] = useState<PurchaseMerchant>('baqy');
   const [editingArchivedDate, setEditingArchivedDate] = useState<string | null>(null);
   const [archivedDraftRows, setArchivedDraftRows] = useState<PurchaseRecord[]>([]);
-  const [showCalculator, setShowCalculator] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [reviewDismissed, setReviewDismissed] = useState(false);
-  const [calcRows, setCalcRows] = useState([
-    { id: 'calc_1', value: '', price: '', operator: 'multiply' as const },
-  ]);
-  const [calcCopied, setCalcCopied] = useState(false);
 
   const actorName = currentUser?.name || currentUser?.username || 'مستخدم المنظومة';
   const canManageArchive =
@@ -271,18 +269,23 @@ export default function PurchasesModule({
   }, [ledgerRows, account.activeDate]);
 
   const updateStateRows = (
-    purchases: PurchaseRecord[],
+    purchases: PurchaseRecord[] | ((current: PurchaseRecord[]) => PurchaseRecord[]),
     audit?: PurchaseAuditEntry,
-    nextAccounts = accounts,
+    nextAccounts?: PurchaseAccountState[],
   ) => {
-    onUpdateState({
-      ...state,
-      purchases,
-      purchaseAccounts: nextAccounts,
+    const current = latestStateRef.current;
+    const nextState: ERPState = {
+      ...current,
+      purchases: typeof purchases === 'function'
+        ? purchases(current.purchases || [])
+        : purchases,
+      purchaseAccounts: nextAccounts || current.purchaseAccounts || [],
       purchaseAuditLog: audit
-        ? [...(state.purchaseAuditLog || []), audit]
-        : state.purchaseAuditLog || [],
-    });
+        ? [...(current.purchaseAuditLog || []), audit]
+        : current.purchaseAuditLog || [],
+    };
+    latestStateRef.current = nextState;
+    onUpdateState(nextState);
   };
 
   const patchRow = (
@@ -305,7 +308,7 @@ export default function PurchasesModule({
         rows.map((row) => row.id === rowId ? patchRow(row, field, value) : row));
       return;
     }
-    updateStateRows((state.purchases || []).map((row) =>
+    updateStateRows((rows) => rows.map((row) =>
       row.id === rowId ? patchRow(row, field, value) : row));
   };
 
@@ -325,7 +328,7 @@ export default function PurchasesModule({
       return;
     }
 
-    const normalizedRows = (state.purchases || []).map((item) => {
+    const normalizedRows = (latestStateRef.current.purchases || []).map((item) => {
       if (item.id !== row.id || field === 'type' || field === 'rate') return item;
       return patchRow(item, field, String(purchaseInteger(item[field])));
     });
@@ -341,7 +344,8 @@ export default function PurchasesModule({
   };
 
   const addRow = () => {
-    const nextSeq = Math.max(0, ...(state.purchases || [])
+    const current = latestStateRef.current;
+    const nextSeq = Math.max(0, ...(current.purchases || [])
       .filter((row) => row.merchant === activeMerchant)
       .map((row) => row.seq || 0)) + 1;
     const now = new Date().toISOString();
@@ -363,7 +367,7 @@ export default function PurchasesModule({
       createdBy: actorName,
     });
     updateStateRows(
-      [...(state.purchases || []), newRow],
+      (rows) => [...rows, newRow],
       makeAudit('create', `إضافة المعاملة رقم ${nextSeq}`, account.activeDate, newRow.id),
     );
     window.setTimeout(() => {
@@ -375,7 +379,7 @@ export default function PurchasesModule({
     if (!canDeleteActive || row.date !== account.activeDate) return;
     const now = new Date().toISOString();
     updateStateRows(
-      (state.purchases || []).map((item) =>
+      (rows) => rows.map((item) =>
         item.id === row.id
           ? { ...item, isDeleted: true, deletedAt: now, updatedAt: now, updatedBy: actorName }
           : item),
@@ -405,7 +409,7 @@ export default function PurchasesModule({
       archivedDraftRows.map((row): [string, PurchaseRecord] => [row.id, row]),
     );
     updateStateRows(
-      (state.purchases || []).map((row) => drafts.get(row.id) || row),
+      (rows) => rows.map((row) => drafts.get(row.id) || row),
       makeAudit(
         'update',
         `تعديل معاملات اليوم المؤرشف ${editingArchivedDate}`,
@@ -433,7 +437,7 @@ export default function PurchasesModule({
             : item)
       : [...accounts, { ...account, activeDate: nextDate, updatedAt: new Date().toISOString() }];
     updateStateRows(
-      state.purchases || [],
+      latestStateRef.current.purchases || [],
       makeAudit('archive', `ترحيل يوم ${account.activeDate} وفتح يوم ${nextDate}`, account.activeDate),
       nextAccounts,
     );
@@ -489,16 +493,6 @@ export default function PurchasesModule({
     });
   };
 
-  const calcResult = (row: typeof calcRows[number]) => {
-    const left = Number(row.value) || 0;
-    const right = Number(row.price) || 0;
-    if (row.operator === 'divide') return right === 0 ? 0 : Math.trunc(left / right);
-    if (row.operator === 'add') return Math.trunc(left + right);
-    if (row.operator === 'subtract') return Math.trunc(left - right);
-    return Math.trunc(left * right);
-  };
-  const totalCalc = calcRows.reduce((sum, row) => sum + calcResult(row), 0);
-
   return (
     <div className="space-y-3 text-right" dir="rtl">
       {toast && (
@@ -534,7 +528,6 @@ export default function PurchasesModule({
           ))}
         </div>
         <UnifiedAction title="النظام الذكي" icon={<Smartphone />} onClick={openSmartSystem} />
-        <UnifiedAction title="الآلة الحاسبة" icon={<Calculator />} onClick={() => setShowCalculator(true)} />
         <UnifiedAction title="إضافة معاملة" icon={<Plus />} onClick={addRow} />
         <UnifiedAction
           title="ترحيل اليوم"
@@ -653,31 +646,6 @@ export default function PurchasesModule({
         </Modal>
       )}
 
-      {showCalculator && (
-        <Modal title="الآلة الحاسبة" onClose={() => setShowCalculator(false)}>
-          <div className="space-y-2">
-            {calcRows.map((row) => (
-              <div key={row.id} className="grid grid-cols-[1fr_auto_1fr_auto_auto] items-center gap-2">
-                <input type="number" step="any" value={row.value} onChange={(event) => setCalcRows((rows) => rows.map((item) => item.id === row.id ? { ...item, value: event.target.value } : item))} className="rounded-xl border p-2 text-center font-mono" placeholder="القيمة الأولى" />
-                <select value={row.operator} onChange={(event) => setCalcRows((rows) => rows.map((item) => item.id === row.id ? { ...item, operator: event.target.value as any } : item))} className="rounded-xl border p-2 font-black">
-                  <option value="multiply">×</option><option value="divide">÷</option><option value="add">+</option><option value="subtract">−</option>
-                </select>
-                <input type="number" step="any" value={row.price} onChange={(event) => setCalcRows((rows) => rows.map((item) => item.id === row.id ? { ...item, price: event.target.value } : item))} className="rounded-xl border p-2 text-center font-mono" placeholder="القيمة الثانية" />
-                <strong className="min-w-20 text-center font-mono">{calcResult(row).toLocaleString('en-US')}</strong>
-                <button type="button" onClick={() => setCalcRows((rows) => rows.filter((item) => item.id !== row.id))} className="text-rose-600"><Trash2 className="h-4 w-4" /></button>
-              </div>
-            ))}
-          </div>
-          <button type="button" onClick={() => setCalcRows((rows) => [...rows, { id: makeId('calc'), value: '', price: '', operator: 'multiply' }])} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed p-2 text-sm font-black text-emerald-700"><Plus className="h-4 w-4" /> إضافة سطر</button>
-          <div className="relative mt-4 rounded-2xl bg-emerald-800 p-4 text-white">
-            <span className="text-xs font-black">الإجمالي</span>
-            <div className="font-mono text-3xl font-black">{totalCalc.toLocaleString('en-US')}</div>
-            <button type="button" onClick={() => { void navigator.clipboard.writeText(String(totalCalc)); setCalcCopied(true); window.setTimeout(() => setCalcCopied(false), 1500); }} className="absolute bottom-3 left-3 flex items-center gap-1 rounded-lg bg-white/15 px-3 py-1.5 text-xs font-black">
-              {calcCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {calcCopied ? 'تم النسخ' : 'نسخ'}
-            </button>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }
