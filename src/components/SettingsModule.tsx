@@ -39,7 +39,6 @@ const permissionColumns: Array<{
   { key: 'canViewTransactionLog', label: 'سجل المعاملات' },
   { key: 'canViewTrash', label: 'سلة المهملات' },
   { key: 'canViewBackup', label: 'النسخ الاحتياطي' },
-  { key: 'canViewPdfExport', label: 'تصدير PDF' },
   { key: 'canImportExcel', label: 'استيراد Excel' },
   { key: 'canExportExcel', label: 'تصدير Excel' },
 ];

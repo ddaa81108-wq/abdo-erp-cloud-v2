@@ -12,7 +12,6 @@ export const DENIED_PERMISSIONS: UserPermissions = {
   canViewFinancialReports: false,
   canViewTransactionLog: false,
   canViewTrash: false,
-  canViewPdfExport: false,
   canImportExcel: false,
   canExportExcel: false,
 };
@@ -44,7 +43,6 @@ const TAB_PERMISSION: Record<string, keyof UserPermissions> = {
   transaction_log: 'canViewTransactionLog',
   trash_can: 'canViewTrash',
   backup: 'canViewBackup',
-  export_pdf: 'canViewPdfExport',
 };
 
 export function canAccessTab(user: User | null, tabId: string): boolean {
@@ -67,7 +65,6 @@ export const NAVIGATION_ORDER = [
   'trash_can',
   'settings',
   'backup',
-  'export_pdf',
 ];
 
 export function firstAllowedTab(user: User): string {

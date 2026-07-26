@@ -246,7 +246,6 @@ export interface UserPermissions {
   canViewFinancialReports?: boolean;
   canViewTransactionLog?: boolean;
   canViewTrash?: boolean;
-  canViewPdfExport?: boolean;
   canImportExcel?: boolean;
   canExportExcel?: boolean;
 }

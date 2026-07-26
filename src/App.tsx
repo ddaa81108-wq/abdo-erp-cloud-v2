@@ -37,6 +37,13 @@ import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
 import { collectSystemAuditEntries } from "./domain/systemAudit";
 import {
+  AUTO_BACKUP_INTERVAL_MS,
+  isAutoBackupDue,
+  latestAutoBackupAt,
+  retainLatestAutomaticBackups,
+  snapshotForBackup,
+} from "./domain/backups";
+import {
   synchronizeTrustDeposit,
 } from "./domain/trustAccounts";
 
@@ -50,7 +57,6 @@ import TransactionLogModule from "./components/TransactionLogModule";
 import TrashCanModule from "./components/TrashCanModule";
 import MailManualModule from "./components/MailManualModule";
 import FinancialReportsModule from "./components/FinancialReportsModule";
-import PdfExportModule from "./components/PdfExportModule";
 import GlobalCalculator from "./components/GlobalCalculator";
 
 const normalizeBusinessState = (value: ERPState): ERPState => {
@@ -341,6 +347,7 @@ export default function App() {
   }, []);
 
   const syncTimeoutRef = useRef<any>(null);
+  const syncRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
   const inFlightSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
 
@@ -351,71 +358,82 @@ export default function App() {
   }, [state]);
 
   // ============================================================
-  // 🆕 Auto Backup (keeps last 3 auto-backups only)
+  // Automatic shared backup: every 12 hours while a user is signed in.
+  // If the application was closed when the backup became due, it runs
+  // immediately on the next successful login.
   // ============================================================
   useEffect(() => {
-    if (!currentUser) return;
+    // Wait until the shared Firestore state has loaded. This prevents a new
+    // device with empty local storage from creating a duplicate backup before
+    // it sees the latest cloud backup.
+    if (!currentUser || isLoading) return;
+    let cancelled = false;
+    let nextBackupTimer: ReturnType<typeof setTimeout> | null = null;
 
     const performAutoBackup = async () => {
       const currentState = stateRef.current;
       const now = Date.now();
-      const twelveHoursMs = 12 * 60 * 60 * 1000;
-      
-      const lastBackupTime = parseInt(localStorage.getItem("ABDO_LAST_AUTO_BACKUP") || "0", 10);
+      if (cancelled || !isAutoBackupDue(currentState.backupPoints || [], now)) return;
 
-      if (now - lastBackupTime >= twelveHoursMs) {
-        console.log("⏰ حان وقت النسخة التلقائية المجانية...");
-
+      console.log("⏰ حان وقت النسخة الاحتياطية التلقائية...");
+      try {
         const backupName = `نسخة تلقائية - ${new Date().toLocaleString('ar-LY', { 
           dateStyle: 'short', timeStyle: 'short' 
         })}`;
-        
+
         const newBackup = {
           id: `auto_backup_${now}`,
           name: backupName,
           date: new Date().toISOString(),
           description: "تم الإنشاء تلقائياً لحماية بياناتك (نظام الـ 12 ساعة)",
-          dataJson: JSON.stringify(currentState)
+          dataJson: JSON.stringify(snapshotForBackup(currentState)),
         };
+        const { retained, removed } = retainLatestAutomaticBackups(
+          currentState.backupPoints || [],
+        );
 
-        try {
-          localStorage.setItem("ABDO_LAST_AUTO_BACKUP", now.toString());
-          
-          // Keep only last 3 auto-backups
-          const existingAutoBackups = (currentState.backupPoints || []).filter(
-            (bp: any) => bp.id.startsWith("auto_backup_")
-          );
-          const backupsToRemove = existingAutoBackups.slice(0, Math.max(0, existingAutoBackups.length - 2));
-          const remainingBackups = (currentState.backupPoints || []).filter(
-            (bp: any) => !backupsToRemove.some((r: any) => r.id === bp.id)
-          );
+        await updateStateAndSync({
+          ...currentState,
+          backupPoints: [...retained, newBackup],
+        });
 
-          // Delete old backup documents from Firebase
-          if (db) {
-            for (const old of backupsToRemove) {
-              try {
-                await deleteDoc(doc(db, "erp_system", `backup_${old.id}`));
-              } catch (e) {}
-            }
-          }
-          
-          await updateStateAndSync({
-            ...currentState,
-            backupPoints: [...remainingBackups, newBackup]
-          });
-          
-          console.log("✅ تم حفظ النسخة الاحتياطية التلقائية بنجاح");
-        } catch (error) {
-          console.error("❌ فشل إنشاء النسخة التلقائية:", error);
+        // Never remove an older cloud backup before the new snapshot has
+        // completed synchronization. If a save is still pending, the old
+        // document remains as a harmless safety copy.
+        if (db && removed.length > 0) {
+          window.setTimeout(() => {
+            if (pendingSyncRef.current || inFlightSyncRef.current) return;
+            removed.forEach((old) => {
+              deleteDoc(doc(db, "erp_system", `backup_${old.id}`))
+                .catch(() => undefined);
+            });
+          }, 5_000);
         }
+
+        console.log("✅ أضيفت النسخة الاحتياطية التلقائية إلى المزامنة");
+      } catch (error) {
+        console.error("❌ فشل إنشاء النسخة التلقائية:", error);
       }
     };
 
-    performAutoBackup();
-    const intervalId = setInterval(performAutoBackup, 60 * 60 * 1000);
+    const scheduleNextBackup = () => {
+      if (cancelled) return;
+      const latest = latestAutoBackupAt(stateRef.current.backupPoints || []);
+      const delay = latest === 0
+        ? 0
+        : Math.max(1_000, latest + AUTO_BACKUP_INTERVAL_MS - Date.now());
+      nextBackupTimer = setTimeout(async () => {
+        await performAutoBackup();
+        scheduleNextBackup();
+      }, Math.min(delay, 2_147_000_000));
+    };
 
-    return () => clearInterval(intervalId);
-  }, [currentUser]);
+    scheduleNextBackup();
+    return () => {
+      cancelled = true;
+      if (nextBackupTimer) clearTimeout(nextBackupTimer);
+    };
+  }, [currentUser, isLoading]);
 
   // ============================================================
   // 🆕 Firebase Synchronization Core - Multi-document merge
@@ -570,12 +588,22 @@ export default function App() {
           setState(displayState);
           localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(displayState));
           inFlightSyncRef.current = null;
+          if (syncRetryTimeoutRef.current) {
+            clearTimeout(syncRetryTimeoutRef.current);
+            syncRetryTimeoutRef.current = null;
+          }
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
           pendingSyncRef.current = pendingSyncRef.current
             ? { base: pending.base, next: pendingSyncRef.current.next }
             : pending;
           inFlightSyncRef.current = null;
+          if (!syncRetryTimeoutRef.current) {
+            syncRetryTimeoutRef.current = setTimeout(() => {
+              syncRetryTimeoutRef.current = null;
+              void updateStateAndSync(stateRef.current);
+            }, 30_000);
+          }
           triggerCustomToast("تعذر حفظ آخر تعديل على الخادم. سيُعاد المحاولة مع التعديل القادم.");
         }
       }, 500);
@@ -604,7 +632,7 @@ export default function App() {
       name,
       date: new Date().toISOString(),
       description,
-      dataJson: JSON.stringify(state),
+      dataJson: JSON.stringify(snapshotForBackup(state)),
     };
     updateStateAndSync({ ...state, backupPoints: [...state.backupPoints, newPoint] });
   };
@@ -876,7 +904,6 @@ export default function App() {
                   { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: currentUser?.permissions?.canViewTrash ?? false },
                   { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
                   { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? false },
-                  { id: "export_pdf", label: "13. تصدير بي دي اف 📤", enabled: currentUser?.permissions?.canViewPdfExport ?? false },
                 ].filter((t) => t.enabled).map((tab) => (
                   <button 
                     key={tab.id} 
@@ -935,9 +962,8 @@ export default function App() {
                   {activeTabIsAllowed && activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
-                  {activeTabIsAllowed && activeTab === "backup" && <BackupCenter state={state} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}
+                  {activeTabIsAllowed && activeTab === "backup" && <BackupCenter state={state} isOnline={isOnlineMode} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}
                   {activeTabIsAllowed && activeTab === "settings" && <SettingsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onUpdateCurrentSession={handleUpdateCurrentSession} />}
-                  {activeTabIsAllowed && activeTab === "export_pdf" && <PdfExportModule state={state} />}
                 </motion.div>
               </AnimatePresence>
             </div>
