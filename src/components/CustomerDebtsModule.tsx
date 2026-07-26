@@ -910,7 +910,7 @@ function TopCard({
   value,
   onClick,
 }: {
-  icon: React.ReactElement;
+  icon: React.ReactElement<{ className?: string }>;
   title: string;
   value: string;
   onClick?: () => void;

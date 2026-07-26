@@ -893,7 +893,7 @@ const PrintableLedger = React.forwardRef<
 ));
 PrintableLedger.displayName = 'PrintableLedger';
 
-function TopCard({ icon, title, value, onClick }: { icon: React.ReactElement; title: string; value: string; onClick?: () => void }) {
+function TopCard({ icon, title, value, onClick }: { icon: React.ReactElement<{ className?: string }>; title: string; value: string; onClick?: () => void }) {
   const Component = onClick ? 'button' : 'div';
   return (
     <Component onClick={onClick} className="min-h-24 rounded-2xl border border-indigo-600 bg-indigo-800 p-4 text-right text-white shadow-lg transition hover:-translate-y-0.5">
