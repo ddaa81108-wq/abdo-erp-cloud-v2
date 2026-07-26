@@ -27,17 +27,30 @@ export function createErpWorkbookSheets(state: ERPState) {
     'صافي الدين المتبقي (د.ل)': company.balance || 0,
     'حالة الأرشيف': company.isDeleted ? 'مؤرشف بالمهملات' : 'نشط بالدفتر',
   }));
-  const purchases = state.purchases.map((purchase) => ({
-    'رقم الفاتورة المعتمة': purchase.referenceNo,
+  const purchases = (state.purchases || []).map((purchase) => purchase.merchant ? ({
+    'التاجر': purchase.merchant === 'baqy' ? 'البيان' : 'سمسم',
+    'التسلسل': purchase.seq || 0,
+    'تاريخ المعاملة': purchase.date,
+    'نوع المعاملة': purchase.type || '',
+    'القيمة المصرية': purchase.value || 0,
+    'العملية': purchase.op === 'multiply' ? 'ضرب' : 'قسمة',
+    'سعر الصرف': purchase.rate || 0,
+    'الناتج الليبي': purchase.result || 0,
+    'المسدد الليبي': purchase.paid || 0,
+    'الباقي الليبي': purchase.remaining || 0,
+    'مستهلك فودافون المصري': purchase.consumer || 0,
+    'حالة السجل': purchase.isDeleted ? 'في سلة المهملات' : 'نشط/مؤرشف',
+  }) : ({
+    'رقم الفاتورة المعتمة': purchase.referenceNo || '',
     'تاريخ الاعتماد المالي': purchase.date
       ? new Date(purchase.date).toLocaleDateString('ar-LY')
       : '---',
-    'اسم الصنف وتفاصيله': purchase.itemName,
-    'الكمية الواردة': purchase.quantity,
-    'سعر المفرد المحاسبي': purchase.unitPrice,
-    'الإجمالي بالعملة الأصلية': purchase.totalPrice,
+    'اسم الصنف وتفاصيله': purchase.itemName || '',
+    'الكمية الواردة': purchase.quantity || 0,
+    'سعر المفرد المحاسبي': purchase.unitPrice || 0,
+    'الإجمالي بالعملة الأصلية': purchase.totalPrice || 0,
     'المعدل للعملة المحلية (د.ل)': purchase.conversionRate || 1,
-    'الإجمالي المعادل بالليبي (د.ل)': purchase.totalPrice * (purchase.conversionRate || 1),
+    'الإجمالي المعادل بالليبي (د.ل)': (purchase.totalPrice || 0) * (purchase.conversionRate || 1),
     'حالة الخزينة': purchase.postedToTreasury ? '✓ تم ترحيلها والخصم' : 'سداد خارجي فوري',
   }));
   const deposits = state.trustDeposits.map((deposit) => ({

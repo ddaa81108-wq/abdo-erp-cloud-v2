@@ -121,16 +121,52 @@ export interface TreasuryTransaction {
 
 export interface PurchaseRecord {
   id: string;
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  currency: string;
+  itemName?: string;
+  quantity?: number;
+  unitPrice?: number;
+  totalPrice?: number;
+  currency?: string;
   conversionRate?: number; // سعر التحويل - if undefined or null, triggers an alert!
   date: string;
   companyId?: string; // linked supplier
-  referenceNo: string;
-  postedToTreasury: boolean; // تحصيل مرحل / مدفوع من الخزينة
+  referenceNo?: string;
+  postedToTreasury?: boolean; // تحصيل مرحل / مدفوع من الخزينة
+  createdAt: string;
+  merchant?: 'baqy' | 'semsem';
+  seq?: number;
+  type?: string;
+  value?: number | string;
+  op?: 'multiply' | 'divide';
+  rate?: number | string;
+  result?: number;
+  paid?: number | string;
+  remaining?: number;
+  consumer?: number | string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  updatedAt?: string;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface PurchaseAccountState {
+  id: string;
+  merchant: 'baqy' | 'semsem';
+  openingBalanceLyd: number;
+  openingBalanceEgp: number;
+  activeDate: string;
+  updatedAt: string;
+}
+
+export interface PurchaseAuditEntry {
+  id: string;
+  purchaseId?: string;
+  merchant: 'baqy' | 'semsem';
+  date: string;
+  action: 'create' | 'update' | 'delete' | 'restore' | 'archive';
+  actorId?: string;
+  actorName?: string;
+  details: string;
   createdAt: string;
 }
 
@@ -244,6 +280,9 @@ export interface ERPState {
   merchantTransactions: MerchantTransaction[];
   treasuryTransactions?: any[];
   purchases: PurchaseRecord[];
+  purchaseAccounts?: PurchaseAccountState[];
+  purchaseAuditLog?: PurchaseAuditEntry[];
+  purchaseLedgerMigrationVersion?: number;
   trustDeposits: TrustDeposit[];
   safeAudits: SafeAudit[];
   backupPoints: BackupPoint[];
@@ -333,6 +372,9 @@ export const INITIAL_ERP_STATE: ERPState = {
     { id: 'tx_t_6', type: 'out', amount: 12000, currency: 'د.ل', conversionRate: 1, date: '2026-06-02T10:00:00', referenceNo: 'TX-2026-000295', source: 'purchase', sourceId: 'p_1', description: 'مشتريات مسددة: كابلات ضغط عالي مجلفنة', createdAt: '2026-06-02T10:00:00' }
   ],
   purchases: [],
+  purchaseAccounts: [],
+  purchaseAuditLog: [],
+  purchaseLedgerMigrationVersion: 0,
   trustDeposits: [
     { 
       id: 'dep_1', 

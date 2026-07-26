@@ -17,6 +17,8 @@ const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'merchantTransactions',
   'treasuryTransactions',
   'purchases',
+  'purchaseAccounts',
+  'purchaseAuditLog',
   'trustDeposits',
   'safeAudits',
   'backupPoints',

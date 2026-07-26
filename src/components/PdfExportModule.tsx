@@ -3,6 +3,7 @@ import { jsPDF } from 'jspdf';
 import { toPng } from 'html-to-image';
 import { FileText, Printer, CheckCircle, Shield, Award, Sparkles, MapPin, Calendar, Clock, Loader2 } from 'lucide-react';
 import { ERPState } from '../types';
+import { calculatePurchaseTotals } from '../domain/purchaseLedger';
 
 interface PdfExportModuleProps {
   state: ERPState;
@@ -157,31 +158,36 @@ export default function PdfExportModule({ state }: PdfExportModuleProps) {
         `;
       } else if (type === 'purchases') {
         reportTitle = 'سجل التوريدات وفواتير المشتريات للشركة';
-        tableHeaders = ['م', 'البيان ومورد البضاعة', 'رقم المرجع', 'تاريخ الشراء', 'القيمة المقيدة'];
+        tableHeaders = ['م', 'التاجر', 'البيان', 'التاريخ', 'الناتج', 'المسدد', 'الباقي'];
         
-        const purchases = state.purchases || [];
-        let totalPurchases = 0;
+        const purchases = (state.purchases || []).filter(p => p.merchant && !p.isDeleted);
+        const totalPurchases = (state.purchaseAccounts || []).reduce(
+          (sum, account) =>
+            sum + calculatePurchaseTotals(state.purchases || [], account).totalDebtLyd,
+          0,
+        );
 
         tableRowsHtml = purchases.map((p, idx) => {
-          totalPurchases += p.totalPrice;
           return `
             <tr>
               <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-              <td style="font-weight: bold; color: #1e293b;">${p.itemName}</td>
-              <td style="text-align: center; font-family: monospace;">${p.referenceNo}</td>
+              <td style="font-weight: bold;">${p.merchant === 'baqy' ? 'البيان' : 'سمسم'}</td>
+              <td style="font-weight: bold; color: #1e293b;">${p.type || 'بدون بيان'}</td>
               <td style="text-align: center;">${new Date(p.date).toLocaleDateString('ar-LY')}</td>
-              <td style="text-align: left; font-family: monospace; font-weight: 900; background-color: #fafaf9; color: #b91c1c;">${(p.totalPrice || 0).toLocaleString()} د.ل</td>
+              <td style="text-align: center; font-family: monospace;">${(p.result || 0).toLocaleString()} د.ل</td>
+              <td style="text-align: center; font-family: monospace; color: #047857;">${Number(p.paid || 0).toLocaleString()} د.ل</td>
+              <td style="text-align: center; font-family: monospace; font-weight: 900; color: #b91c1c;">${(p.remaining || 0).toLocaleString()} د.ل</td>
             </tr>
           `;
         }).join('');
 
         if (purchases.length === 0) {
-          tableRowsHtml = `<tr><td colspan="5" style="text-align: center;">لا توجد مشتريات مقيدة مؤخراً</td></tr>`;
+          tableRowsHtml = `<tr><td colspan="7" style="text-align: center;">لا توجد مشتريات مقيدة مؤخراً</td></tr>`;
         }
 
         summaryHtml = `
           <div style="margin-top: 25px; padding: 15px; border: 2px solid #b91c1c; border-radius: 8px; background-color: #fef2f2; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 14px; font-weight: bold; color: #b91c1c;">إجمالي المشتريات ضمن الكشف:</span>
+            <span style="font-size: 14px; font-weight: bold; color: #b91c1c;">إجمالي الديون المتبقية ضمن الكشف:</span>
             <span style="font-size: 20px; font-weight: 900; color: #b91c1c; font-family: monospace;">${(totalPurchases || 0).toLocaleString()} دينار ليبي</span>
           </div>
         `;

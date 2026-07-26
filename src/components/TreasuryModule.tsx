@@ -4,6 +4,7 @@ import {
   calculateTrustAccountBalances,
   trustHistory,
 } from "../domain/trustAccounts";
+import { calculatePurchaseTotals } from "../domain/purchaseLedger";
 import {
   Landmark,
   ArrowUpRight,
@@ -68,8 +69,17 @@ export default function TreasuryModule({
   const totalPositiveDebts =
     totalCustomerDebts + totalCompanyDebts + totalTrustReceivables;
 
-  const [totalPurchases, setTotalPurchases] = useState(0);
+  const purchaseLedgerTotal = (state.purchaseAccounts || []).reduce(
+    (sum, account) =>
+      sum + calculatePurchaseTotals(state.purchases || [], account).totalDebtLyd,
+    0,
+  );
+  const [legacyPurchaseTotal, setLegacyPurchaseTotal] = useState(0);
   useEffect(() => {
+    if ((state.purchaseLedgerMigrationVersion || 0) >= 1) {
+      setLegacyPurchaseTotal(0);
+      return;
+    }
     let unmounted = false;
     const fetchPurchases = async () => {
       try {
@@ -98,7 +108,7 @@ export default function TreasuryModule({
                 sum += prev + rowsRes - rowsPaid;
               });
             }
-            setTotalPurchases(sum);
+            setLegacyPurchaseTotal(sum);
           }
         });
 
@@ -116,8 +126,11 @@ export default function TreasuryModule({
         if (unsub && typeof unsub === "function") unsub();
       });
     };
-  }, []);
+  }, [state.purchaseLedgerMigrationVersion]);
 
+  const totalPurchases = (state.purchaseLedgerMigrationVersion || 0) >= 1
+    ? purchaseLedgerTotal
+    : legacyPurchaseTotal;
   const totalLiabilities = totalDeposits + totalPurchases;
 
   // 3. Active Cash (الفلوس النشطة)

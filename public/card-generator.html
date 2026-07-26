@@ -1128,11 +1128,11 @@
                 let merchantType = document.getElementById('purchasesMerchantType').value;
                 document.getElementById('purchases-merchant-name').innerText = nameValue !== '...' ? (nameValue + " - " + merchantType) : ("التاجر " + merchantType);
                 
-                document.getElementById('p-val-1').innerText = formatDecimal(document.getElementById('p-in-1').value);
-                document.getElementById('p-val-2').innerText = formatDecimal(document.getElementById('p-in-2').value);
-                document.getElementById('p-val-3').innerText = formatDecimal(document.getElementById('p-in-3').value);
-                document.getElementById('p-val-4').innerText = formatDecimal(document.getElementById('p-in-4').value);
-                document.getElementById('p-val-5').innerText = formatDecimal(document.getElementById('p-in-5').value);
+                document.getElementById('p-val-1').innerText = formatSignedInteger(document.getElementById('p-in-1').value);
+                document.getElementById('p-val-2').innerText = formatSignedInteger(document.getElementById('p-in-2').value);
+                document.getElementById('p-val-3').innerText = formatSignedInteger(document.getElementById('p-in-3').value);
+                document.getElementById('p-val-4').innerText = formatSignedInteger(document.getElementById('p-in-4').value);
+                document.getElementById('p-val-5').innerText = formatSignedInteger(document.getElementById('p-in-5').value);
             }
             else if (currentType === 'alert') {
                 document.getElementById('card-header').innerText = "❖ إشعار تنبيه ❖";

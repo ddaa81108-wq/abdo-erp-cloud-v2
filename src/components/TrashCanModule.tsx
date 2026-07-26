@@ -21,12 +21,18 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
   const deletedCustomers = (state.customers || []).filter(c => c.isDeleted);
   const deletedCompanies = (state.companies || []).filter(c => c.isDeleted);
   const deletedDeposits = (state.trustDeposits || []).filter(d => d.isDeleted);
+  const deletedPurchases = (state.purchases || []).filter(p => p.merchant && p.isDeleted);
   
   const deletedTxs = [
     ...(state.debtTransactions || []).filter(t => t.isDeleted).map(t => ({ ...t, source: 'customer' as const, name: `عملية ديون للزبون (${t.amount} د.ل)` })),
     ...(state.companyTransactions || []).filter(t => t.isDeleted).map(t => ({ ...t, source: 'company' as const, name: `فاتورة / دفعة مورد (${t.amount} د.ل)` })),
     ...(state.merchantTransactions || []).filter(t => t.isDeleted).map(t => ({ ...t, source: 'merchant' as const, name: `قيد ذمة تاجر (${t.amount} د.ل)` })),
-    ...(state.treasuryTransactions || []).filter(t => t.isDeleted).map(t => ({ ...t, source: 'treasury' as const, name: `قيد وحركة خزينة مركزي (${t.amount} د.ل)` }))
+    ...(state.treasuryTransactions || []).filter(t => t.isDeleted).map(t => ({ ...t, source: 'treasury' as const, name: `قيد وحركة خزينة مركزي (${t.amount} د.ل)` })),
+    ...deletedPurchases.map(t => ({
+      ...t,
+      source: 'purchase' as const,
+      name: `معاملة مشتريات رقم ${t.seq || '-'} (${t.result || 0} د.ل)`,
+    })),
   ];
 
   const triggerNotification = (msg: string) => {
@@ -195,6 +201,23 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
       newState.merchantTransactions = (state.merchantTransactions || []).map(tx => tx.id === txItem.id ? { ...tx, isDeleted: false } : tx);
     } else if (txItem.source === 'treasury') {
       newState.treasuryTransactions = (state.treasuryTransactions || []).map(tx => tx.id === txItem.id ? { ...tx, isDeleted: false } : tx);
+    } else if (txItem.source === 'purchase') {
+      newState.purchases = (state.purchases || []).map(tx =>
+        tx.id === txItem.id
+          ? { ...tx, isDeleted: false, deletedAt: undefined, updatedAt: new Date().toISOString() }
+          : tx);
+      newState.purchaseAuditLog = [
+        ...(state.purchaseAuditLog || []),
+        {
+          id: `purchase_audit_restore_${Date.now()}`,
+          purchaseId: txItem.id,
+          merchant: txItem.merchant || 'baqy',
+          date: txItem.date,
+          action: 'restore',
+          details: `استرجاع معاملة المشتريات رقم ${txItem.seq || '-'}`,
+          createdAt: new Date().toISOString(),
+        },
+      ];
     }
     onUpdateState(newState);
     triggerNotification('تم استرجاع العملية المحذوفة لسجل العمليات بنجاح! 👍');
@@ -214,6 +237,8 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
       newState.merchantTransactions = (state.merchantTransactions || []).filter(tx => tx.id !== txItem.id);
     } else if (txItem.source === 'treasury') {
       newState.treasuryTransactions = (state.treasuryTransactions || []).filter(tx => tx.id !== txItem.id);
+    } else if (txItem.source === 'purchase') {
+      newState.purchases = (state.purchases || []).filter(tx => tx.id !== txItem.id);
     }
     onUpdateState(newState);
     setConfirmingDeleteId(null);
@@ -232,6 +257,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
       companyTransactions: (state.companyTransactions || []).filter(t => !t.isDeleted),
       merchantTransactions: (state.merchantTransactions || []).filter(t => !t.isDeleted),
       treasuryTransactions: (state.treasuryTransactions || []).filter(t => !t.isDeleted),
+      purchases: (state.purchases || []).filter(t => !t.isDeleted),
     });
     setConfirmingEmptyTrash(false);
     triggerNotification('تم مسح وإفراغ جميع العناصر من سلة المهملات بنجاح! 🗑️');
@@ -242,7 +268,17 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
     ...deletedCustomers.map(c => ({ id: c.id, name: c.name, details: c.phone ? `تلفونه: ${c.phone}` : 'من غير تلفون', type: 'customer' as const, label: 'زبون / عميل 👥', color: 'bg-rose-50 text-rose-700 border-rose-150', itemRef: c })),
     ...deletedCompanies.map(c => ({ id: c.id, name: c.name, details: c.contact ? `المسئول عنه: ${c.contact}` : 'من غير تفاصيل اتفاق', type: 'company' as const, label: 'مورد / شركة توريد 🏭', color: 'bg-amber-50 text-amber-700 border-amber-150', itemRef: c })),
     ...deletedDeposits.map(d => ({ id: d.id, name: `أمانة العميل: ${d.customerName}`, details: `مرجع: ${d.referenceNo} | متبقي ليبي: ${d.amountLyd} د.ل | مصري: ${d.amountEgp} ج.م`, type: 'deposit' as const, label: 'سند أمانة جاري 🔒', color: 'bg-indigo-50 text-indigo-700 border-indigo-150', itemRef: d })),
-    ...deletedTxs.map(t => ({ id: t.id, name: t.name, details: `المرجع: ${t.referenceNo || 'بدون'} | ${new Date(t.date || t.createdAt).toLocaleDateString('ar-LY')} (${t.note || t.description || 'بدون ملاحظة'})`, type: 'transaction' as const, label: 'عملية / قيد ملغي 📝', color: 'bg-slate-50 text-slate-700 border-slate-200', itemRef: t }))
+    ...deletedTxs.map(t => ({
+      id: t.id,
+      name: t.name,
+      details: t.source === 'purchase'
+        ? `${t.type || 'بدون نوع'} | ${new Date(t.date || t.createdAt).toLocaleDateString('ar-LY')}`
+        : `المرجع: ${t.referenceNo || 'بدون'} | ${new Date(t.date || t.createdAt).toLocaleDateString('ar-LY')} (${t.note || t.description || 'بدون ملاحظة'})`,
+      type: 'transaction' as const,
+      label: t.source === 'purchase' ? 'معاملة مشتريات محذوفة 🛒' : 'عملية / قيد ملغي 📝',
+      color: t.source === 'purchase' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200',
+      itemRef: t,
+    }))
   ].filter(item => {
     // Tab filter
     if (activeTab === 'customers' && item.type !== 'customer') return false;
