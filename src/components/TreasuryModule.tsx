@@ -1,798 +1,575 @@
-import React, { useState, useEffect } from "react";
-import { calculateTreasuryBalance } from "../domain/financialCalculations";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  calculateTrustAccountBalances,
-  trustHistory,
-} from "../domain/trustAccounts";
-import { calculatePurchaseTotals } from "../domain/purchaseLedger";
-import {
-  Landmark,
-  ArrowUpRight,
   ArrowDownLeft,
-  Wallet,
-  Sparkles,
-  Plus,
+  ArrowUpRight,
+  Landmark,
   Minus,
+  Pencil,
+  Plus,
   Trash2,
-  FileText,
-  UserCircle,
-  RotateCcw,
-  ShieldAlert,
-} from "lucide-react";
-import { ERPState, TreasuryTransaction } from "../types";
+  Wallet,
+  X,
+} from 'lucide-react';
+import type { ERPState, TreasuryTransaction } from '../types';
+import {
+  calculateTreasurySummary,
+  manualTreasuryTransactions,
+} from '../domain/treasurySummary';
 
 interface TreasuryModuleProps {
   state: ERPState;
   onUpdateState: (newState: ERPState) => void;
   onOpenExporter: (
     section: string,
-    metrics: any,
+    metrics: unknown,
     headers: string[],
-    rows: any[][],
+    rows: unknown[][],
   ) => void;
 }
+
+type MovementMode = 'deposit' | 'withdraw';
+
+const integer = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
+};
+
+const money = (value: number) =>
+  `${integer(value).toLocaleString('en-US')} د.ل`;
+
+const localDateTimeInput = (value = new Date()) =>
+  new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+
+const uid = () =>
+  `treasury_manual_${typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`}`;
 
 export default function TreasuryModule({
   state,
   onUpdateState,
-  onOpenExporter,
 }: TreasuryModuleProps) {
-  // 1. Calculate Debts (Positive outstandings we are owed)
-  const totalCustomerDebts = state.customers
-    .filter((c) => !c.isDeleted)
-    .map((c) => {
-      const activeCycle = state.cycles.find(
-        (cy) => cy.customerId === c.id && cy.status === "active",
-      );
-      return activeCycle ? Math.max(activeCycle.currentBalance, 0) : 0;
-    })
-    .reduce((sum, val) => sum + val, 0);
-
-  const totalCompanyDebts = state.companies
-    .filter((c) => !c.isDeleted)
-    .reduce((sum, c) => sum + (c.balance || 0), 0);
-
-  const activeTrustBalances = state.trustDeposits
-    .filter((deposit) => !deposit.isDeleted)
-    .map((deposit) =>
-      calculateTrustAccountBalances(trustHistory(deposit)));
-  const totalDeposits = activeTrustBalances.reduce(
-    (sum, balance) => sum + Math.max(balance.amountLyd, 0),
-    0,
-  );
-  const totalTrustReceivables = activeTrustBalances.reduce(
-    (sum, balance) => sum + Math.max(-balance.amountLyd, 0),
-    0,
-  );
-
-  // Negative LYD custody is a receivable from its owner, not a liability.
-  const totalPositiveDebts =
-    totalCustomerDebts + totalCompanyDebts + totalTrustReceivables;
-
-  const purchaseLedgerTotal = (state.purchaseAccounts || []).reduce(
-    (sum, account) =>
-      sum + calculatePurchaseTotals(state.purchases || [], account).totalDebtLyd,
-    0,
-  );
-  const [legacyPurchaseTotal, setLegacyPurchaseTotal] = useState(0);
+  const stateRef = useRef(state);
   useEffect(() => {
-    if ((state.purchaseLedgerMigrationVersion || 0) >= 1) {
-      setLegacyPurchaseTotal(0);
+    stateRef.current = state;
+  }, [state]);
+
+  const [movementMode, setMovementMode] = useState<MovementMode | null>(null);
+  const [editing, setEditing] = useState<TreasuryTransaction | null>(null);
+  const [deleting, setDeleting] = useState<TreasuryTransaction | null>(null);
+  const [amount, setAmount] = useState('');
+  const [actorName, setActorName] = useState('');
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState(localDateTimeInput());
+  const [message, setMessage] = useState('');
+
+  // One-time reset requested for the old experimental treasury ledger.
+  useEffect(() => {
+    if ((state.treasuryLedgerVersion || 0) >= 1) return;
+    const cleanState: ERPState = {
+      ...state,
+      treasuryTransactions: [],
+      treasuryLedgerVersion: 1,
+    };
+    stateRef.current = cleanState;
+    onUpdateState(cleanState);
+  }, [state.treasuryLedgerVersion]);
+
+  const summary = useMemo(() => calculateTreasurySummary(state), [state]);
+  const transactions = useMemo(
+    () =>
+      manualTreasuryTransactions(state)
+        .filter((transaction) => !transaction.isDeleted)
+        .sort(
+          (left, right) =>
+            new Date(left.date).getTime() - new Date(right.date).getTime(),
+        ),
+    [state],
+  );
+
+  const rowsWithBalance = useMemo(() => {
+    let runningBalance = 0;
+    return transactions.map((transaction, index) => {
+      const value = integer(transaction.amount);
+      runningBalance += transaction.type === 'in' ? value : -value;
+      return { transaction, sequence: index + 1, runningBalance };
+    });
+  }, [transactions]);
+
+  const toast = (text: string) => {
+    setMessage(text);
+    window.setTimeout(() => setMessage(''), 3000);
+  };
+
+  const resetForm = () => {
+    setMovementMode(null);
+    setEditing(null);
+    setAmount('');
+    setActorName('');
+    setNote('');
+    setDate(localDateTimeInput());
+  };
+
+  const openMovement = (mode: MovementMode) => {
+    resetForm();
+    setMovementMode(mode);
+  };
+
+  const openEdit = (transaction: TreasuryTransaction) => {
+    setEditing(transaction);
+    setMovementMode(transaction.type === 'in' ? 'deposit' : 'withdraw');
+    setAmount(String(integer(transaction.amount)));
+    setActorName(
+      transaction.actorName
+      || transaction.description.match(/\[(?:المودع|الساحب):\s*(.*?)\]/)?.[1]
+      || '',
+    );
+    setNote(
+      transaction.note
+      || transaction.description.replace(/\[.*?\]\s*/, '')
+      || '',
+    );
+    setDate(localDateTimeInput(new Date(transaction.date)));
+  };
+
+  const saveMovement = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!movementMode) return;
+    const cleanAmount = integer(amount);
+    const cleanActor = actorName.trim();
+    const cleanNote = note.trim();
+    if (cleanAmount <= 0 || !cleanActor || !date) {
+      toast('أكمل المبلغ الصحيح واسم المنفذ والتاريخ.');
       return;
     }
-    let unmounted = false;
-    const fetchPurchases = async () => {
-      try {
-        const { doc, getDoc, onSnapshot } = await import("firebase/firestore");
-        const { db } = await import("../firebase");
-        if (!db) return;
 
-        const docRef = doc(db, "erp_system", "purchases_module_v4");
-
-        // Listen to realtime updates to accurately reflect liability
-        const unsub = onSnapshot(docRef, (docSnap) => {
-          if (docSnap.exists() && !unmounted) {
-            let sum = 0;
-            const data = docSnap.data();
-            if (data.merchStates) {
-              Object.values(data.merchStates).forEach((merch: any) => {
-                const prev = Number(merch.previousBalance) || 0;
-                const rowsRes = (merch.rows || []).reduce(
-                  (s: number, r: any) => s + (Number(r.result) || 0),
-                  0,
-                );
-                const rowsPaid = (merch.rows || []).reduce(
-                  (s: number, r: any) => s + (Number(r.paid) || 0),
-                  0,
-                );
-                sum += prev + rowsRes - rowsPaid;
-              });
-            }
-            setLegacyPurchaseTotal(sum);
-          }
-        });
-
-        return unsub;
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    let unsubPromise = fetchPurchases();
-
-    return () => {
-      unmounted = true;
-      unsubPromise.then((unsub) => {
-        if (unsub && typeof unsub === "function") unsub();
-      });
-    };
-  }, [state.purchaseLedgerMigrationVersion]);
-
-  const totalPurchases = (state.purchaseLedgerMigrationVersion || 0) >= 1
-    ? purchaseLedgerTotal
-    : legacyPurchaseTotal;
-  const totalLiabilities = totalDeposits + totalPurchases;
-
-  // 3. Active Cash (الفلوس النشطة)
-  const validTreasuryTxs = (state.treasuryTransactions || []).filter(
-    (tx) => !tx.isDeleted,
-  );
-  const activeCash = calculateTreasuryBalance(validTreasuryTxs);
-
-  // 4. Grand Positives (Card 1)
-  const grandTotalPositives = activeCash + totalPositiveDebts;
-
-  // 5. Net Total (Card 4)
-  const netTotal = grandTotalPositives - totalLiabilities;
-
-  // Internal forms for Active Cash
-  const [depositAmount, setDepositAmount] = useState("");
-  const [depositActor, setDepositActor] = useState("");
-  const [depositNote, setDepositNote] = useState("");
-
-  const [withdrawAmount, setWithdrawAmount] = useState("");
-  const [withdrawActor, setWithdrawActor] = useState("");
-  const [withdrawNote, setWithdrawNote] = useState("");
-
-  const handleDeposit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(depositAmount);
-    if (isNaN(amt) || amt <= 0) return;
-    if (!depositActor.trim()) return;
-
-    const newTx: TreasuryTransaction = {
-      id: `tx_tres_${Date.now()}`,
-      type: "in",
-      amount: amt,
-      currency: "د.ل",
+    const current = stateRef.current;
+    const now = new Date().toISOString();
+    const type = movementMode === 'deposit' ? 'in' : 'out';
+    const source = movementMode === 'deposit'
+      ? 'manual_deposit' as const
+      : 'manual_withdraw' as const;
+    const transaction: TreasuryTransaction = {
+      id: editing?.id || uid(),
+      type,
+      amount: cleanAmount,
+      currency: 'د.ل',
       conversionRate: 1,
-      source: "manual_deposit",
-      referenceNo: `TR-IN-${Math.floor(Math.random() * 1000000)}`,
+      source,
+      referenceNo: editing?.referenceNo
+        || `TR-${type === 'in' ? 'IN' : 'OUT'}-${Date.now()}`,
       description:
-        `[المودع: ${depositActor.trim()}] ${depositNote.trim()}`.trim(),
-      date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+        `[${type === 'in' ? 'المودع' : 'الساحب'}: ${cleanActor}] ${cleanNote}`.trim(),
+      actorName: cleanActor,
+      note: cleanNote,
+      date: new Date(date).toISOString(),
+      createdAt: editing?.createdAt || now,
+      updatedAt: editing ? now : undefined,
     };
 
-    onUpdateState({
-      ...state,
-      treasuryTransactions: [...(state.treasuryTransactions || []), newTx],
-    });
-
-    setDepositAmount("");
-    setDepositActor("");
-    setDepositNote("");
+    const currentTransactions = manualTreasuryTransactions(current);
+    const nextTransactions = editing
+      ? currentTransactions.map((item) =>
+          item.id === editing.id ? transaction : item)
+      : [...currentTransactions, transaction];
+    const nextState = {
+      ...current,
+      treasuryTransactions: nextTransactions,
+      treasuryLedgerVersion: 1,
+    };
+    stateRef.current = nextState;
+    onUpdateState(nextState);
+    resetForm();
+    toast(editing ? 'تم تعديل الحركة وتحديث الرصيد النشط.' : 'تم حفظ الحركة في سجل الرصيد النشط.');
   };
 
-  const handleWithdraw = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amt = parseFloat(withdrawAmount);
-    if (isNaN(amt) || amt <= 0) return;
-    if (!withdrawActor.trim()) return;
-
-    const newTx: TreasuryTransaction = {
-      id: `tx_tres_${Date.now()}`,
-      type: "out",
-      amount: amt,
-      currency: "د.ل",
-      conversionRate: 1,
-      source: "manual_withdraw",
-      referenceNo: `TR-OUT-${Math.floor(Math.random() * 1000000)}`,
-      description:
-        `[الساحب: ${withdrawActor.trim()}] ${withdrawNote.trim()}`.trim(),
-      date: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-
-    onUpdateState({
-      ...state,
-      treasuryTransactions: [...(state.treasuryTransactions || []), newTx],
-    });
-
-    setWithdrawAmount("");
-    setWithdrawActor("");
-    setWithdrawNote("");
-  };
-
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [resetConfirmWord, setResetConfirmWord] = useState("");
-
-  const confirmDeleteTransaction = () => {
-    if (!deleteConfirmId) return;
-    onUpdateState({
-      ...state,
-      treasuryTransactions: (state.treasuryTransactions || []).map((tx) =>
-        tx.id === deleteConfirmId ? { ...tx, isDeleted: true } : tx,
+  const confirmDelete = () => {
+    if (!deleting) return;
+    const current = stateRef.current;
+    const now = new Date().toISOString();
+    const nextState = {
+      ...current,
+      treasuryTransactions: manualTreasuryTransactions(current).map(
+        (transaction) =>
+          transaction.id === deleting.id
+            ? { ...transaction, isDeleted: true, deletedAt: now, updatedAt: now }
+            : transaction,
       ),
-    });
-    setDeleteConfirmId(null);
-  };
-
-  const executeResetTreasury = () => {
-    if (resetConfirmWord === "تأكيد") {
-      const updatedTxs = (state.treasuryTransactions || []).map((tx) => ({
-        ...tx,
-        isDeleted: true,
-      }));
-      onUpdateState({
-        ...state,
-        treasuryTransactions: updatedTxs,
-      });
-      setShowResetConfirm(false);
-      setResetConfirmWord("");
-    }
+      treasuryLedgerVersion: 1,
+    };
+    stateRef.current = nextState;
+    onUpdateState(nextState);
+    setDeleting(null);
+    toast('تم نقل الحركة إلى سلة المهملات وتحديث الرصيد النشط.');
   };
 
   return (
-    <div className="space-y-6" dir="rtl">
-      {/* 🔴 الكروت الإجمالية */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* الكارت الإجمالي الجامع */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Landmark className="w-24 h-24 text-white" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-white font-extrabold text-sm tracking-wide">
-                إجمالي إيجابيات الخزينة
-              </span>
-              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
-                <Landmark className="w-5 h-5 text-white" />
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-3xl font-black text-white drop-shadow-md">
-                {grandTotalPositives.toLocaleString()}{" "}
-                <span className="text-sm font-bold opacity-70">د.ل</span>
-              </div>
-              <div className="text-[10px] text-slate-400 mt-2 font-medium leading-relaxed">
-                = الرصيد النشط الفعلي + الديون (لنا)
-              </div>
-            </div>
-          </div>
+    <div className="space-y-3 text-right" dir="rtl">
+      {message && (
+        <div className="fixed right-5 top-20 z-[120] rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-2xl">
+          {message}
         </div>
+      )}
 
-        {/* كارت الرصيد النشط الفعلي */}
-        <div className="bg-emerald-600 border border-emerald-500 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Wallet className="w-24 h-24 text-white" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-emerald-50 font-extrabold text-sm tracking-wide">
-                الرصيد النشط (الكاش الفعلي)
-              </span>
-              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
-                <Sparkles className="w-5 h-5 text-emerald-50" />
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-3xl font-black text-white drop-shadow-md">
-                {activeCash.toLocaleString()}{" "}
-                <span className="text-sm font-bold opacity-70">د.ل</span>
-              </div>
-              <div className="text-[10px] text-emerald-200 mt-2 font-medium">
-                السيولة النقدية المُدارة فعلياً باليد الآن
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* إجمالي الالتزامات والأمانات */}
-        <div className="bg-rose-600 border border-rose-500 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <ArrowDownLeft className="w-24 h-24 text-white" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-rose-50 font-extrabold text-sm tracking-wide">
-                الالتزامات (علينا)
-              </span>
-              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
-                <ArrowDownLeft className="w-5 h-5 text-rose-50" />
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-3xl font-black text-white drop-shadow-md">
-                {totalLiabilities.toLocaleString()}{" "}
-                <span className="text-sm font-bold opacity-70">د.ل</span>
-              </div>
-              <div className="text-[10px] text-rose-100 mt-2 font-medium">
-                مجموع (الأمانات + المشتريات) المتبقية
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* صافي المركز المالي */}
-        <div className="bg-indigo-600 border border-indigo-500 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <ArrowUpRight className="w-24 h-24 text-white" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-indigo-50 font-extrabold text-sm tracking-wide">
-                صافي الخزينة المعياري
-              </span>
-              <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
-                <ArrowUpRight className="w-5 h-5 text-indigo-50" />
-              </div>
-            </div>
-            <div className="mt-auto">
-              <div className="text-3xl font-black text-white drop-shadow-md">
-                {netTotal.toLocaleString()}{" "}
-                <span className="text-sm font-bold opacity-70">د.ل</span>
-              </div>
-              <div className="text-[10px] text-indigo-100 mt-2 font-medium">
-                إجمالي الإيجابيات (الكارت الأول) - الالتزامات (الكارت الثالث)
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+        <SummaryCard
+          title="إجمالي إيجابيات الخزينة"
+          value={money(summary.totalPositives)}
+          note="الرصيد النشط + ديون العملاء + ديون الشركات والتجار"
+          icon={<Landmark />}
+        />
+        <SummaryCard
+          title="الرصيد النشط"
+          value={money(summary.activeCash)}
+          note="النقد الموجود فعليًا من الحركات اليدوية"
+          icon={<Wallet />}
+        />
+        <SummaryCard
+          title="الالتزامات علينا"
+          value={money(summary.totalObligations)}
+          note="إجمالي الأمانات الليبي + إجمالي المشتريات"
+          icon={<ArrowDownLeft />}
+        />
+        <SummaryCard
+          title="صافي الخزينة"
+          value={money(summary.netTreasury)}
+          note="إجمالي الإيجابيات − الالتزامات"
+          icon={<ArrowUpRight />}
+          negative={summary.netTreasury < 0}
+        />
+        <ActionCard
+          title="إيداع نقدي"
+          note="إضافة إلى الرصيد النشط"
+          icon={<Plus />}
+          onClick={() => openMovement('deposit')}
+          tone="green"
+        />
+        <ActionCard
+          title="سحب نقدي"
+          note="خصم من الرصيد النشط"
+          icon={<Minus />}
+          onClick={() => openMovement('withdraw')}
+          tone="red"
+        />
       </div>
 
-      {/* 🔴 الحركات اليدوية للإيداع والسحب */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* إيداع يدوي */}
-        <div className="bg-white border text-right border-emerald-100 rounded-xl p-3 shadow-sm">
-          <div className="flex items-center gap-1.5 mb-3 text-emerald-800">
-            <div className="bg-emerald-100 p-1.5 rounded-full">
-              <Plus className="w-4 h-4" />
-            </div>
-            <h3 className="font-bold text-sm">إيداع نقدي بالخزينة</h3>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2.5">
+          <div>
+            <h2 className="text-sm font-black text-slate-900">
+              سجل حركة الرصيد النشط
+            </h2>
+            <p className="text-[10px] font-bold text-slate-500">
+              الإيداعات والسحوبات اليدوية فقط — القديم أعلى والجديد أسفل
+            </p>
           </div>
+          <span className={`rounded-xl px-3 py-1.5 text-xs font-black ${
+            summary.activeCash < 0
+              ? 'bg-rose-100 text-rose-800'
+              : 'bg-emerald-100 text-emerald-800'
+          }`}>
+            الرصيد الحالي: {money(summary.activeCash)}
+          </span>
+        </header>
 
-          <form onSubmit={handleDeposit} className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
-                  المبلغ المودع
-                </label>
+        <div className="max-h-[68vh] overflow-auto">
+          <table className="min-w-[1050px] w-full border-collapse text-[11px]">
+            <thead className="sticky top-0 z-20 bg-emerald-800 text-white shadow-sm">
+              <tr>
+                {[
+                  'ت',
+                  'التاريخ',
+                  'نوع الحركة',
+                  'اسم المنفذ',
+                  'البيان',
+                  'إيداع',
+                  'سحب',
+                  'الرصيد بعد الحركة',
+                  'تعديل',
+                  'مسح',
+                ].map((header) => (
+                  <th key={header} className="border-l border-emerald-700 px-2 py-2 font-black">
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rowsWithBalance.map(({ transaction, sequence, runningBalance }) => {
+                const inbound = transaction.type === 'in';
+                return (
+                  <tr
+                    key={transaction.id}
+                    className={`border-b ${
+                      inbound
+                        ? 'border-emerald-100 bg-emerald-50/70'
+                        : 'border-rose-100 bg-rose-50/70'
+                    }`}
+                  >
+                    <td className="px-2 py-2 text-center font-mono font-black">{sequence}</td>
+                    <td className="px-2 py-2 text-center font-mono">
+                      {new Date(transaction.date).toLocaleString('ar-LY', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </td>
+                    <td className={`px-2 py-2 text-center font-black ${
+                      inbound ? 'text-emerald-700' : 'text-rose-700'
+                    }`}>
+                      {inbound ? 'إيداع' : 'سحب'}
+                    </td>
+                    <td className="px-2 py-2 font-bold">{transaction.actorName || 'غير محدد'}</td>
+                    <td className="max-w-[260px] truncate px-2 py-2" title={transaction.note || ''}>
+                      {transaction.note || '—'}
+                    </td>
+                    <td className="px-2 py-2 text-center font-mono font-black text-emerald-700">
+                      {inbound ? money(transaction.amount) : '—'}
+                    </td>
+                    <td className="px-2 py-2 text-center font-mono font-black text-rose-700">
+                      {!inbound ? money(transaction.amount) : '—'}
+                    </td>
+                    <td className={`px-2 py-2 text-center font-mono font-black ${
+                      runningBalance < 0 ? 'text-rose-700' : 'text-slate-900'
+                    }`}>
+                      {money(runningBalance)}
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(transaction)}
+                        className="rounded-lg p-1.5 text-emerald-700 hover:bg-emerald-100"
+                        aria-label="تعديل الحركة"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    </td>
+                    <td className="px-2 py-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setDeleting(transaction)}
+                        className="rounded-lg p-1.5 text-rose-700 hover:bg-rose-100"
+                        aria-label="مسح الحركة"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {rowsWithBalance.length === 0 && (
+                <tr>
+                  <td colSpan={10} className="p-10 text-center font-bold text-slate-400">
+                    لا توجد حركات يدوية في الرصيد النشط بعد.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot className="sticky bottom-0 bg-emerald-100 text-emerald-950">
+              <tr>
+                <td colSpan={7} className="px-4 py-2 text-left font-black">
+                  الرصيد النشط الحالي
+                </td>
+                <td className={`px-2 py-2 text-center font-mono text-sm font-black ${
+                  summary.activeCash < 0 ? 'text-rose-700' : 'text-emerald-800'
+                }`}>
+                  {money(summary.activeCash)}
+                </td>
+                <td colSpan={2} />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      {movementMode && (
+        <Modal
+          title={editing
+            ? 'تعديل حركة الرصيد النشط'
+            : movementMode === 'deposit'
+              ? 'إيداع نقدي بالخزينة'
+              : 'سحب نقدي من الخزينة'}
+          onClose={resetForm}
+        >
+          <form onSubmit={saveMovement} className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="المبلغ">
                 <input
-                  type="number"
-                  required
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="w-full p-1.5 border border-emerald-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none font-bold text-sm text-emerald-900 bg-emerald-50/50"
+                  type="text"
+                  inputMode="numeric"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-3 text-center font-mono font-black outline-none focus:border-emerald-500"
+                  autoFocus
                 />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
-                  اسم المودع
-                </label>
-                <div className="relative">
-                  <UserCircle className="w-3 h-3 absolute top-1/2 right-2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="اسم المنفذ"
-                    value={depositActor}
-                    onChange={(e) => setDepositActor(e.target.value)}
-                    className="w-full p-1.5 pr-6 border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-[11px]"
-                  />
-                </div>
-              </div>
+              </Field>
+              <Field label="اسم المنفذ">
+                <input
+                  value={actorName}
+                  onChange={(event) => setActorName(event.target.value)}
+                  className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-emerald-500"
+                />
+              </Field>
             </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
-                البيان (اختياري)
-              </label>
-              <input
-                type="text"
-                placeholder="ملاحظات..."
-                value={depositNote}
-                onChange={(e) => setDepositNote(e.target.value)}
-                className="w-full p-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-emerald-500 outline-none text-[11px]"
+            <Field label="البيان">
+              <textarea
+                rows={3}
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 p-3 outline-none focus:border-emerald-500"
               />
-            </div>
-
+            </Field>
+            <Field label="التاريخ والوقت">
+              <input
+                type="datetime-local"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="w-full rounded-xl border border-slate-300 p-3 font-mono outline-none focus:border-emerald-500"
+              />
+            </Field>
             <button
               type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 rounded-lg transition text-[11px]"
+              className={`w-full rounded-xl py-3 text-sm font-black text-white ${
+                movementMode === 'deposit'
+                  ? 'bg-emerald-700 hover:bg-emerald-800'
+                  : 'bg-rose-700 hover:bg-rose-800'
+              }`}
             >
-              تأكيد الإدخال
+              {editing ? 'حفظ التعديل' : movementMode === 'deposit' ? 'تأكيد الإيداع' : 'تأكيد السحب'}
             </button>
           </form>
-        </div>
+        </Modal>
+      )}
 
-        {/* سحب يدوي */}
-        <div className="bg-white border text-right border-rose-100 rounded-xl p-3 shadow-sm">
-          <div className="flex items-center gap-1.5 mb-3 text-rose-800">
-            <div className="bg-rose-100 p-1.5 rounded-full">
-              <Minus className="w-4 h-4" />
-            </div>
-            <h3 className="font-bold text-sm">سحب نقدي من الخزينة</h3>
-          </div>
-
-          <form onSubmit={handleWithdraw} className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
-                  المبلغ المسحوب
-                </label>
-                <input
-                  type="number"
-                  required
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="w-full p-1.5 border border-rose-200 rounded-lg focus:ring-1 focus:ring-rose-500 outline-none font-bold text-sm text-rose-900 bg-rose-50/50"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
-                  اسم المستلم أو الساحب
-                </label>
-                <div className="relative">
-                  <UserCircle className="w-3 h-3 absolute top-1/2 right-2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="استلمها / سحبها"
-                    value={withdrawActor}
-                    onChange={(e) => setWithdrawActor(e.target.value)}
-                    className="w-full p-1.5 pr-6 border border-slate-200 rounded-lg focus:ring-1 focus:ring-rose-500 outline-none text-[11px]"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-600 mb-0.5">
-                التفاصيل والبيان
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="سبب السحب..."
-                value={withdrawNote}
-                onChange={(e) => setWithdrawNote(e.target.value)}
-                className="w-full p-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-rose-500 outline-none text-[11px]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 rounded-lg transition text-[11px]"
-            >
-              تأكيد وخصم
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* 🔴 سجل الحركات اليدوية للإيداع والسحب المقسّمة */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-          <h3 className="font-extrabold text-sm text-slate-800 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-indigo-600" />
-            سجل حركة الخزينة (إيداعات وسحوبات)
-          </h3>
+      {deleting && (
+        <Modal title="مسح حركة من الرصيد النشط" onClose={() => setDeleting(null)}>
+          <p className="mb-4 rounded-xl bg-rose-50 p-4 text-sm font-bold leading-7 text-rose-800">
+            سيتم نقل الحركة إلى سلة المهملات وإعادة حساب الرصيد النشط والسجل فورًا.
+          </p>
           <button
-            onClick={() => setShowResetConfirm(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg font-bold text-[10px] transition cursor-pointer"
+            type="button"
+            onClick={confirmDelete}
+            className="w-full rounded-xl bg-rose-700 py-3 text-sm font-black text-white"
           >
-            <RotateCcw className="w-3 h-3" />
-            تصفير السجلات
+            تأكيد المسح
           </button>
-        </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-          {/* جدول المودعات */}
-          <div>
-            <div className="flex items-center justify-between bg-emerald-50 px-3 py-2 border border-emerald-100 rounded-t-lg">
-              <span className="text-emerald-800 font-extrabold text-xs">
-                إيداعات بالخزينة
-              </span>
-              <span className="text-emerald-600 font-bold text-[10px] bg-emerald-100 px-2 py-0.5 rounded-md">
-                {validTreasuryTxs.filter((tx) => tx.type === "in").length}{" "}
-                عمليات
-              </span>
-            </div>
-            <div className="w-full border-x border-b border-emerald-100 rounded-b-lg overflow-x-auto">
-              <table className="w-full text-right whitespace-nowrap">
-                <thead className="bg-emerald-50/50">
-                  <tr>
-                    <th className="px-2 py-1.5 text-emerald-700 font-black border-b border-emerald-100 text-[9px] w-8 text-center">
-                      ت
-                    </th>
-                    <th className="px-2 py-1.5 text-emerald-700 font-bold border-b border-emerald-100 text-[10px]">
-                      الاسم
-                    </th>
-                    <th className="px-2 py-1.5 text-emerald-700 font-bold border-b border-emerald-100 text-[10px]">
-                      المبلغ
-                    </th>
-                    <th className="px-2 py-1.5 text-emerald-700 font-bold border-b border-emerald-100 text-[10px]">
-                      البيان
-                    </th>
-                    <th className="px-2 py-1.5 text-emerald-700 font-bold border-b border-emerald-100 text-[10px]">
-                      التاريخ واليوم
-                    </th>
-                    <th className="px-2 py-1.5 text-emerald-700 font-bold border-b border-emerald-100 text-[10px] w-8"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-emerald-50">
-                  {validTreasuryTxs
-                    .filter((tx) => tx.type === "in")
-                    .map((tx, idx, arr) => {
-                      const match = tx.description.match(/\[(.*?)\](.*)/);
-                      const actorName = match
-                        ? match[1]
-                            .replace("المودع:", "")
-                            .replace("الساحب:", "")
-                            .trim()
-                        : "متفرقات";
-                      const noteStr = match ? match[2].trim() : tx.description;
-                      const d = new Date(tx.date);
-                      const isNew = true; // since we will reverse
-                      const seqNum = arr.length - idx; // new descending seq
-                      return (
-                        <tr
-                          key={tx.id}
-                          className="hover:bg-emerald-100 transition even:bg-emerald-50 odd:bg-white border-b border-emerald-100"
-                        >
-                          <td className="px-2 py-1 text-emerald-600/70 font-black text-[9px] text-center border-l border-emerald-50 bg-emerald-50/20">
-                            {seqNum}
-                          </td>
-                          <td
-                            className="px-2 py-1 text-slate-700 font-bold text-[10px] max-w-[80px] truncate"
-                            title={actorName}
-                          >
-                            {actorName}
-                          </td>
-                          <td className="px-2 py-1 text-emerald-700 font-black text-[10px] font-mono">
-                            +{tx.amount.toLocaleString()}
-                          </td>
-                          <td
-                            className="px-2 py-1 text-slate-500 font-medium text-[9px] max-w-[100px] truncate"
-                            title={noteStr}
-                          >
-                            {noteStr || "-"}
-                          </td>
-                          <td className="px-2 py-1 text-slate-500 font-mono text-[9px]">
-                            {d.toLocaleDateString("ar-EG", {
-                              weekday: "short",
-                            })}{" "}
-                            {d.toLocaleDateString("en-GB")}
-                          </td>
-                          <td className="px-2 py-1 text-center">
-                            <button
-                              onClick={() => setDeleteConfirmId(tx.id)}
-                              className="text-emerald-400 hover:text-rose-500 transition cursor-pointer"
-                            >
-                              <Trash2 className="w-3 h-3 mx-auto" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                    .reverse()}
-                  {validTreasuryTxs.filter((tx) => tx.type === "in").length ===
-                    0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-2 py-3 text-center text-[10px] text-emerald-500/60 font-bold"
-                      >
-                        لا يوجد إيداعات حتى الآن
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* جدول المسحوبات */}
-          <div>
-            <div className="flex items-center justify-between bg-rose-50 px-3 py-2 border border-rose-100 rounded-t-lg">
-              <span className="text-rose-800 font-extrabold text-xs">
-                سحوبات من الخزينة
-              </span>
-              <span className="text-rose-600 font-bold text-[10px] bg-rose-100 px-2 py-0.5 rounded-md">
-                {validTreasuryTxs.filter((tx) => tx.type === "out").length}{" "}
-                عمليات
-              </span>
-            </div>
-            <div className="w-full border-x border-b border-rose-100 rounded-b-lg overflow-x-auto">
-              <table className="w-full text-right whitespace-nowrap">
-                <thead className="bg-rose-50/50">
-                  <tr>
-                    <th className="px-2 py-1.5 text-rose-700 font-black border-b border-rose-100 text-[9px] w-8 text-center">
-                      ت
-                    </th>
-                    <th className="px-2 py-1.5 text-rose-700 font-bold border-b border-rose-100 text-[10px]">
-                      الاسم
-                    </th>
-                    <th className="px-2 py-1.5 text-rose-700 font-bold border-b border-rose-100 text-[10px]">
-                      المبلغ
-                    </th>
-                    <th className="px-2 py-1.5 text-rose-700 font-bold border-b border-rose-100 text-[10px]">
-                      البيان
-                    </th>
-                    <th className="px-2 py-1.5 text-rose-700 font-bold border-b border-rose-100 text-[10px]">
-                      التاريخ واليوم
-                    </th>
-                    <th className="px-2 py-1.5 text-rose-700 font-bold border-b border-rose-100 text-[10px] w-8"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-rose-50">
-                  {validTreasuryTxs
-                    .filter((tx) => tx.type === "out")
-                    .map((tx, idx, arr) => {
-                      const match = tx.description.match(/\[(.*?)\](.*)/);
-                      const actorName = match
-                        ? match[1]
-                            .replace("المودع:", "")
-                            .replace("الساحب:", "")
-                            .trim()
-                        : "متفرقات";
-                      const noteStr = match ? match[2].trim() : tx.description;
-                      const d = new Date(tx.date);
-                      const seqNum = arr.length - idx; // new descending seq
-                      return (
-                        <tr
-                          key={tx.id}
-                          className="hover:bg-rose-100 transition even:bg-rose-50 odd:bg-white border-b border-rose-100"
-                        >
-                          <td className="px-2 py-1 text-rose-600/70 font-black text-[9px] text-center border-l border-rose-50 bg-rose-50/20">
-                            {seqNum}
-                          </td>
-                          <td
-                            className="px-2 py-1 text-slate-700 font-bold text-[10px] max-w-[80px] truncate"
-                            title={actorName}
-                          >
-                            {actorName}
-                          </td>
-                          <td className="px-2 py-1 text-rose-700 font-black text-[10px] font-mono">
-                            -{tx.amount.toLocaleString()}
-                          </td>
-                          <td
-                            className="px-2 py-1 text-slate-500 font-medium text-[9px] max-w-[100px] truncate"
-                            title={noteStr}
-                          >
-                            {noteStr || "-"}
-                          </td>
-                          <td className="px-2 py-1 text-slate-500 font-mono text-[9px]">
-                            {d.toLocaleDateString("ar-EG", {
-                              weekday: "short",
-                            })}{" "}
-                            {d.toLocaleDateString("en-GB")}
-                          </td>
-                          <td className="px-2 py-1 text-center">
-                            <button
-                              onClick={() => setDeleteConfirmId(tx.id)}
-                              className="text-rose-400 hover:text-rose-600 transition cursor-pointer"
-                            >
-                              <Trash2 className="w-3 h-3 mx-auto" />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                    .reverse()}
-                  {validTreasuryTxs.filter((tx) => tx.type === "out").length ===
-                    0 && (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-2 py-3 text-center text-[10px] text-rose-500/60 font-bold"
-                      >
-                        لا يوجد سحوبات حتى الآن
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+function SummaryCard({
+  title,
+  value,
+  note,
+  icon,
+  negative = false,
+}: {
+  title: string;
+  value: string;
+  note: string;
+  icon: React.ReactNode;
+  negative?: boolean;
+}) {
+  return (
+    <article className={`flex min-h-[118px] flex-col justify-between rounded-2xl border p-3 text-white shadow-md ${
+      negative
+        ? 'border-rose-500 bg-rose-700'
+        : 'border-emerald-600 bg-emerald-700'
+    }`}>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[11px] font-black leading-5">{title}</span>
+        <span className="rounded-xl bg-white/15 p-1.5 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
       </div>
+      <strong className="font-mono text-xl font-black">{value}</strong>
+      <span className="text-[9px] font-bold leading-4 text-white/75">{note}</span>
+    </article>
+  );
+}
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
-          <div
-            className="bg-white rounded-2xl p-6 shadow-2xl w-full max-w-sm text-center"
-            dir="rtl"
+function ActionCard({
+  title,
+  note,
+  icon,
+  onClick,
+  tone,
+}: {
+  title: string;
+  note: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone: 'green' | 'red';
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[118px] flex-col items-center justify-center gap-2 rounded-2xl border-2 bg-white p-3 text-center shadow-md transition hover:-translate-y-0.5 ${
+        tone === 'green'
+          ? 'border-emerald-500 text-emerald-800 hover:bg-emerald-50'
+          : 'border-rose-500 text-rose-800 hover:bg-rose-50'
+      }`}
+    >
+      <span className={`rounded-full border-2 p-2 [&>svg]:h-5 [&>svg]:w-5 ${
+        tone === 'green' ? 'border-emerald-500' : 'border-rose-500'
+      }`}>
+        {icon}
+      </span>
+      <strong className="text-sm font-black">{title}</strong>
+      <span className="text-[9px] font-bold opacity-70">{note}</span>
+    </button>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-black text-slate-700">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl">
+        <header className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+          <h3 className="text-base font-black text-slate-900">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"
           >
-            <div className="mx-auto w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-4">
-              <Trash2 className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">
-              تأكيد حذف المعاملة
-            </h3>
-            <p className="text-sm text-slate-500 mb-6">
-              هل أنت متأكد من حذف هذه المعاملة النشطة والخزينة ستقوم بتعديل
-              الرصيد؟
-            </p>
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={confirmDeleteTransaction}
-                className="px-5 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition"
-              >
-                تأكيد الحذف
-              </button>
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="px-5 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reset Treasury Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div
-            className="bg-white border-2 border-rose-500 rounded-3xl p-6 shadow-2xl w-full max-w-md text-right border"
-            dir="rtl"
-          >
-            <div className="flex items-center gap-3 mb-4 text-rose-600">
-              <ShieldAlert className="w-8 h-8" />
-              <h3 className="text-xl font-black">تحذير خطير: تصفير الخزينة</h3>
-            </div>
-            <p className="text-sm font-semibold text-slate-600 mb-4 leading-relaxed">
-              هذا الإجراء سيقوم بحذف كافة الحركات النقدية (الإيداع والسحب) من
-              الخزينة المركزية بشكل، وسيتم إعادة الرصيد النشط إلى صفر د.ل.
-            </p>
-
-            <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl mb-6">
-              <p className="text-xs font-bold text-rose-800 mb-2">
-                للتأكيد، يرجى كتابة كلمة "تأكيد" في المربع أدناه:
-              </p>
-              <input
-                type="text"
-                placeholder="أكتب: تأكيد"
-                value={resetConfirmWord}
-                onChange={(e) => setResetConfirmWord(e.target.value)}
-                className="w-full text-center p-3 border border-rose-300 rounded-lg focus:outline-none focus:border-rose-500 font-bold text-rose-900 mx-auto"
-              />
-            </div>
-
-            <div className="flex gap-3 justify-end mt-6">
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="px-6 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition"
-              >
-                تراجع وإلغاء
-              </button>
-              <button
-                onClick={executeResetTreasury}
-                disabled={resetConfirmWord !== "تأكيد"}
-                className="px-6 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                تنفيذ التصفير
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        {children}
+      </section>
     </div>
   );
 }

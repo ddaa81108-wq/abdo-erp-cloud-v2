@@ -37,7 +37,6 @@ import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
 import {
   synchronizeTrustDeposit,
-  synchronizeTrustTreasury,
 } from "./domain/trustAccounts";
 
 // Import modules
@@ -68,9 +67,12 @@ const normalizeBusinessState = (value: ERPState): ERPState => {
       value.debtTransactions || [],
     ),
     trustDeposits,
-    treasuryTransactions: synchronizeTrustTreasury(
-      trustDeposits,
-      value.treasuryTransactions || [],
+    // The active treasury ledger is intentionally manual-only. Other modules
+    // contribute through their summary cards, never as cash movements.
+    treasuryTransactions: (value.treasuryTransactions || []).filter(
+      (transaction) =>
+        transaction.source === "manual_deposit" ||
+        transaction.source === "manual_withdraw",
     ),
   };
 };

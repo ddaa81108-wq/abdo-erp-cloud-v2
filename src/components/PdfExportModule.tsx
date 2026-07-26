@@ -4,6 +4,7 @@ import { toPng } from 'html-to-image';
 import { FileText, Printer, CheckCircle, Shield, Award, Sparkles, MapPin, Calendar, Clock, Loader2 } from 'lucide-react';
 import { ERPState } from '../types';
 import { calculatePurchaseTotals } from '../domain/purchaseLedger';
+import { manualTreasuryTransactions } from '../domain/treasurySummary';
 
 interface PdfExportModuleProps {
   state: ERPState;
@@ -227,21 +228,22 @@ export default function PdfExportModule({ state }: PdfExportModuleProps) {
         reportTitle = 'تقرير قائمة كشف رصيد وحركة الخزنة المركزية';
         tableHeaders = ['رقم', 'التاريخ', 'تفاصيل الحركة والقيد', 'المصدر الأساسي', 'نوع المعاملة', 'المبلغ المحصّل'];
         
-        const txs = state.treasuryTransactions || [];
+        const txs = manualTreasuryTransactions(state).filter((transaction) => !transaction.isDeleted);
         let totalIn = 0;
         let totalOut = 0;
 
         tableRowsHtml = txs.map((t, idx) => {
-          if (t.type === 'in') totalIn += t.amount;
-          else totalOut += t.amount;
+          const localAmount = (Number(t.amount) || 0) * (Number(t.conversionRate) || 1);
+          if (t.type === 'in') totalIn += localAmount;
+          else totalOut += localAmount;
           return `
             <tr>
               <td style="text-align: center; font-family: monospace;">${idx + 1}</td>
               <td style="text-align: center; font-size: 11px;">${new Date(t.date).toLocaleDateString('ar-LY')}</td>
               <td style="font-weight: bold; color: #1e293b;">${t.description}</td>
-              <td style="text-align: center; font-size: 11px; font-weight: bold;">${t.source === 'customer_payment' ? 'سداد عميل' : 'سداد شركات'}</td>
+              <td style="text-align: center; font-size: 11px; font-weight: bold;">${t.source === 'manual_deposit' ? 'إيداع نقدي يدوي' : 'سحب نقدي يدوي'}</td>
               <td style="text-align: center; font-weight: bold; color: ${t.type === 'in' ? '#15803d' : '#b91c1c'};">${t.type === 'in' ? 'وارد للدرج 📥' : 'صادر وتخليص 📤'}</td>
-              <td style="text-align: left; font-family: monospace; font-weight: 900; color: ${t.type === 'in' ? '#15803d' : '#b91c1c'};">${(t.amount || 0).toLocaleString()} د.ل</td>
+              <td style="text-align: left; font-family: monospace; font-weight: 900; color: ${t.type === 'in' ? '#15803d' : '#b91c1c'};">${localAmount.toLocaleString()} د.ل</td>
             </tr>
           `;
         }).join('');

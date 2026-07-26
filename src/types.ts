@@ -117,6 +117,10 @@ export interface TreasuryTransaction {
   description: string;
   createdAt: string;
   isDeleted?: boolean;
+  actorName?: string;
+  note?: string;
+  updatedAt?: string;
+  deletedAt?: string;
 }
 
 export interface PurchaseRecord {
@@ -279,6 +283,7 @@ export interface ERPState {
   merchants: Merchant[];
   merchantTransactions: MerchantTransaction[];
   treasuryTransactions?: any[];
+  treasuryLedgerVersion?: number;
   purchases: PurchaseRecord[];
   purchaseAccounts?: PurchaseAccountState[];
   purchaseAuditLog?: PurchaseAuditEntry[];
@@ -371,6 +376,7 @@ export const INITIAL_ERP_STATE: ERPState = {
     // Purchase transaction posted (will decrease safe balance)
     { id: 'tx_t_6', type: 'out', amount: 12000, currency: 'د.ل', conversionRate: 1, date: '2026-06-02T10:00:00', referenceNo: 'TX-2026-000295', source: 'purchase', sourceId: 'p_1', description: 'مشتريات مسددة: كابلات ضغط عالي مجلفنة', createdAt: '2026-06-02T10:00:00' }
   ],
+  treasuryLedgerVersion: 0,
   purchases: [],
   purchaseAccounts: [],
   purchaseAuditLog: [],

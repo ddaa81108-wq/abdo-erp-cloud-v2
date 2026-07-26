@@ -181,7 +181,7 @@ export default function DepositsModule({
     [state, newName],
   );
   const totalLyd = accounts.reduce(
-    (sum, account) => sum + Math.max(account.amountLyd, 0),
+    (sum, account) => sum + account.amountLyd,
     0,
   );
   const totalEgp = accounts.reduce(
