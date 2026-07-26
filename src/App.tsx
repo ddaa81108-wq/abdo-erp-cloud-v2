@@ -36,7 +36,6 @@ import {
 } from "./services/erpSyncService";
 import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
-import { collectSystemAuditEntries } from "./domain/systemAudit";
 import {
   AUTO_BACKUP_INTERVAL_MS,
   isAutoBackupDue,
@@ -54,7 +53,6 @@ import CompaniesModule from "./components/CompaniesModule";
 import TreasuryModule from "./components/TreasuryModule";
 import PurchasesModule from "./components/PurchasesModule";
 import DepositsModule from "./components/DepositsModule";
-import TransactionLogModule from "./components/TransactionLogModule";
 import TrashCanModule from "./components/TrashCanModule";
 import MailManualModule from "./components/MailManualModule";
 import FinancialReportsModule from "./components/FinancialReportsModule";
@@ -62,7 +60,7 @@ import GlobalCalculator from "./components/GlobalCalculator";
 
 const normalizeBusinessState = (value: ERPState): ERPState => {
   const trustDeposits = (value.trustDeposits || []).map(synchronizeTrustDeposit);
-  return {
+  const normalized = {
     ...value,
     ...migrateLegacyBusinessAccounts(
       value.companies || [],
@@ -83,6 +81,11 @@ const normalizeBusinessState = (value: ERPState): ERPState => {
         transaction.source === "manual_withdraw",
     ),
   };
+  // The comprehensive audit section was retired. Each business module keeps
+  // its own operational ledger, so duplicate global entries are not retained.
+  delete (normalized as any).systemAuditLog;
+  delete (normalized as any).systemAuditMigrationVersion;
+  return normalized;
 };
 
 export default function App() {
@@ -549,18 +552,7 @@ export default function App() {
   const updateStateAndSync = async (newState: ERPState) => {
     const baseState = stateRef.current;
     const normalizedState = normalizeBusinessState(newState);
-    const auditEntries = collectSystemAuditEntries(
-      baseState,
-      normalizedState,
-      currentUser,
-    );
-    const cleanedState = JSON.parse(JSON.stringify({
-      ...normalizedState,
-      systemAuditLog: [
-        ...(normalizedState.systemAuditLog || []),
-        ...auditEntries,
-      ],
-    }));
+    const cleanedState = JSON.parse(JSON.stringify(normalizedState));
     stateRef.current = cleanedState;
     setState(cleanedState);
 
@@ -915,7 +907,6 @@ export default function App() {
                   { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? false },
                   { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? false },
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: currentUser?.permissions?.canViewFinancialReports ?? false },
-                  { id: "transaction_log", label: "9. سجل المعاملات الشامل 📝", enabled: currentUser?.permissions?.canViewTransactionLog ?? false },
                   { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: currentUser?.permissions?.canViewTrash ?? false },
                   { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
                   { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? false },
@@ -975,7 +966,6 @@ export default function App() {
                   {activeTabIsAllowed && activeTab === "financial_reports" && <FinancialReportsModule />}
                   {activeTabIsAllowed && activeTab === "purchases" && <PurchasesModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTabIsAllowed && activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
-                  {activeTabIsAllowed && activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "backup" && <BackupCenter state={state} isOnline={isOnlineMode} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}
                   {activeTabIsAllowed && activeTab === "settings" && <SettingsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onUpdateCurrentSession={handleUpdateCurrentSession} />}

@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { INITIAL_ERP_STATE, type ERPState } from '../types';
 import {
-  auditMonthKey,
   assembleErpStateFromStorage,
-  changedAuditMonths,
   changedChunkKeys,
-  groupAuditEntriesByMonth,
   mergeErpStateChanges,
   splitErpStateForStorage,
 } from './erpSyncService';
@@ -135,35 +132,4 @@ describe('ERP concurrent merge', () => {
     expect(assembled.users).toEqual(current.users);
   });
 
-  it('partitions the comprehensive audit log by calendar month', () => {
-    const entries = [
-      {
-        id: 'audit-1',
-        occurredAt: '2026-07-31T23:00:00.000Z',
-        action: 'create' as const,
-        section: 'الخزينة',
-        entityType: 'transaction',
-        entityId: 'one',
-        title: 'إضافة',
-        details: '',
-      },
-      {
-        id: 'audit-2',
-        occurredAt: '2026-08-01T01:00:00.000Z',
-        action: 'update' as const,
-        section: 'الخزينة',
-        entityType: 'transaction',
-        entityId: 'two',
-        title: 'تعديل',
-        details: '',
-      },
-    ];
-    expect(auditMonthKey(entries[0])).toBe('2026_07');
-    expect([...groupAuditEntriesByMonth(entries).keys()]).toEqual([
-      '2026_07',
-      '2026_08',
-    ]);
-    expect(changedAuditMonths([], entries)).toEqual(['2026_07', '2026_08']);
-    expect(changedAuditMonths(entries, entries)).toEqual([]);
-  });
 });

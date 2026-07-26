@@ -36,7 +36,6 @@ const permissionColumns: Array<{
   { key: 'canViewPurchases', label: 'المشتريات' },
   { key: 'canViewTreasury', label: 'الخزينة' },
   { key: 'canViewFinancialReports', label: 'التقارير المالية' },
-  { key: 'canViewTransactionLog', label: 'سجل المعاملات' },
   { key: 'canViewTrash', label: 'سلة المهملات' },
   { key: 'canViewBackup', label: 'النسخ الاحتياطي' },
   { key: 'canImportExcel', label: 'استيراد Excel' },

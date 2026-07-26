@@ -5,9 +5,7 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
-import type { BackupPoint, ERPState, SystemAuditEntry } from '../types';
-
-const AUDIT_STORAGE_VERSION = 1;
+import type { BackupPoint, ERPState } from '../types';
 
 const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'customers',
@@ -27,7 +25,6 @@ const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'users',
   'egyptianCashRecords',
   'notesAndReminders',
-  'systemAuditLog',
 ]);
 
 export const CHUNK_ARRAY_KEYS: Array<keyof ERPState> = [
@@ -40,34 +37,6 @@ export const chunkDocumentId = (key: keyof ERPState) => {
   if (key === 'purchases') return 'chunk_purchases';
   return `chunk_${String(key).replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`;
 };
-
-export const auditMonthKey = (entry: Pick<SystemAuditEntry, 'occurredAt'>) => {
-  const match = String(entry.occurredAt || '').match(/^(\d{4})-(\d{2})/);
-  return match ? `${match[1]}_${match[2]}` : 'unknown';
-};
-
-export function groupAuditEntriesByMonth(entries: SystemAuditEntry[] = []) {
-  const groups = new Map<string, SystemAuditEntry[]>();
-  entries.forEach((entry) => {
-    const month = auditMonthKey(entry);
-    groups.set(month, [...(groups.get(month) || []), entry]);
-  });
-  return groups;
-}
-
-const auditMonthDocumentId = (month: string) =>
-  `chunk_system_audit_${month}`;
-
-export function changedAuditMonths(
-  base: SystemAuditEntry[] = [],
-  next: SystemAuditEntry[] = [],
-) {
-  const before = groupAuditEntriesByMonth(base);
-  const after = groupAuditEntriesByMonth(next);
-  return [...new Set([...before.keys(), ...after.keys()])]
-    .filter((month) => !same(before.get(month) || [], after.get(month) || []))
-    .sort();
-}
 
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 
@@ -164,6 +133,10 @@ export function splitErpStateForStorage(state: ERPState) {
       : values;
     delete mainState[key];
   }
+  // Retired global-audit fields may still exist in an imported legacy object.
+  // Never put them back into main_state or upload them with normal saves.
+  delete mainState.systemAuditLog;
+  delete mainState.systemAuditMigrationVersion;
 
   return { mainState, chunks };
 }
@@ -187,6 +160,8 @@ export function assembleErpStateFromStorage(
   // chunk data during an incremental refresh.
   const scalarMainData: any = { ...cleanMainData };
   CHUNK_ARRAY_KEYS.forEach((key) => delete scalarMainData[key]);
+  delete scalarMainData.systemAuditLog;
+  delete scalarMainData.systemAuditMigrationVersion;
   const assembled: any = currentState
     ? { ...structuredClone(currentState), ...scalarMainData }
     : { ...scalarMainData };
@@ -241,9 +216,7 @@ export async function writeMergedErpState(
     );
   }
   const mainRef = doc(db, 'erp_system', 'main_state');
-  const chunkRefs = changedChunks
-    .filter((key) => key !== 'systemAuditLog')
-    .map((key) => ({
+  const chunkRefs = changedChunks.map((key) => ({
     key,
     ref: doc(db, 'erp_system', chunkDocumentId(key)),
   }));
@@ -251,30 +224,9 @@ export async function writeMergedErpState(
   return runTransaction(db, async (transaction) => {
     const mainSnapshot = await transaction.get(mainRef);
     const mainData = mainSnapshot.data() || {};
-    const needsAuditMigration =
-      changedChunks.includes('systemAuditLog')
-      && Number(mainData._auditStorageVersion || 0) < AUDIT_STORAGE_VERSION;
-    const auditMonths = changedChunks.includes('systemAuditLog')
-      ? (
-          needsAuditMigration
-            ? [...groupAuditEntriesByMonth([
-                ...(base.systemAuditLog || []),
-                ...(next.systemAuditLog || []),
-              ]).keys()]
-            : changedAuditMonths(
-                base.systemAuditLog || [],
-                next.systemAuditLog || [],
-              )
-        )
-      : [];
-    const auditRefs = auditMonths.map((month) => ({
-      month,
-      ref: doc(db, 'erp_system', auditMonthDocumentId(month)),
-    }));
-    const [chunkSnapshots, auditSnapshots] = await Promise.all([
-      Promise.all(chunkRefs.map(({ ref }) => transaction.get(ref))),
-      Promise.all(auditRefs.map(({ ref }) => transaction.get(ref))),
-    ]);
+    const chunkSnapshots = await Promise.all(
+      chunkRefs.map(({ ref }) => transaction.get(ref)),
+    );
     const remoteChunks = Object.fromEntries(
       chunkRefs.map(({ key }, index) => [
         key,
@@ -284,52 +236,19 @@ export async function writeMergedErpState(
     const remote = mainSnapshot.exists()
       ? assembleErpStateFromStorage(mainData, remoteChunks, base)
       : base;
-    if (changedChunks.includes('systemAuditLog') && !needsAuditMigration) {
-      const remoteAuditGroups = groupAuditEntriesByMonth(
-        remote.systemAuditLog || [],
-      );
-      auditRefs.forEach(({ month }, index) => {
-        const snapshot = auditSnapshots[index];
-        remoteAuditGroups.set(
-          month,
-          snapshot?.exists()
-            ? (snapshot.data().systemAuditLog || [])
-            : [],
-        );
-      });
-      remote.systemAuditLog = [...remoteAuditGroups.values()].flat();
-    }
     const merged = mergeErpStateChanges(base, next, remote);
     const split = splitErpStateForStorage(merged);
     const revision = (mainData._syncRevision || 0) + 1;
-    const mergedAuditGroups = groupAuditEntriesByMonth(
-      merged.systemAuditLog || [],
-    );
-    const auditStorageVersion =
-      Number(mainData._auditStorageVersion || 0) >= AUDIT_STORAGE_VERSION
-      || changedChunks.includes('systemAuditLog')
-        ? AUDIT_STORAGE_VERSION
-        : 0;
 
     transaction.set(mainRef, {
       ...split.mainState,
       _syncRevision: revision,
       _updatedAt: new Date().toISOString(),
       _changedChunks: changedChunks.map(String),
-      _auditStorageVersion: auditStorageVersion,
-      _auditMonths: [...mergedAuditGroups.keys()].sort(),
-      _changedAuditMonths: auditMonths,
     });
     for (const { key, ref } of chunkRefs) {
       transaction.set(ref, {
         [key]: split.chunks[key] || [],
-        _syncRevision: revision,
-      });
-    }
-    for (const { month, ref } of auditRefs) {
-      transaction.set(ref, {
-        systemAuditLog: mergedAuditGroups.get(month) || [],
-        month,
         _syncRevision: revision,
       });
     }
@@ -346,13 +265,7 @@ export async function loadCompleteErpState(
   } = {},
 ): Promise<ERPState> {
   const keys = options.chunkKeys || CHUNK_ARRAY_KEYS;
-  const wantsAudit = keys.includes('systemAuditLog');
-  const usesMonthlyAudit =
-    Number(mainData._auditStorageVersion || 0) >= AUDIT_STORAGE_VERSION;
-  const regularKeys = keys.filter(
-    (key) => key !== 'systemAuditLog' || !usesMonthlyAudit,
-  );
-  const chunkSnapshots = await Promise.all(regularKeys.map(async (key) => ({
+  const chunkSnapshots = await Promise.all(keys.map(async (key) => ({
     key,
     snapshot: await getDoc(
       doc(db, 'erp_system', chunkDocumentId(key)),
@@ -367,32 +280,6 @@ export async function loadCompleteErpState(
     chunks,
     options.currentState,
   );
-  if (wantsAudit && usesMonthlyAudit) {
-    const months = options.currentState
-      ? (Array.isArray(mainData._changedAuditMonths)
-          ? mainData._changedAuditMonths
-          : mainData._auditMonths || [])
-      : (mainData._auditMonths || []);
-    const auditSnapshots = await Promise.all(
-      months.map((month: string) =>
-        getDoc(doc(db, 'erp_system', auditMonthDocumentId(month)))
-          .catch(() => null),
-      ),
-    );
-    const groups = groupAuditEntriesByMonth(
-      options.currentState?.systemAuditLog || [],
-    );
-    months.forEach((month: string, index: number) => {
-      const snapshot = auditSnapshots[index];
-      groups.set(
-        month,
-        snapshot?.exists()
-          ? (snapshot.data().systemAuditLog || [])
-          : [],
-      );
-    });
-    assembled.systemAuditLog = [...groups.values()].flat();
-  }
   const shouldHydrateBackups = !options.currentState || keys.includes('backupPoints');
   if (shouldHydrateBackups) assembled.backupPoints = await Promise.all((assembled.backupPoints || []).map(async (backup) => {
     if (backup.dataJson) return backup;

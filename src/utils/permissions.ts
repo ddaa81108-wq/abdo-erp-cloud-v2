@@ -10,7 +10,6 @@ export const DENIED_PERMISSIONS: UserPermissions = {
   canViewBackup: false,
   canViewMailManual: false,
   canViewFinancialReports: false,
-  canViewTransactionLog: false,
   canViewTrash: false,
   canImportExcel: false,
   canExportExcel: false,
@@ -40,7 +39,6 @@ const TAB_PERMISSION: Record<string, keyof UserPermissions> = {
   purchases: 'canViewPurchases',
   treasury: 'canViewTreasury',
   financial_reports: 'canViewFinancialReports',
-  transaction_log: 'canViewTransactionLog',
   trash_can: 'canViewTrash',
   backup: 'canViewBackup',
 };
@@ -61,7 +59,6 @@ export const NAVIGATION_ORDER = [
   'purchases',
   'treasury',
   'financial_reports',
-  'transaction_log',
   'trash_can',
   'settings',
   'backup',
