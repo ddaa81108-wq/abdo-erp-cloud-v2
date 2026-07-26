@@ -29,6 +29,7 @@ import { canAccessTab, firstAllowedTab, resolvePermissions } from "./utils/permi
 import { downloadXlsx } from "./utils/spreadsheet";
 import { createErpWorkbookSheets } from "./services/erpSpreadsheetExport";
 import {
+  CHUNK_ARRAY_KEYS,
   loadCompleteErpState,
   mergeErpStateChanges,
   writeMergedErpState,
@@ -350,6 +351,7 @@ export default function App() {
   const syncRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
   const inFlightSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
+  const lastLoadedRevisionRef = useRef(0);
 
   // 🔄 Auto Backup Logic
   const stateRef = useRef(state);
@@ -453,7 +455,6 @@ export default function App() {
           const data = docSnap.data() as any;
 
           // Legacy migration: merchants → companies
-          if (!data.users || data.users.length === 0) data.users = INITIAL_ERP_STATE.users;
           const migratedBusiness = migrateLegacyBusinessAccounts(
             Array.isArray(data.companies) ? data.companies : [],
             Array.isArray(data.companyTransactions) ? data.companyTransactions : [],
@@ -469,12 +470,33 @@ export default function App() {
           if (businessChanged) {
             await setDoc(mainRef, migratedBusiness, { merge: true });
           }
+          const incomingRevision = Number(data._syncRevision || 0);
+          const changedKeys = Array.isArray(data._changedChunks)
+            ? data._changedChunks.filter(
+                (key: unknown): key is keyof ERPState =>
+                  typeof key === 'string'
+                  && CHUNK_ARRAY_KEYS.includes(key as keyof ERPState),
+              )
+            : [];
+          const canLoadIncrementally =
+            lastLoadedRevisionRef.current > 0
+            && incomingRevision === lastLoadedRevisionRef.current + 1
+            && Array.isArray(data._changedChunks);
 
-          if (!data.trustDeposits) data.trustDeposits = INITIAL_ERP_STATE.trustDeposits || [];
-          if (!data.egyptianCashRecords) data.egyptianCashRecords = [];
-
-          // Reassemble full state from chunks
-          const fullState = normalizeBusinessState(await loadCompleteErpState(db, data));
+          // Consecutive revisions fetch only the changed sections. A new
+          // device, reconnect, or missed revision safely falls back to a full
+          // load so no remote update can be skipped.
+          const fullState = normalizeBusinessState(await loadCompleteErpState(
+            db,
+            data,
+            canLoadIncrementally
+              ? {
+                  currentState: stateRef.current,
+                  chunkKeys: changedKeys,
+                }
+              : undefined,
+          ));
+          lastLoadedRevisionRef.current = incomingRevision;
 
                    if (!unmounted) {
             setIsLoading(false);

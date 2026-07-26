@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { INITIAL_ERP_STATE, type ERPState } from '../types';
 import {
+  auditMonthKey,
   assembleErpStateFromStorage,
+  changedAuditMonths,
+  changedChunkKeys,
+  groupAuditEntriesByMonth,
   mergeErpStateChanges,
   splitErpStateForStorage,
 } from './erpSyncService';
@@ -66,5 +70,75 @@ describe('ERP concurrent merge', () => {
 
     const legacy = assembleErpStateFromStorage(source, {});
     expect(legacy.trustDeposits).toEqual(source.trustDeposits);
+  });
+
+  it('identifies only the section that actually changed', () => {
+    const base = state();
+    const next = state();
+    next.customers[0] = { ...next.customers[0], phone: '0920000000' };
+    expect(changedChunkKeys(base, next)).toEqual(['customers']);
+  });
+
+  it('applies an incremental chunk without clearing untouched sections', () => {
+    const current = state();
+    const changedCustomers = [
+      ...current.customers,
+      { id: 'incremental', name: 'Incremental', createdAt: '2026-07-27' },
+    ];
+    const assembled = assembleErpStateFromStorage(
+      { managerPasswordHash: current.managerPasswordHash },
+      { customers: { customers: changedCustomers } },
+      current,
+    );
+    expect(assembled.customers).toEqual(changedCustomers);
+    expect(assembled.debtTransactions).toEqual(current.debtTransactions);
+    expect(assembled.trustDeposits).toEqual(current.trustDeposits);
+  });
+
+  it('ignores stale legacy arrays during an incremental refresh', () => {
+    const current = state();
+    const assembled = assembleErpStateFromStorage(
+      {
+        customers: [{ id: 'stale', name: 'Stale', createdAt: '2020-01-01' }],
+        users: [],
+        managerPasswordHash: current.managerPasswordHash,
+      },
+      {},
+      current,
+    );
+    expect(assembled.customers).toEqual(current.customers);
+    expect(assembled.users).toEqual(current.users);
+  });
+
+  it('partitions the comprehensive audit log by calendar month', () => {
+    const entries = [
+      {
+        id: 'audit-1',
+        occurredAt: '2026-07-31T23:00:00.000Z',
+        action: 'create' as const,
+        section: 'الخزينة',
+        entityType: 'transaction',
+        entityId: 'one',
+        title: 'إضافة',
+        details: '',
+      },
+      {
+        id: 'audit-2',
+        occurredAt: '2026-08-01T01:00:00.000Z',
+        action: 'update' as const,
+        section: 'الخزينة',
+        entityType: 'transaction',
+        entityId: 'two',
+        title: 'تعديل',
+        details: '',
+      },
+    ];
+    expect(auditMonthKey(entries[0])).toBe('2026_07');
+    expect([...groupAuditEntriesByMonth(entries).keys()]).toEqual([
+      '2026_07',
+      '2026_08',
+    ]);
+    expect(changedAuditMonths([], entries)).toEqual(['2026_07', '2026_08']);
+    expect(changedAuditMonths(entries, entries)).toEqual([]);
   });
 });
