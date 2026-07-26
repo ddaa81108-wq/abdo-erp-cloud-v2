@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import {
   Calculator,
   CheckCircle2,
@@ -21,6 +23,7 @@ import type {
 } from '../types';
 import {
   calculateTrustAccountBalances,
+  convertLydToEgp,
   synchronizeTrustDeposit,
   trustHistory,
   trustLastActivityAt,
@@ -69,6 +72,7 @@ type AccountView = {
 type ActionMode =
   | 'deposit_lyd'
   | 'withdraw_lyd'
+  | 'convert_to_egp'
   | 'deposit_egp'
   | 'withdraw_egp';
 
@@ -87,6 +91,9 @@ const signedBalance = (value: number, currency: 'lyd' | 'egp') =>
   value < 0
     ? `دين على العميل ${money(value, currency)}`
     : `أمانة ${currency === 'lyd' ? 'ليبي' : 'مصري'} ${money(value, currency)}`;
+
+const netMoney = (value: number, currency: 'lyd' | 'egp') =>
+  `${value < 0 ? '-' : ''}${money(value, currency)}`;
 
 const transactionLabel: Record<TrustDepositTx['type'], string> = {
   deposit_lyd: 'إيداع ليبي',
@@ -111,7 +118,6 @@ function cardColor(amountLyd: number, amountEgp: number) {
 export default function DepositsModule({
   state,
   onUpdateState,
-  onOpenExporter,
   searchQuery = '',
   pendingDeletions = [],
   onScheduleDeletion,
@@ -131,7 +137,6 @@ export default function DepositsModule({
   const [actionMode, setActionMode] = useState<ActionMode | null>(null);
   const [actionAmount, setActionAmount] = useState('');
   const [actionNote, setActionNote] = useState('');
-  const [egpSource, setEgpSource] = useState<'cash' | 'conversion'>('cash');
   const [conversionLyd, setConversionLyd] = useState('');
   const [conversionRate, setConversionRate] = useState('');
 
@@ -141,6 +146,9 @@ export default function DepositsModule({
   const [editDate, setEditDate] = useState('');
   const [editNote, setEditNote] = useState('');
   const [deleting, setDeleting] = useState<TrustDepositTx | null>(null);
+  const [showPrint, setShowPrint] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const [showCalculator, setShowCalculator] = useState(false);
   const [calcLeft, setCalcLeft] = useState('');
@@ -182,7 +190,7 @@ export default function DepositsModule({
     0,
   );
   const totalEgp = accounts.reduce(
-    (sum, account) => sum + Math.max(account.amountEgp, 0),
+    (sum, account) => sum + account.amountEgp,
     0,
   );
 
@@ -209,7 +217,6 @@ export default function DepositsModule({
     setActionMode(null);
     setActionAmount('');
     setActionNote('');
-    setEgpSource('cash');
     setConversionLyd('');
     setConversionRate('');
   };
@@ -290,7 +297,7 @@ export default function DepositsModule({
     if (!selected || !actionMode) return;
     const now = new Date().toISOString();
     let transaction: TrustDepositTx;
-    if (actionMode === 'deposit_egp' && egpSource === 'conversion') {
+    if (actionMode === 'convert_to_egp') {
       const lydAmount = Number(conversionLyd);
       const rate = Number(conversionRate);
       if (!Number.isFinite(lydAmount) || lydAmount <= 0 || !Number.isFinite(rate) || rate <= 0) {
@@ -301,10 +308,10 @@ export default function DepositsModule({
         id: uid('trust_tx'),
         type: 'convert_to_egp',
         amountLyd: lydAmount,
-        amountEgp: lydAmount * rate,
+        amountEgp: convertLydToEgp(lydAmount, rate),
         rate,
         date: now,
-        note: actionNote.trim() || `تحويل من الليبي إلى المصري بسعر ${rate}`,
+        note: actionNote.trim() || `تحويل من الليبي إلى المصري بالقسمة على سعر ${rate}`,
         referenceNo: referenceNo(),
         createdAt: now,
       };
@@ -375,7 +382,7 @@ export default function DepositsModule({
       ...editing,
       amountLyd: editing.type === 'deposit_egp' || editing.type === 'withdraw_egp' ? 0 : amount,
       amountEgp: editing.type === 'convert_to_egp'
-        ? amount * rate
+        ? convertLydToEgp(amount, rate)
         : editing.type === 'deposit_egp' || editing.type === 'withdraw_egp'
           ? amount
           : 0,
@@ -500,33 +507,65 @@ export default function DepositsModule({
       });
   };
 
-  const printLedger = () => {
-    if (!selected) return;
-    const rows = ledgerRows(selected).map(({ transaction, amountLyd, amountEgp, index }) => [
-      index + 1,
-      new Date(transaction.date).toLocaleString('ar-LY'),
-      transactionLabel[transaction.type],
-      transaction.note,
-      transaction.type === 'deposit_lyd' ? money(transaction.amountLyd, 'lyd') : '—',
-      transaction.type === 'withdraw_lyd' || transaction.type === 'convert_to_egp' ? money(transaction.amountLyd, 'lyd') : '—',
-      transaction.type === 'deposit_egp' || transaction.type === 'convert_to_egp' ? money(transaction.amountEgp, 'egp') : '—',
-      transaction.type === 'withdraw_egp' ? money(transaction.amountEgp, 'egp') : '—',
-      signedBalance(amountLyd, 'lyd'),
-      signedBalance(amountEgp, 'egp'),
-    ]);
-    onOpenExporter(
-      `السجل العام للأمانة: ${selected.deposit.customerName}`,
-      {
-        label1: 'صاحب الأمانة',
-        value1: selected.deposit.customerName,
-        label2: 'الإجمالي الليبي',
-        value2: signedBalance(selected.amountLyd, 'lyd'),
-        label3: 'الإجمالي المصري',
-        value3: signedBalance(selected.amountEgp, 'egp'),
-      },
-      ['#', 'التاريخ', 'الحركة', 'البيان', 'إيداع ليبي', 'سحب ليبي', 'إيداع مصري', 'سحب مصري', 'الإجمالي الليبي', 'الإجمالي المصري'],
-      rows,
-    );
+  const exportLedgerPdf = async () => {
+    if (!printRef.current || !selected) return;
+    setGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(printRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+      });
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const imageWidth = pageWidth - margin * 2;
+      const pageContentHeight = pageHeight - margin * 2;
+      const sliceHeightPixels = Math.floor(
+        pageContentHeight * canvas.width / imageWidth,
+      );
+      let offset = 0;
+      let pageIndex = 0;
+      while (offset < canvas.height) {
+        const currentSliceHeight = Math.min(
+          sliceHeightPixels,
+          canvas.height - offset,
+        );
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = currentSliceHeight;
+        const context = pageCanvas.getContext('2d');
+        context?.drawImage(
+          canvas,
+          0,
+          offset,
+          canvas.width,
+          currentSliceHeight,
+          0,
+          0,
+          canvas.width,
+          currentSliceHeight,
+        );
+        if (pageIndex > 0) pdf.addPage();
+        pdf.addImage(
+          pageCanvas.toDataURL('image/png'),
+          'PNG',
+          margin,
+          margin,
+          imageWidth,
+          currentSliceHeight * imageWidth / canvas.width,
+        );
+        offset += currentSliceHeight;
+        pageIndex += 1;
+      }
+      pdf.save(`trust-ledger-${selected.deposit.customerName}-${new Date().toISOString().slice(0, 10)}.pdf`);
+      toast('تم تصدير سجل الأمانة PDF.');
+    } catch {
+      toast('تعذر إنشاء ملف PDF. حاول مرة أخرى.');
+    } finally {
+      setGeneratingPdf(false);
+    }
   };
 
   const calcResult = (() => {
@@ -548,7 +587,7 @@ export default function DepositsModule({
 
       <section className="grid grid-cols-1 gap-2 md:grid-cols-3">
         <TopCard icon={<Landmark />} title="إجمالي الأمانات الليبية" value={money(totalLyd, 'lyd')} />
-        <TopCard icon={<WalletCards />} title="إجمالي الأمانات المصرية" value={money(totalEgp, 'egp')} />
+        <TopCard icon={<WalletCards />} title="صافي الأمانات المصرية" value={netMoney(totalEgp, 'egp')} />
         <TopCard icon={<UserPlus />} title="إضافة صاحب أمانة" value="حساب وسجل جديد" onClick={() => setShowCreate(true)} />
       </section>
 
@@ -597,14 +636,15 @@ export default function DepositsModule({
       {selected && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 p-2 backdrop-blur-sm">
           <div className="flex max-h-[96vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-3xl bg-slate-50 shadow-2xl">
-            <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-white p-3">
+            <header className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-white p-3 sm:grid-cols-4 xl:grid-cols-8">
               <ToolbarLabel>{selected.deposit.customerName}</ToolbarLabel>
               <ToolbarButton color="indigo" onClick={() => { resetAction(); setActionMode('deposit_lyd'); }}><Plus /> إيداع ليبي</ToolbarButton>
               <ToolbarButton color="rose" onClick={() => { resetAction(); setActionMode('withdraw_lyd'); }}><Minus /> سحب ليبي</ToolbarButton>
-              <ToolbarButton color="slate" onClick={printLedger}><FileText /> طباعة سجل الأمانة</ToolbarButton>
+              <ToolbarButton color="slate" onClick={() => setShowPrint(true)}><FileText /> طباعة سجل الأمانة</ToolbarButton>
+              <ToolbarButton color="violet" onClick={() => { resetAction(); setActionMode('convert_to_egp'); }}><Calculator /> تحويل إلى مصري</ToolbarButton>
               <ToolbarButton color="emerald" onClick={() => { resetAction(); setActionMode('deposit_egp'); }}><Plus /> إيداع مصري</ToolbarButton>
               <ToolbarButton color="amber" onClick={() => { resetAction(); setActionMode('withdraw_egp'); }}><Minus /> سحب مصري</ToolbarButton>
-              <button onClick={() => { setSelectedId(null); resetAction(); }} className="mr-auto flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600"><X className="h-4 w-4" /> إغلاق النافذة</button>
+              <button onClick={() => { setSelectedId(null); resetAction(); }} className="flex w-full items-center justify-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-black text-slate-600"><X className="h-4 w-4" /> إغلاق النافذة</button>
             </header>
 
             <main className="overflow-y-auto p-3 sm:p-5">
@@ -622,7 +662,13 @@ export default function DepositsModule({
                   <h3 className="font-black text-slate-900">السجل العام للأمانة</h3>
                   <p className="text-[10px] text-slate-500">السجل هو مصدر الإجماليات الداخلية والكارت الخارجي والخزنة الليبية.</p>
                 </div>
-                <TrustLedger rows={ledgerRows(selected)} onEdit={beginEdit} onDelete={setDeleting} />
+                <TrustLedger
+                  rows={ledgerRows(selected)}
+                  totalLyd={selected.amountLyd}
+                  totalEgp={selected.amountEgp}
+                  onEdit={beginEdit}
+                  onDelete={setDeleting}
+                />
               </section>
             </main>
           </div>
@@ -672,13 +718,7 @@ export default function DepositsModule({
       {actionMode && selected && (
         <Modal title={transactionLabel[actionMode]} onClose={resetAction}>
           <form onSubmit={saveAction} className="space-y-4">
-            {actionMode === 'deposit_egp' && (
-              <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-                <button type="button" onClick={() => setEgpSource('cash')} className={`rounded-lg py-2 text-xs font-black ${egpSource === 'cash' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500'}`}>إيداع مصري نقدي</button>
-                <button type="button" onClick={() => setEgpSource('conversion')} className={`rounded-lg py-2 text-xs font-black ${egpSource === 'conversion' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500'}`}>تحويل من الليبي</button>
-              </div>
-            )}
-            {actionMode === 'deposit_egp' && egpSource === 'conversion' ? (
+            {actionMode === 'convert_to_egp' ? (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="المبلغ الليبي"><input type="number" min="0.01" step="any" required value={conversionLyd} onChange={(event) => setConversionLyd(event.target.value)} className="w-full rounded-xl border p-3" /></Field>
@@ -686,7 +726,8 @@ export default function DepositsModule({
                 </div>
                 {Number(conversionLyd) > 0 && Number(conversionRate) > 0 && (
                   <div className="rounded-xl bg-emerald-50 p-3 text-center text-sm font-black text-emerald-800">
-                    الناتج: {money(Number(conversionLyd) * Number(conversionRate), 'egp')}
+                    {money(Number(conversionLyd), 'lyd')} ÷ {Number(conversionRate).toLocaleString('en-US')} =
+                    {' '}{money(convertLydToEgp(Number(conversionLyd), Number(conversionRate)), 'egp')}
                   </div>
                 )}
               </>
@@ -702,6 +743,26 @@ export default function DepositsModule({
             <PrimaryButton>حفظ الحركة وإعادة الحساب</PrimaryButton>
           </form>
         </Modal>
+      )}
+
+      {showPrint && selected && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-md" dir="rtl">
+          <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <strong className="text-sm text-slate-900">سجل أمانة: {selected.deposit.customerName}</strong>
+              <button onClick={() => setShowPrint(false)} className="rounded-lg bg-slate-100 p-2 text-slate-600"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="overflow-auto p-3">
+              <PrintableLedger ref={printRef} account={selected} rows={ledgerRows(selected)} />
+            </div>
+            <div className="border-t border-slate-200 p-3">
+              <button disabled={generatingPdf} onClick={exportLedgerPdf} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-black text-white disabled:opacity-50">
+                <FileText className="h-4 w-4" />
+                {generatingPdf ? 'جاري تجهيز PDF...' : 'تصدير السجل PDF'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {editing && (
@@ -744,10 +805,14 @@ export default function DepositsModule({
 
 function TrustLedger({
   rows,
+  totalLyd,
+  totalEgp,
   onEdit,
   onDelete,
 }: {
   rows: Array<{ transaction: TrustDepositTx; amountLyd: number; amountEgp: number; index: number }>;
+  totalLyd: number;
+  totalEgp: number;
   onEdit: (transaction: TrustDepositTx) => void;
   onDelete: (transaction: TrustDepositTx) => void;
 }) {
@@ -781,10 +846,80 @@ function TrustLedger({
           ))}
           {!rows.length && <tr><td colSpan={11} className="p-10 text-center text-slate-400">لا توجد حركات مسجلة.</td></tr>}
         </tbody>
+        <tfoot className="sticky bottom-0 border-t-2 border-indigo-300 bg-indigo-50">
+          <tr>
+            <td colSpan={7} className="p-3 text-left font-black text-indigo-900">الإجمالي النهائي</td>
+            <td className={`p-3 font-black ${totalLyd < 0 ? 'bg-rose-100 text-rose-800' : 'bg-indigo-100 text-indigo-900'}`}>{signedBalance(totalLyd, 'lyd')}</td>
+            <td className={`p-3 font-black ${totalEgp < 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-900'}`}>{signedBalance(totalEgp, 'egp')}</td>
+            <td colSpan={2} />
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
 }
+
+const PrintableLedger = React.forwardRef<
+  HTMLDivElement,
+  {
+    account: AccountView;
+    rows: Array<{ transaction: TrustDepositTx; amountLyd: number; amountEgp: number; index: number }>;
+  }
+>(({ account, rows }, ref) => (
+  <div ref={ref} className="min-w-[900px] bg-white p-6 text-slate-950" dir="rtl">
+    <div className="mb-5 flex items-end justify-between border-b-2 border-slate-900 pb-3">
+      <div>
+        <h2 className="text-xl font-black">سجل معاملات الأمانة</h2>
+        <p className="mt-1 text-sm font-bold">{account.deposit.customerName}</p>
+      </div>
+      <span className="text-[10px] text-slate-500">تاريخ الطباعة: {new Date().toLocaleString('ar-LY')}</span>
+    </div>
+    <table className="w-full border-collapse text-[11px]">
+      <thead className="bg-slate-900 text-white">
+        <tr>
+          <th className="border p-2">#</th><th className="border p-2">التاريخ</th>
+          <th className="border p-2">الحركة</th><th className="border p-2">البيان</th>
+          <th className="border p-2">الحركة الليبية</th><th className="border p-2">الحركة المصرية</th>
+          <th className="border p-2">رصيد الليبي</th><th className="border p-2">رصيد المصري</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ transaction, amountLyd, amountEgp, index }) => {
+          const lydEffect = transaction.type === 'deposit_lyd'
+            ? `+ ${money(transaction.amountLyd, 'lyd')}`
+            : transaction.type === 'withdraw_lyd' || transaction.type === 'convert_to_egp'
+              ? `- ${money(transaction.amountLyd, 'lyd')}`
+              : '—';
+          const egpEffect = transaction.type === 'deposit_egp' || transaction.type === 'convert_to_egp'
+            ? `+ ${money(transaction.amountEgp, 'egp')}`
+            : transaction.type === 'withdraw_egp'
+              ? `- ${money(transaction.amountEgp, 'egp')}`
+              : '—';
+          return (
+            <tr key={transaction.id} className="even:bg-slate-50">
+              <td className="border p-2 text-center">{index + 1}</td>
+              <td className="whitespace-nowrap border p-2">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
+              <td className="border p-2 font-bold">{transactionLabel[transaction.type]}</td>
+              <td className="border p-2">{transaction.note}</td>
+              <td className="border p-2 text-center font-bold">{lydEffect}</td>
+              <td className="border p-2 text-center font-bold">{egpEffect}</td>
+              <td className="border p-2 text-center font-black">{netMoney(amountLyd, 'lyd')}</td>
+              <td className="border p-2 text-center font-black">{netMoney(amountEgp, 'egp')}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+      <tfoot>
+        <tr className="border-t-2 border-slate-900 font-black">
+          <td colSpan={6} className="border p-3 text-left">الإجمالي النهائي</td>
+          <td className={`border p-3 text-center ${account.amountLyd < 0 ? 'bg-rose-100 text-rose-800' : 'bg-indigo-100 text-indigo-900'}`}>{netMoney(account.amountLyd, 'lyd')}</td>
+          <td className={`border p-3 text-center ${account.amountEgp < 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-900'}`}>{netMoney(account.amountEgp, 'egp')}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+));
+PrintableLedger.displayName = 'PrintableLedger';
 
 function TopCard({ icon, title, value, onClick }: { icon: React.ReactElement; title: string; value: string; onClick?: () => void }) {
   const Component = onClick ? 'button' : 'div';
@@ -796,16 +931,16 @@ function TopCard({ icon, title, value, onClick }: { icon: React.ReactElement; ti
 }
 
 function BalanceCard({ label, value, negative }: { label: string; value: string; negative: boolean }) {
-  return <div className={`rounded-2xl border p-4 ${negative ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-indigo-200 bg-indigo-50 text-indigo-900'}`}><span className="block text-[10px] font-bold opacity-70">{label}</span><strong className="mt-2 block text-xl">{value}</strong></div>;
+  return <div className={`rounded-xl border p-3 ${negative ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-indigo-200 bg-indigo-50 text-indigo-900'}`}><span className="block text-[9px] font-bold opacity-70">{label}</span><strong className="mt-1 block text-base">{value}</strong></div>;
 }
 
 function ToolbarLabel({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white">{children}</div>;
+  return <div className="flex w-full items-center justify-center rounded-xl bg-slate-900 px-3 py-2.5 text-center text-xs font-black text-white">{children}</div>;
 }
 
-function ToolbarButton({ children, color, onClick }: { children: React.ReactNode; color: 'indigo' | 'rose' | 'slate' | 'emerald' | 'amber'; onClick: () => void }) {
-  const colors = { indigo: 'bg-indigo-600', rose: 'bg-rose-600', slate: 'bg-slate-700', emerald: 'bg-emerald-600', amber: 'bg-amber-600' };
-  return <button onClick={onClick} className={`flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-black text-white ${colors[color]} [&_svg]:h-4 [&_svg]:w-4`}>{children}</button>;
+function ToolbarButton({ children, color, onClick }: { children: React.ReactNode; color: 'indigo' | 'rose' | 'slate' | 'emerald' | 'amber' | 'violet'; onClick: () => void }) {
+  const colors = { indigo: 'bg-indigo-600', rose: 'bg-rose-600', slate: 'bg-slate-700', emerald: 'bg-emerald-600', amber: 'bg-amber-600', violet: 'bg-violet-600' };
+  return <button onClick={onClick} className={`flex w-full items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-black text-white ${colors[color]} [&_svg]:h-4 [&_svg]:w-4`}>{children}</button>;
 }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {

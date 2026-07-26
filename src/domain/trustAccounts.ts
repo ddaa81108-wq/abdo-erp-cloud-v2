@@ -12,6 +12,16 @@ export type TrustBalances = {
 const safeAmount = (value: number | undefined) =>
   Number.isFinite(value) ? Number(value) : 0;
 
+export function convertLydToEgp(amountLyd: number, exchangeRate: number) {
+  if (
+    !Number.isFinite(amountLyd) ||
+    amountLyd <= 0 ||
+    !Number.isFinite(exchangeRate) ||
+    exchangeRate <= 0
+  ) return 0;
+  return amountLyd / exchangeRate;
+}
+
 export function trustHistory(deposit: TrustDeposit): TrustDepositTx[] {
   if (deposit.history?.length) return deposit.history;
   const openingLyd = safeAmount(

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { TrustDepositTx } from '../types';
 import {
   calculateTrustAccountBalances,
+  convertLydToEgp,
   upsertTrustTransactionInTreasury,
 } from './trustAccounts';
 
@@ -21,6 +22,10 @@ const transaction = (
 });
 
 describe('trust account ledger', () => {
+  it('converts LYD to EGP by dividing by the exchange price', () => {
+    expect(convertLydToEgp(5_000, 0.1)).toBe(50_000);
+  });
+
   it('derives both balances from every ledger row', () => {
     expect(calculateTrustAccountBalances([
       transaction('a', 'deposit_lyd', 5_000, 0),
