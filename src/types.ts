@@ -142,6 +142,10 @@ export interface TrustDepositTx {
   rate?: number;
   date: string;
   note: string;
+  referenceNo?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isDeleted?: boolean;
 }
 
 export interface TrustDeposit {
@@ -157,6 +161,8 @@ export interface TrustDeposit {
   note: string;
   createdAt: string;
   history?: TrustDepositTx[];
+  nameAliases?: string[];
+  updatedAt?: string;
   isDeleted?: boolean;
 }
 

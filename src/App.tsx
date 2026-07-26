@@ -35,6 +35,10 @@ import {
 } from "./services/erpSyncService";
 import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
+import {
+  synchronizeTrustDeposit,
+  synchronizeTrustTreasury,
+} from "./domain/trustAccounts";
 
 // Import modules
 import CustomerDebtsModule from "./components/CustomerDebtsModule";
@@ -48,19 +52,27 @@ import MailManualModule from "./components/MailManualModule";
 import FinancialReportsModule from "./components/FinancialReportsModule";
 import PdfExportModule from "./components/PdfExportModule";
 
-const normalizeBusinessState = (value: ERPState): ERPState => ({
-  ...value,
-  ...migrateLegacyBusinessAccounts(
-    value.companies || [],
-    value.companyTransactions || [],
-    value.merchants || [],
-    value.merchantTransactions || [],
-  ),
-  cycles: repairLegacyCustomerCycles(
-    value.cycles || [],
-    value.debtTransactions || [],
-  ),
-});
+const normalizeBusinessState = (value: ERPState): ERPState => {
+  const trustDeposits = (value.trustDeposits || []).map(synchronizeTrustDeposit);
+  return {
+    ...value,
+    ...migrateLegacyBusinessAccounts(
+      value.companies || [],
+      value.companyTransactions || [],
+      value.merchants || [],
+      value.merchantTransactions || [],
+    ),
+    cycles: repairLegacyCustomerCycles(
+      value.cycles || [],
+      value.debtTransactions || [],
+    ),
+    trustDeposits,
+    treasuryTransactions: synchronizeTrustTreasury(
+      trustDeposits,
+      value.treasuryTransactions || [],
+    ),
+  };
+};
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -876,7 +888,7 @@ export default function App() {
                   {activeTabIsAllowed && activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "financial_reports" && <FinancialReportsModule />}
                   {activeTabIsAllowed && activeTab === "purchases" && <PurchasesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
-                  {activeTabIsAllowed && activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "transaction_log" && <TransactionLogModule state={state} onOpenExporter={handleOpenExporter} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "backup" && <BackupCenter state={state} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}

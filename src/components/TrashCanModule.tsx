@@ -150,10 +150,21 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
 
   // Permanent Delete Deposit
   const handlePermanentDeleteDeposit = (depId: string) => {
+    const deposit = (state.trustDeposits || []).find(d => d.id === depId);
+    const trustTransactionIds = new Set(
+      (deposit?.history || []).map(transaction => `${depId}:${transaction.id}`),
+    );
     const updated = (state.trustDeposits || []).filter(d => d.id !== depId);
     onUpdateState({
       ...state,
-      trustDeposits: updated
+      trustDeposits: updated,
+      treasuryTransactions: (state.treasuryTransactions || []).filter(
+        transaction =>
+          !(
+            transaction.source === 'deposit_escrow' &&
+            trustTransactionIds.has(transaction.sourceId || '')
+          ),
+      ),
     });
     setConfirmingDeleteId(null);
     triggerNotification('تم مسح وإتلاف حساب الأمانة نهائياً بنجاح! 🗑️');

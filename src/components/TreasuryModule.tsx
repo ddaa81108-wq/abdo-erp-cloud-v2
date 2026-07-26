@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { calculateTreasuryBalance } from "../domain/financialCalculations";
 import {
+  calculateTrustAccountBalances,
+  trustHistory,
+} from "../domain/trustAccounts";
+import {
   Landmark,
   ArrowUpRight,
   ArrowDownLeft,
@@ -39,7 +43,7 @@ export default function TreasuryModule({
       const activeCycle = state.cycles.find(
         (cy) => cy.customerId === c.id && cy.status === "active",
       );
-      return activeCycle ? activeCycle.currentBalance : 0;
+      return activeCycle ? Math.max(activeCycle.currentBalance, 0) : 0;
     })
     .reduce((sum, val) => sum + val, 0);
 
@@ -47,16 +51,22 @@ export default function TreasuryModule({
     .filter((c) => !c.isDeleted)
     .reduce((sum, c) => sum + (c.balance || 0), 0);
 
-  // Companies and merchants now live in the same unified accounts array.
-  const totalPositiveDebts = totalCustomerDebts + totalCompanyDebts;
+  const activeTrustBalances = state.trustDeposits
+    .filter((deposit) => !deposit.isDeleted)
+    .map((deposit) =>
+      calculateTrustAccountBalances(trustHistory(deposit)));
+  const totalDeposits = activeTrustBalances.reduce(
+    (sum, balance) => sum + Math.max(balance.amountLyd, 0),
+    0,
+  );
+  const totalTrustReceivables = activeTrustBalances.reduce(
+    (sum, balance) => sum + Math.max(-balance.amountLyd, 0),
+    0,
+  );
 
-  // 2. Calculate Liabilities (Deposits & Purchases)
-  const totalDeposits = state.trustDeposits
-    .filter((d) => !d.isDeleted && d.status === "held")
-    .reduce(
-      (sum, d) => sum + (d.amountLyd !== undefined ? d.amountLyd : d.amount),
-      0,
-    );
+  // Negative LYD custody is a receivable from its owner, not a liability.
+  const totalPositiveDebts =
+    totalCustomerDebts + totalCompanyDebts + totalTrustReceivables;
 
   const [totalPurchases, setTotalPurchases] = useState(0);
   useEffect(() => {
