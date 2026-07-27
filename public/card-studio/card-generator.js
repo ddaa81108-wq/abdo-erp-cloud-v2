@@ -710,8 +710,7 @@ let currentType = 'debt';
                     backgroundColor: null,
                     dir: 'rtl',
                     logging: false,
-                    useCORS: true,
-                    foreignObjectRendering: true
+                    useCORS: true
                 });
 
                 canvas.toBlob(async (blob) => {
