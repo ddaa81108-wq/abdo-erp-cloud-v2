@@ -148,37 +148,6 @@ let currentType = 'debt';
 
         let currArray = ["د.ل", "ج.م", "EGP"];
         let currIndex = 0;
-        function toggleCurrency() {
-            currIndex = (currIndex + 1) % currArray.length;
-            let newCurr = currArray[currIndex];
-            document.getElementById('currency-label').innerText = newCurr;
-            document.querySelectorAll('.p-currency').forEach(el => {
-                if(el.parentElement.parentElement.classList.contains('row-5')) return;
-                el.innerText = newCurr;
-            });
-        }
-
-        let isPrivacyMode = false;
-        function togglePrivacy() {
-            isPrivacyMode = !isPrivacyMode;
-            const nameEl = document.getElementById('display-name');
-            const merchantEl = document.getElementById('purchases-merchant-name');
-            const btn = document.getElementById('privacy-btn');
-
-            if(isPrivacyMode) {
-                nameEl.style.filter = "blur(8px)";
-                merchantEl.style.filter = "blur(8px)";
-                btn.innerHTML = "👁️ إظهار الأطراف (إلغاء السرية)";
-                btn.classList.add('bg-green-600', 'text-white');
-                btn.classList.remove('bg-white/10', 'text-white');
-            } else {
-                nameEl.style.filter = "none";
-                merchantEl.style.filter = "none";
-                btn.innerHTML = "👁️ السرية (إخفاء الأسماء)";
-                btn.classList.remove('bg-green-600', 'text-white');
-                btn.classList.add('bg-white/10', 'text-white');
-            }
-        }
 
         function generateTafqeet() {
             let val = document.getElementById('amountInput').value.replace(/,/g, '');
@@ -385,8 +354,10 @@ let currentType = 'debt';
         function updateCard() {
             let themeValue = document.getElementById('themeSelect').value;
             let cardContainer = document.getElementById('goldenCard');
+            let exchangeContainer = document.getElementById('exchangeCard');
             window.CardStudioAI?.clearCustomBackgroundIfNeeded(themeValue);
             cardContainer.className = "card " + themeValue;
+            exchangeContainer.className = "system-gold-card " + themeValue;
             if (currentType === 'masraweya' || currentType === 'final_statement') {
                 cardContainer.classList.add('masraweya-card');
             }
@@ -396,6 +367,9 @@ let currentType = 'debt';
             document.getElementById('display-name').style.color = titleColor;
             document.getElementById('stmt-header-title').style.color = titleColor;
             document.getElementById('purchases-top-bar').style.color = titleColor;
+            exchangeContainer.querySelectorAll('.card-text-layer').forEach((element) => {
+                element.style.color = titleColor;
+            });
 
             let nameValue = document.getElementById('nameInput').value || '...';
             let rawAmount = document.getElementById('amountInput').value || '0';
@@ -448,10 +422,10 @@ let currentType = 'debt';
             // --- التحكم في إظهار وإخفاء الكارت الجديد ---
             if (currentType === 'exchange_rate') {
                 document.getElementById('goldenCard').classList.add('hidden-element');
-                document.getElementById('exchangeCard').classList.remove('hidden-element');
+                exchangeContainer.classList.remove('hidden-element');
             } else {
                 document.getElementById('goldenCard').classList.remove('hidden-element');
-                document.getElementById('exchangeCard').classList.add('hidden-element');
+                exchangeContainer.classList.add('hidden-element');
             }
 
             if (currentType === 'masraweya' || currentType === 'final_statement') {
@@ -548,8 +522,9 @@ let currentType = 'debt';
                 document.getElementById('exchangePriceDisplay').innerText = formattedAmountDecimal;
                 
                 // تحديث ألوان العناوين
-                document.getElementById('exchangeCard').querySelector('.card-line-1').style.color = titleColor;
-                document.getElementById('exchangeCard').querySelector('.card-line-2').style.color = titleColor;
+                exchangeContainer.querySelectorAll('.card-text-layer').forEach((element) => {
+                    element.style.color = titleColor;
+                });
             } 
             else {
                 document.getElementById('card-header').classList.remove('hidden-element');
@@ -690,16 +665,11 @@ let currentType = 'debt';
             card.style.width = targetWidth;
             card.style.maxWidth = targetWidth;
             card.style.transform = 'none';
+            card.classList.add('is-exporting');
 
             try {
+                if (document.fonts?.ready) await document.fonts.ready;
                 const canvas = await html2canvas(card, { scale: 5, backgroundColor: null, dir: 'rtl', logging: false, useCORS: true });
-                
-                card.style.width = originalWidth;
-                card.style.maxWidth = originalMaxWidth;
-                card.style.transform = originalTransform;
-                
-                wrapper.style.transform = originalWrapperTransform;
-                wrapper.style.marginBottom = originalWrapperMargin;
 
                 canvas.toBlob(async (blob) => {
                     try {
@@ -728,16 +698,16 @@ let currentType = 'debt';
                     }
                 });
             } catch (error) {
-                card.style.width = originalWidth;
-                card.style.maxWidth = originalMaxWidth;
-                card.style.transform = originalTransform;
-                
-                wrapper.style.transform = originalWrapperTransform;
-                wrapper.style.marginBottom = originalWrapperMargin;
-                
                 alert("حدث خطأ.");
                 btnElement.innerHTML = originalText;
                 btnElement.style.pointerEvents = "auto";
+            } finally {
+                card.classList.remove('is-exporting');
+                card.style.width = originalWidth;
+                card.style.maxWidth = originalMaxWidth;
+                card.style.transform = originalTransform;
+                wrapper.style.transform = originalWrapperTransform;
+                wrapper.style.marginBottom = originalWrapperMargin;
             }
         }
 

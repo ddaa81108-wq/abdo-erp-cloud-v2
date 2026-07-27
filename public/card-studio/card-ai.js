@@ -1,7 +1,10 @@
 (function () {
   let customBackgroundUrl = "";
 
-  const card = () => document.getElementById("goldenCard");
+  const cards = () => [
+    document.getElementById("goldenCard"),
+    document.getElementById("exchangeCard"),
+  ].filter(Boolean);
 
   function applyBackgroundUrl(url, render = true) {
     customBackgroundUrl = url;
@@ -9,15 +12,13 @@
     if (themeSelect) themeSelect.value = "bg-custom-image";
     const titleColor = document.getElementById("titleColorPicker");
     if (titleColor) titleColor.value = "#ffffff";
-    const target = card();
-    if (target) {
-      target.className = "card bg-custom-image";
+    cards().forEach((target) => {
       target.style.setProperty(
         "background-image",
         `linear-gradient(90deg, rgba(3, 10, 18, .46), rgba(3, 10, 18, .2), rgba(3, 10, 18, .46)), url("${url}")`,
         "important",
       );
-    }
+    });
     if (render) window.updateCard?.();
   }
 
@@ -26,8 +27,7 @@
       applyBackgroundUrl(customBackgroundUrl, false);
       return;
     }
-    const target = card();
-    target?.style.removeProperty("background-image");
+    cards().forEach((target) => target.style.removeProperty("background-image"));
   }
 
   function uploadBackground(input) {
