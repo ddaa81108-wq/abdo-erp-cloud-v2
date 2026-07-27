@@ -29,12 +29,87 @@ const transaction = (
 describe('unified business ledger', () => {
   it('uses the ledger as the single source of the final balance', () => {
     const rows = [
-      transaction('open', 'purchase_invoice', 1000, { entryKind: 'opening_balance' }),
-      transaction('debt', 'purchase_invoice', 600, { entryKind: 'debt' }),
-      transaction('pay', 'payment', 250, { entryKind: 'payment' }),
+      transaction('open', 'purchase_invoice', 1000, {
+        entryKind: 'opening_balance',
+        date: '2026-07-20T10:00:00.000Z',
+      }),
+      transaction('old-pay', 'payment', 200, {
+        entryKind: 'payment',
+        date: '2026-07-22T10:00:00.000Z',
+      }),
+      transaction('debt', 'purchase_invoice', 600, {
+        entryKind: 'debt',
+        date: '2026-07-27T10:00:00.000Z',
+      }),
+      transaction('pay', 'payment', 250, {
+        entryKind: 'payment',
+        date: '2026-07-27T11:00:00.000Z',
+      }),
     ];
-    expect(calculateBusinessBalance(rows, 'account-1')).toBe(1350);
-    expect(calculateBusinessSummary(rows, 'account-1').finalBalance).toBe(1350);
+    const summary = calculateBusinessSummary(
+      rows,
+      'account-1',
+      new Date('2026-07-27T12:00:00.000Z'),
+    );
+    expect(calculateBusinessBalance(rows, 'account-1')).toBe(1150);
+    expect(summary).toMatchObject({
+      balanceBeforeToday: 800,
+      debtAddedToday: 600,
+      paymentsToday: 250,
+      finalBalance: 1150,
+    });
+  });
+
+  it('shows only debts added on the selected day as new debt', () => {
+    const rows = [
+      transaction('yesterday', 'purchase_invoice', 900, {
+        entryKind: 'debt',
+        date: '2026-07-26T10:00:00.000Z',
+      }),
+      transaction('today', 'purchase_invoice', 300, {
+        entryKind: 'debt',
+        date: '2026-07-27T10:00:00.000Z',
+      }),
+    ];
+    const summary = calculateBusinessSummary(
+      rows,
+      'account-1',
+      new Date('2026-07-27T12:00:00.000Z'),
+    );
+    expect(summary.balanceBeforeToday).toBe(900);
+    expect(summary.debtAddedToday).toBe(300);
+    expect(summary.finalBalance).toBe(1200);
+  });
+
+  it('clears old and new debt cards after a full settlement', () => {
+    const rows = [
+      transaction('old-debt', 'purchase_invoice', 1000, {
+        entryKind: 'debt',
+        date: '2026-07-26T10:00:00.000Z',
+      }),
+      transaction('today-debt', 'purchase_invoice', 400, {
+        entryKind: 'debt',
+        date: '2026-07-27T09:00:00.000Z',
+      }),
+      transaction('full-payment', 'payment', 1400, {
+        entryKind: 'payment',
+        paymentMode: 'full',
+        date: '2026-07-27T11:00:00.000Z',
+      }),
+    ];
+    const summary = calculateBusinessSummary(
+      rows,
+      'account-1',
+      new Date('2026-07-27T12:00:00.000Z'),
+    );
+    expect(summary).toMatchObject({
+      oldDebt: 0,
+      newDebt: 0,
+      balanceBeforeToday: 0,
+      debtAddedToday: 0,
+      paymentsToday: 1400,
+      finalBalance: 0,
+    });
   });
 
   it('recalculates after editing or soft deleting any row', () => {

@@ -44,8 +44,8 @@ export function calculateBusinessSummary(
   now = new Date(),
 ) {
   const dayKey = now.toLocaleDateString('en-CA');
-  let oldDebt = 0;
-  let newDebt = 0;
+  let balanceBeforeToday = 0;
+  let debtAddedToday = 0;
   let allPayments = 0;
   let paymentsToday = 0;
 
@@ -53,22 +53,34 @@ export function calculateBusinessSummary(
     if (transaction.companyId !== companyId || transaction.isDeleted) continue;
     const value = finiteAmount(transaction.amount);
     const kind = transactionKind(transaction);
-    if (kind === 'opening_balance') oldDebt += value;
-    else if (kind === 'debt') newDebt += value;
-    else {
+    const transactionDay = new Date(transaction.date).toLocaleDateString('en-CA');
+    const isToday = transactionDay === dayKey;
+
+    if (kind === 'opening_balance') {
+      balanceBeforeToday += value;
+    } else if (kind === 'debt') {
+      if (isToday) debtAddedToday += value;
+      else balanceBeforeToday += value;
+    } else {
       allPayments += value;
-      if (new Date(transaction.date).toLocaleDateString('en-CA') === dayKey) {
-        paymentsToday += value;
-      }
+      if (isToday) paymentsToday += value;
+      else balanceBeforeToday -= value;
     }
   }
 
+  const finalBalance = balanceBeforeToday + debtAddedToday - paymentsToday;
+  const isSettled = Math.abs(finalBalance) < 0.000001;
+
   return {
-    oldDebt,
-    newDebt,
+    // Backward-compatible names now represent the current daily ledger view.
+    // They are derived from transactions, never accumulated cache fields.
+    oldDebt: isSettled ? 0 : balanceBeforeToday,
+    newDebt: isSettled ? 0 : debtAddedToday,
+    balanceBeforeToday: isSettled ? 0 : balanceBeforeToday,
+    debtAddedToday: isSettled ? 0 : debtAddedToday,
     allPayments,
     paymentsToday,
-    finalBalance: oldDebt + newDebt - allPayments,
+    finalBalance: isSettled ? 0 : finalBalance,
   };
 }
 

@@ -52,7 +52,7 @@ export interface Company {
   contact?: string;
   balance: number; // current balance
   previousBalance?: number; // الدين القديم / القيمة السابقة
-  newDebt?: number; // الدين الجديد / الشغل اليومي
+  newDebt?: number; // الديون المضافة في تاريخ اليوم، مشتقة من السجل
   paymentToday?: number; // المدفوع / تخليص جديد
   lastRolloverDate?: string; // تاريخ آخر ترحيل للـ 12:00
   isDeleted?: boolean; // للأرشفة حتى لو اتمسح
@@ -83,7 +83,7 @@ export interface Merchant {
   contact?: string;
   balance: number; // current balance
   previousBalance?: number; // الدين القديم / القيمة السابقة
-  newDebt?: number; // الدين الجديد / الشغل اليومي
+  newDebt?: number; // الديون المضافة في تاريخ اليوم، مشتقة من السجل
   paymentToday?: number; // المدفوع / تخليص جديد
   lastRolloverDate?: string; // تاريخ آخر ترحيل للـ 12:00
   isDeleted?: boolean; // للأرشفة حتى لو اتمسح

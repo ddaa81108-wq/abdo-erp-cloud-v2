@@ -650,10 +650,10 @@ export default function CompaniesModule({
               </section>
 
               <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <SummaryCard label="الدين القديم" value={selectedSummary.oldDebt} color="indigo" />
-                <SummaryCard label="الديون الجديدة" value={selectedSummary.newDebt} color="rose" />
+                <SummaryCard label="الرصيد قبل معاملات اليوم" value={selectedSummary.balanceBeforeToday} color="indigo" />
+                <SummaryCard label="ديون مضافة اليوم" value={selectedSummary.debtAddedToday} color="rose" />
                 <SummaryCard label="مدفوعات اليوم" value={selectedSummary.paymentsToday} color="emerald" />
-                <SummaryCard label="الناتج النهائي" value={selectedSummary.finalBalance} color="slate" strong />
+                <SummaryCard label="الرصيد الحالي" value={selectedSummary.finalBalance} color="slate" strong />
               </section>
 
               <div className="mt-4 flex justify-end">
