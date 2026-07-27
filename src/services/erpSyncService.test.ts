@@ -70,14 +70,43 @@ describe('ERP concurrent merge', () => {
 
   it('keeps growing arrays out of the Firestore main document', () => {
     const source = state();
+    source.financialReportRates = [{
+      id: 'financial_rate_2026-07-27',
+      date: '2026-07-27',
+      egpPerLyd: 10,
+      updatedAt: '2026-07-27',
+    }];
     const { mainState, chunks } = splitErpStateForStorage(source);
 
     expect(mainState.purchases).toBeUndefined();
     expect(mainState.trustDeposits).toBeUndefined();
     expect(mainState.treasuryTransactions).toBeUndefined();
+    expect(mainState.financialReportRates).toBeUndefined();
     expect(mainState.users).toBeUndefined();
     expect(chunks.purchases).toEqual(source.purchases);
     expect(chunks.trustDeposits).toEqual(source.trustDeposits);
+    expect(chunks.financialReportRates).toEqual(source.financialReportRates);
+  });
+
+  it('merges exchange rates saved for different report days', () => {
+    const base = state();
+    base.financialReportRates = [];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.financialReportRates = [{
+      id: 'financial_rate_2026-07-27',
+      date: '2026-07-27',
+      egpPerLyd: 10,
+      updatedAt: '2026-07-27',
+    }];
+    remote.financialReportRates = [{
+      id: 'financial_rate_2026-07-26',
+      date: '2026-07-26',
+      egpPerLyd: 9.8,
+      updatedAt: '2026-07-26',
+    }];
+    const merged = mergeErpStateChanges(base, local, remote);
+    expect(merged.financialReportRates).toHaveLength(2);
   });
 
   it('reassembles chunked data and can still read legacy main-state arrays', () => {

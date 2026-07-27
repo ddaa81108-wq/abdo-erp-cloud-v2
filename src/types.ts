@@ -274,6 +274,14 @@ export interface EgyptianCashRecord {
   receivedValue: number;
 }
 
+export interface FinancialReportRate {
+  id: string;
+  date: string; // "YYYY-MM-DD"
+  /** Number of Egyptian pounds equivalent to one Libyan dinar. */
+  egpPerLyd: number;
+  updatedAt: string;
+}
+
 export interface ERPState {
   customers: Customer[];
   cycles: CustomerCycle[];
@@ -294,6 +302,7 @@ export interface ERPState {
   managerPasswordHash: string; // e.g., '1234'
   users: User[];
   egyptianCashRecords: EgyptianCashRecord[];
+  financialReportRates?: FinancialReportRate[];
   delegates?: string[]; // Custom delegates list
   notesAndReminders: NoteReminder[];
 }
@@ -511,6 +520,7 @@ export const INITIAL_ERP_STATE: ERPState = {
     }
   ],
   egyptianCashRecords: [],
+  financialReportRates: [],
   delegates: [],
   notesAndReminders: [],
 };

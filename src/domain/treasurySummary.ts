@@ -1,5 +1,6 @@
 import type { ERPState, TreasuryTransaction } from '../types';
 import { calculateBusinessSummary } from './businessAccounts';
+import { calculateActiveCycleBalance } from './customerAccounts';
 import { calculateTreasuryBalance } from './financialCalculations';
 import { calculatePurchaseTotals } from './purchaseLedger';
 import {
@@ -23,22 +24,45 @@ export function calculateTreasurySummary(state: ERPState) {
   const customerDebts = (state.customers || [])
     .filter((customer) => !customer.isDeleted)
     .reduce((sum, customer) => {
-      const activeCycle = (state.cycles || []).find(
-        (cycle) =>
+      const activeBalance = (state.cycles || [])
+        .filter((cycle) =>
           cycle.customerId === customer.id
-          && cycle.status === 'active',
-      );
-      return sum + Math.max(activeCycle?.currentBalance || 0, 0);
+          && cycle.status === 'active')
+        .reduce(
+          (cycleSum, cycle) => {
+            const cycleRows = (state.debtTransactions || []).filter(
+              (transaction) =>
+                transaction.cycleId === cycle.id
+                && !transaction.isDeleted,
+            );
+            // Preserve an old account that has only a cached balance, while
+            // always preferring its real ledger as soon as rows exist.
+            const balance = cycleRows.length === 0
+              && !cycle.initialBalance
+              && cycle.currentBalance
+              ? cycle.currentBalance
+              : calculateActiveCycleBalance(
+                  cycle,
+                  state.debtTransactions || [],
+                );
+            return cycleSum + balance;
+          },
+          0,
+        );
+      return sum + Math.max(activeBalance, 0);
     }, 0);
 
   const companyDebts = (state.companies || [])
     .filter((company) => !company.isDeleted)
     .reduce(
       (sum, company) =>
-        sum + calculateBusinessSummary(
-          state.companyTransactions || [],
-          company.id,
-        ).finalBalance,
+        sum + Math.max(
+          calculateBusinessSummary(
+            state.companyTransactions || [],
+            company.id,
+          ).finalBalance,
+          0,
+        ),
       0,
     );
 

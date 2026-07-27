@@ -61,7 +61,9 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
       setLocalEgyptRecord({
         date: existing.date,
         rows,
-        previousValue: Number(existing.previousValue) || 0,
+        previousValue: state.egyptianCashRecords.some(r => r.date < selectedDay)
+          ? getEgyptianPreviousValue(state.egyptianCashRecords || [], selectedDay)
+          : Number(existing.previousValue) || 0,
         receivedValue: Number(existing.receivedValue) || 0,
       });
     } else {

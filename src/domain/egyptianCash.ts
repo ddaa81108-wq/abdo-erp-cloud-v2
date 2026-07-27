@@ -25,9 +25,20 @@ export function getEgyptianPreviousValue(
   records: EgyptianCashRecord[],
   selectedDay: string,
 ): number {
-  const priorRecord = records
+  const priorRecords = records
     .filter((record) => record.date < selectedDay)
-    .sort((left, right) => right.date.localeCompare(left.date))[0];
+    .sort((left, right) => left.date.localeCompare(right.date));
 
-  return priorRecord ? calculateEgyptianRemainder(priorRecord) : 0;
+  if (!priorRecords.length) return 0;
+
+  // Only the first record owns an opening value. Every following day's
+  // previous value is derived from the preceding ledger movements, so editing
+  // an old day immediately repairs all later balances.
+  return priorRecords.reduce(
+    (balance, record, index) =>
+      (index === 0 ? amount(record.previousValue) : balance)
+      + amount(record.receivedValue)
+      - calculateEgyptianWorkTotal(record.rows),
+    0,
+  );
 }

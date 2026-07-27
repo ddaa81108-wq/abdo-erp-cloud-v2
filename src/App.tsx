@@ -965,7 +965,12 @@ export default function App() {
                   {activeTabIsAllowed && activeTab === "merchants" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "treasury" && <TreasuryModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTabIsAllowed && activeTab === "mail_manual" && <MailManualModule state={state} onUpdateState={updateStateAndSync} />}
-                  {activeTabIsAllowed && activeTab === "financial_reports" && <FinancialReportsModule />}
+                  {activeTabIsAllowed && activeTab === "financial_reports" && (
+                    <FinancialReportsModule
+                      state={state}
+                      onUpdateState={updateStateAndSync}
+                    />
+                  )}
                   {activeTabIsAllowed && activeTab === "purchases" && <PurchasesModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}
                   {activeTabIsAllowed && activeTab === "deposits" && <DepositsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}

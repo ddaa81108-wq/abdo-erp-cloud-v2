@@ -116,7 +116,8 @@ export function upsertBusinessPaymentInTreasury(
     id: linkedIndex >= 0
       ? treasuryTransactions[linkedIndex].id
       : `tx_treasury_${payment.id}`,
-    type: 'out',
+    // A payment settles money owed to us, therefore it is an inbound movement.
+    type: 'in',
     amount: finiteAmount(payment.amount),
     currency: payment.currency || 'د.ل',
     conversionRate: 1,

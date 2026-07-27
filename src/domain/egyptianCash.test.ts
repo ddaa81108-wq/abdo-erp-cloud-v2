@@ -51,4 +51,21 @@ describe('Egyptian cash calculations', () => {
       },
     ], '2026-07-26')).toBe(170);
   });
+
+  it('recalculates every later carry after an old day is edited', () => {
+    expect(getEgyptianPreviousValue([
+      {
+        date: '2026-07-20',
+        previousValue: 10,
+        receivedValue: 100,
+        rows: [{ value: 30, commission: 0 }],
+      },
+      {
+        date: '2026-07-21',
+        previousValue: 999_999,
+        receivedValue: 50,
+        rows: [{ value: 20, commission: 0 }],
+      },
+    ], '2026-07-22')).toBe(110);
+  });
 });

@@ -170,7 +170,7 @@ describe('unified business ledger', () => {
     const created = upsertBusinessPaymentInTreasury([], payment, 'شركة النور');
     expect(created).toHaveLength(1);
     expect(created[0]).toMatchObject({
-      type: 'out',
+      type: 'in',
       amount: 250,
       source: 'company_payment',
       sourceId: 'payment-1',

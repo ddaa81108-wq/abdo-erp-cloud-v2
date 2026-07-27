@@ -123,4 +123,48 @@ describe('treasury summary', () => {
     expect(summary.totalObligations).toBe(75);
     expect(summary.netTreasury).toBe(525);
   });
+
+  it('recalculates customer debt from ledger rows instead of a stale card cache', () => {
+    const state = emptyState();
+    state.customers = [{ id: 'c', name: 'عميل', createdAt: '2026-01-01' }];
+    state.cycles = [{
+      id: 'cycle',
+      customerId: 'c',
+      startDate: '2026-01-01',
+      status: 'active',
+      initialBalance: 100,
+      currentBalance: 99_999,
+    }];
+    state.debtTransactions = [
+      {
+        id: 'debt',
+        customerId: 'c',
+        cycleId: 'cycle',
+        type: 'debt',
+        amount: 500,
+        currency: 'د.ل',
+        conversionRate: 1,
+        date: '2026-01-01',
+        referenceNo: 'd',
+        note: '',
+        postedToTreasury: false,
+        createdAt: '2026-01-01',
+      },
+      {
+        id: 'payment',
+        customerId: 'c',
+        cycleId: 'cycle',
+        type: 'payment',
+        amount: 200,
+        currency: 'د.ل',
+        conversionRate: 1,
+        date: '2026-01-02',
+        referenceNo: 'p',
+        note: '',
+        postedToTreasury: false,
+        createdAt: '2026-01-02',
+      },
+    ];
+    expect(calculateTreasurySummary(state).customerDebts).toBe(400);
+  });
 });
