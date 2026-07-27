@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="referrer" content="no-referrer">
+    <meta name="smart-card-ai-endpoint" content="">
+    <!-- طبقة الأمان - تتحقق من الجلسة قبل تحميل أي محتوى -->
+    <script>
+        (function() {
+            let activeSession = null;
+            try {
+                activeSession = JSON.parse(sessionStorage.getItem("ABDO_ERP_V2_ACTIVE_USER") || "null");
+            } catch {}
+            const isLocalPreview = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+            if (!isLocalPreview && (!activeSession || (activeSession.role !== "admin" && activeSession.permissions?.canUseSmartCards !== true))) {
+                window.location.replace("/");
+            }
+        })();
+    </script>
+    <title>استوديو الكروت الذكية - المنظومة الملكية</title>
+
+    
+    <link rel="stylesheet" href="/src/index.css">
+    <script src="/card-studio/vendor/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="/src/card-studio/card-generator.css">
+<base target="_blank">
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen font-sans p-4" onload="initDashboard()">
+
+    <!-- 1. شريط الأقسام العلوي والأدوات -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-1 w-full" id="tiles-container"></div>
+        
+        <!-- أزرار التصدير والتفقيط في أعلى اليسار -->
+        <div class="flex gap-2 w-full md:w-auto">
+            <button type="button" onclick="generateTafqeet()" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all shadow-md text-sm">
+                🔠 تفقيط المبلغ
+            </button>
+            <button id="mainCopyBtn" onclick="copyCard(this)" class="flex-1 md:flex-none whitespace-nowrap px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-all shadow-md text-sm">
+                📋 تصدير ونسخ الكارت
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-100px)] min-h-[calc(100vh-100px)]">
+
+        <!-- 2. الشريط الأيمن (الاستقبال والرسائل) -->
+        <div class="w-full lg:w-[20%] bg-white border border-gray-200 shadow-sm rounded-2xl p-5 flex flex-col gap-4 lg:overflow-y-auto">
+            
+            <div id="inbox-container" style="display: none;"></div>
+
+            <h3 class="text-lg font-bold text-green-700 mb-2 border-b border-gray-100 pb-2">الرسائل الجاهزة</h3>
+            <select id="templateSelect" onchange="loadTemplate()" class="solid-input mb-2">
+                <option value="">-- اختر رسالة جاهزة --</option>
+                <optgroup label="رسائل صلب الشغل">
+                    <option value="matabaqa">مطابقة كشف حساب (للتجار)</option>
+                    <option value="fix_rate">تثبيت سعر الصرف</option>
+                    <option value="deduct_trust">خصم/سحب من الأمانة</option>
+                    <option value="hold_transfer">تعليق حوالة لنقص البيانات</option>
+                    <option value="cover_alert">تنبيه تغطية حساب (للتجار)</option>
+                    <option value="received_abroad">تأكيد استلام من الخارج</option>
+                </optgroup>
+                <optgroup label="عمليات الإيداع والتسليم">
+                    <option value="houta">توجيه إيداع (مكتب الحوتة)</option>
+                    <option value="receipt">تأكيد استلام (عام)</option>
+                    <option value="delivery">تأكيد تسليم (عام)</option>
+                </optgroup>
+                <optgroup label="المديونيات والحسابات">
+                    <option value="debt_reminder">تذكير بسداد مديونية</option>
+                    <option value="trust_deposit">إيداع أمانة في الحساب</option>
+                    <option value="clearance_note">مخالصة مالية نهائية</option>
+                </optgroup>
+                <optgroup label="تنبيهات الطوارئ والأسعار">
+                    <option value="price_drop_alert">تنبيه: انخفاض السعر</option>
+                    <option value="price_freeze_dollar">إيقاف التسعير (ارتفاع الدولار)</option>
+                    <option value="network_delay_alert">تأخير حوالات (مشكلة بالشبكة)</option>
+                </optgroup>
+            </select>
+            <textarea id="customNote" placeholder="اكتب ملاحظة حرة لتضاف للكارت..." class="w-full p-3 solid-input min-h-[100px] resize-none" oninput="updateCard()"></textarea>
+        </div>
+
+        <!-- 3. الكارت المركزي -->
+        <div id="preview-container" class="w-full lg:w-[60%] bg-white border border-gray-200 shadow-sm rounded-2xl p-4 md:p-6 flex justify-center items-start lg:items-center overflow-hidden relative min-h-[400px] lg:overflow-y-auto">
+            <div id="preview-wrapper" class="transition-transform duration-300" style="transform-origin: top center;">
+                
+                <!-- الكارت الأساسي (لكل الأقسام ما عدا أسعار الصرف) -->
+                <div class="card bg-gold" id="goldenCard">
+                    <div class="header" id="card-header">❖ إشعار مديونية ❖</div>
+                    <div class="price-card-title hidden-element" id="price-card-title">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                    <div class="client-name" id="display-name">اسم العميل</div>
+                    <div class="label" id="status-label">إجمالي الديون المستحقة عليك:</div>
+                    <div class="exchange-note hidden-element" id="exchange-note">الأسعار متغيرة بتغير سعر الصرف</div>
+                    
+                    <div class="amount-box-wrapper" id="amount-box-container">
+                        <div class="amount-box">
+                            <div class="amount-text" id="amount-container">
+                                <span id="display-amount">0</span> <span class="currency" id="currency-label">د.ل</span>
+                            </div>
+                        </div>
+                        <div id="tafqeet-display" class="tafqeet-text hidden-element"></div>
+                    </div>
+
+                    <div class="final-statement-box hidden-element" id="final-statement-box">
+                        <div class="stmt-header-row">
+                            <div class="stmt-header" id="stmt-header-title">التقرير النهائى</div>
+                            <div class="stmt-date" id="stmt-date-display"></div>
+                        </div>
+                        <div class="stmt-row"><div class="stmt-label">القيمة السابقة:</div><div class="stmt-value" id="val-previous">0</div></div>
+                        <div class="stmt-row"><div class="stmt-label">المستلمة اليوم:</div><div class="stmt-value" id="val-received">0</div></div>
+                        <div class="stmt-row"><div class="stmt-label">إجمالي الشغل:</div><div class="stmt-value" id="val-total">0</div></div>
+                        <div class="stmt-row final-row"><div class="stmt-label">الباقي النهائي:</div><div class="stmt-value" id="val-remaining">0</div></div>
+                    </div>
+
+                    <div class="purchases-box hidden-element" id="purchases-box">
+                        <div class="purchases-top-bar" id="purchases-top-bar">
+                            <span id="purchases-date-display">2026-07-03</span>
+                            <span id="purchases-merchant-name" class="purchases-merchant-name">التاجر: ...</span>
+                        </div>
+                        <div class="purchases-row row-1"><div class="p-label">1. القيمة السابقة:</div><div class="p-value"><span id="p-val-1">0</span> <span class="p-currency">د.ل</span></div></div>
+                        <div class="purchases-row row-2"><div class="p-label">2. إجمالي شغل اليوم ⚡:</div><div class="p-value"><span id="p-val-2">0</span> <span class="p-currency">د.ل</span></div></div>
+                        <div class="purchases-row row-3"><div class="p-label">3. إجمالي المسددة 🔴:</div><div class="p-value"><span id="p-val-3">0</span> <span class="p-currency">د.ل</span></div></div>
+                        <div class="purchases-row row-4"><div class="p-label">4. إجمالي الديون 🩸:</div><div class="p-value"><span id="p-val-4">0</span> <span class="p-currency">د.ل</span></div></div>
+                        <div class="purchases-row row-5"><div class="p-label">5. الباقي المصري:</div><div class="p-value"><span id="p-val-5">0</span> <span class="p-currency">EGP</span></div></div>
+                    </div>
+
+                    <div class="price-badge hidden-element" id="price-badge">السعر: <span id="display-price">0</span></div>
+                    <div class="custom-note-box hidden-element" id="custom-note-box"></div>
+                    
+                    <div class="card-date hidden-element" id="card-date-display"></div>
+                    <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
+                    <div class="spacer" id="card-spacer"></div>
+                    
+                    <div id="corner-tl" style="position:absolute;top:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                    <div id="corner-tr" style="position:absolute;top:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                    <div id="corner-bl" style="position:absolute;bottom:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                    <div id="corner-br" style="position:absolute;bottom:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
+                    <div id="crown-top" style="position:absolute;top:5px;left:50%;transform:translateX(-50%);font-size:14pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;letter-spacing:8px;opacity:0.75;">◆ ◇ ◆ ◇ ◆</div>
+                </div>
+
+                <!-- الكارت الجديد (مخصص لقسم أسعار الصرف فقط) -->
+                <div class="system-gold-card hidden-element" id="exchangeCard">
+                    <div class="card-inner-line"></div>
+                    <div class="card-corner tl"></div>
+                    <div class="card-corner tr"></div>
+                    <div class="card-corner bl"></div>
+                    <div class="card-corner br"></div>
+                    <div class="card-text-layer card-line-1">شركة الأهرام للاتصالات وتقنية</div>
+                    <div class="card-text-layer card-line-2">المعلومات</div>
+                    <div class="card-text-layer card-price-value" id="exchangePriceDisplay">5.98</div>
+                    <div class="card-text-layer card-footer-note">الأسعار متغيرة بتغير سعر الصرف</div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 4. الشريط الأيسر (التحكم) -->
+        <div class="w-full lg:w-[20%] bg-white border border-gray-200 shadow-sm rounded-2xl p-5 flex flex-col lg:overflow-y-auto">
+            <h3 class="text-lg font-bold text-green-700 mb-4 border-b border-gray-100 pb-2">البيانات والتحكم</h3>
+
+            <!-- زر التحكم في لون العنوان -->
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+                <label class="block text-sm text-gray-600 mb-2 font-bold">🎨 لون العنوان / الأسماء:</label>
+                <input type="color" id="titleColorPicker" value="#110c00" class="w-full h-10" oninput="updateCard()">
+            </div>
+
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4" style="display: none;">
+                <div class="flex flex-col gap-2">
+                    <button type="button" onclick="toggleCurrency()" style="display: none;">🔄 تبديل العملة سريعا</button>
+                    <button type="button" onclick="togglePrivacy()" id="privacy-btn" style="display: none;">👁️ السرية (إخفاء الأسماء)</button>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+                <label class="block text-sm text-gray-600 mb-2 font-bold">🔍 حجم الخط:</label>
+                <div class="flex gap-2">
+                    <button type="button" onclick="changeFontSize('increase')" class="flex-1 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded font-bold transition">➕</button>
+                    <button type="button" onclick="changeFontSize('decrease')" class="flex-1 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded font-bold transition">➖</button>
+                    <button type="button" onclick="changeFontSize('reset')" class="flex-1 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition text-sm">🔄</button>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-4 mb-6">
+                <div>
+                    <label class="block text-sm text-gray-600 font-bold mb-1">خلفية الكارت:</label>
+                    <select id="themeSelect" class="solid-input" onchange="handleThemeChange()">
+                        <optgroup label="✨ الألوان الأساسية">
+                            <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>
+                            <option value="bg-silver">الفضي اللامع</option>
+                            <option value="bg-navy">الكحلي المؤسسي</option>
+                            <option value="bg-dark">الأسود الفاخر</option>
+                        </optgroup>
+                        <optgroup label="🌟 الألوان الإضافية">
+                            <option value="bg-emerald">الأخضر الزمردي</option>
+                            <option value="bg-ruby">الأحمر الياقوتي</option>
+                            <option value="bg-ocean">الأزرق المحيطي</option>
+                            <option value="bg-pearl">الأبيض اللؤلؤي</option>
+                            <option value="bg-copper">النحاسي الكلاسيكي</option>
+                            <option value="bg-purple">البنفسجي الملكي</option>
+                        </optgroup>
+                        <optgroup label="💎 VIP حصرياً">
+                            <option value="bg-vip">الأسود الماسي VIP</option>
+                        </optgroup>
+                        <optgroup label="🧊 خلفيات ثلاثية الأبعاد">
+                            <option value="bg-pyramids-3d">الأهرامات ثلاثية الأبعاد</option>
+                            <option value="bg-libya-heritage-3d">الآثار الليبية ثلاثية الأبعاد</option>
+                            <option value="bg-custom-image">خلفية مخصصة</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm text-gray-600 mb-1 font-bold" id="name-input-label">الاسم / التاجر:</label>
+                    <input type="text" id="nameInput" class="solid-input" placeholder="الاسم..." autocomplete="off" oninput="updateCard()">
+                </div>
+
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                    <label class="block text-sm font-bold text-emerald-900">خلفية جديدة أو مولدة بالذكاء الاصطناعي</label>
+                    <textarea id="aiBackgroundPrompt" class="solid-input min-h-[72px] resize-none" placeholder="مثال: آثار ليبية ثلاثية الأبعاد وقت الغروب"></textarea>
+                    <button id="generateAiBackgroundButton" type="button" onclick="CardStudioAI.generateBackground()" class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">
+                        ✨ توليد خلفية ذكية
+                    </button>
+                    <label class="block cursor-pointer rounded-lg border border-emerald-300 bg-white px-3 py-2 text-center text-sm font-bold text-emerald-800 hover:bg-emerald-100">
+                        🖼️ إضافة خلفية من الجهاز
+                        <input type="file" accept="image/*" class="hidden" onchange="CardStudioAI.uploadBackground(this)">
+                    </label>
+                </div>
+
+                <div id="main-amount-group">
+                    <label class="block text-sm text-gray-600 mb-1 font-bold" id="amount-input-label">المبلغ الأساسي / السعر:</label>
+                    <input type="text" id="amountInput" class="solid-input" placeholder="أدخل الرقم..." value="0" oninput="updateCard()">
+                </div>
+
+                <div id="secondary-price-group">
+                    <label class="block text-sm text-gray-600 mb-1 font-bold">السعر الإضافي (اختياري):</label>
+                    <input type="text" id="priceInput" class="solid-input" placeholder="مثال: 6.25..." value="" oninput="updateCard()">
+                </div>
+
+                <div id="vip-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-bold">
+                        <input type="checkbox" id="vipLogoCheck" checked onchange="updateCard()" class="w-4 h-4 accent-green-600"> إظهار شعار VIP
+                    </label>
+                </div>
+
+                <div id="companies-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div>
+                        <label class="text-sm text-gray-600 font-bold">نوع الحساب:</label>
+                        <select id="companyOrMerchant" class="solid-input" onchange="updateCard()">
+                            <option value="company">شركة</option>
+                            <option value="merchant">تاجر</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="purchases-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div>
+                        <label class="text-sm text-gray-600 font-bold">نوع البيان:</label>
+                        <select id="purchasesMerchantType" class="solid-input" onchange="updateCard()">
+                            <option value="البيان">البيان</option>
+                            <option value="سمسم">سمسم</option>
+                        </select>
+                    </div>
+                    <div><label class="text-sm text-gray-600 font-bold">القيمة السابقة:</label><input type="text" id="p-in-1" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">إجمالي شغل اليوم:</label><input type="text" id="p-in-2" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">إجمالي المسددة:</label><input type="text" id="p-in-3" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">إجمالي الديون:</label><input type="text" id="p-in-4" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">الباقي المصري:</label><input type="text" id="p-in-5" class="solid-input" value="0" oninput="updateCard()"></div>
+                </div>
+
+                <div id="statement-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div><label class="text-sm text-gray-600 font-bold">القيمة السابقة:</label><input type="text" id="input-prev" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">المستلمة اليوم:</label><input type="text" id="input-recv" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">إجمالي الشغل:</label><input type="text" id="input-total" class="solid-input" value="0" oninput="updateCard()"></div>
+                    <div><label class="text-sm text-gray-600 font-bold">الباقي النهائي:</label><input type="text" id="input-remain" class="solid-input" value="0" oninput="updateCard()"></div>
+                </div>
+
+                <div id="mini-card-inputs-group" class="hidden-element flex flex-col gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div>
+                        <label class="text-sm text-gray-600 font-bold">نوع الكارت:</label>
+                        <select id="miniCardType" class="solid-input" onchange="updateCard()">
+                            <option value="تم الاستلام ✅">تم الاستلام ✅</option>
+                            <option value="تم الاستلام بالكامل، مع الشكر 🌹">تم الاستلام بالكامل، مع الشكر 🌹</option>
+                            <option value="تم التسليم 🚚">تم التسليم 🚚</option>
+                            <option value="تم التسليم بالكامل 📦">تم التسليم بالكامل 📦</option>
+                            <option value="كشف حساب 📊">كشف حساب 📊</option>
+                            <option value="مخالصة مالية 🤝">مخالصة مالية 🤝</option>
+                            <option value="تصفية حساب">تصفية حساب</option>
+                            <option value="الحساب خالص">الحساب خالص</option>
+                            <option value="الحساب خالص، مع الشكر 🌹">الحساب خالص، مع الشكر 🌹</option>
+                            <option value="تذكير 🔔">تذكير 🔔</option>
+                            <option value="مهم جداً ⚠️">مهم جداً ⚠️</option>
+                            <option value="توقف إعلان الأسعار مؤقتاً ⚠️">توقف إعلان الأسعار مؤقتاً ⚠️</option>
+                            <option value="تأخير في الحوالات بسبب الشبكة 📡">تأخير في الحوالات بسبب الشبكة 📡</option>
+                            <option value="خالص الشكر 🌹">خالص الشكر 🌹</option>
+                            <option value="ملاحظة 📌">ملاحظة 📌</option>
+                            <option value="custom">-- عنوان مخصص (اكتب بنفسك) --</option>
+                        </select>
+                    </div>
+                    <div id="miniCardCustomHeaderWrapper" class="hidden-element">
+                        <label class="text-sm text-gray-600 font-bold">العنوان المخصص:</label>
+                        <input type="text" id="miniCardCustomHeader" class="solid-input" placeholder="اكتب العنوان..." oninput="updateCard()">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 font-bold">الاسم / الجهة:</label>
+                        <input type="text" id="miniCardName" class="solid-input" placeholder="الاسم..." oninput="updateCard()">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 font-bold">القيمة (اختياري):</label>
+                        <input type="text" id="miniCardValue" class="solid-input" value="0" oninput="updateCard()">
+                    </div>
+                    <div>
+                        <label class="text-sm text-gray-600 font-bold">البيان / الملاحظة:</label>
+                        <textarea id="miniCardNote" class="solid-input resize-none" rows="2" placeholder="اكتب التفاصيل هنا..." oninput="updateCard()"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto border-t border-gray-200 pt-4 flex flex-col gap-3">
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-bold">
+                    <input type="checkbox" id="dateToggle" onchange="updateCard()" class="w-4 h-4 accent-green-600"> إظهار التاريخ
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 font-bold">
+                    <input type="checkbox" id="companyToggle" checked onchange="updateCard()" class="w-4 h-4 accent-green-600"> إظهار إسم الشركة بالأسفل
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script src="/card-studio/card-config.js"></script>
+    <script src="/card-studio/card-ai.js"></script>
+    <script src="/card-studio/card-generator.js"></script>
+</body>
+</html>

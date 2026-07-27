@@ -11,6 +11,7 @@ export const DENIED_PERMISSIONS: UserPermissions = {
   canViewMailManual: false,
   canViewFinancialReports: false,
   canViewTrash: false,
+  canUseSmartCards: false,
   canImportExcel: false,
   canExportExcel: false,
 };

@@ -819,9 +819,11 @@ export default function App() {
             )}
           </div>
 
-          <button onClick={() => window.open("/card-generator.html", "_blank")} className="bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0" title="منظومة توليد الكروت الشاملة">
-            <span className="text-sm">👑</span><span>منظومة الكروت الذكية</span>
-          </button>
+          {(currentUser?.role === "admin" || currentUser?.permissions?.canUseSmartCards) && (
+            <button onClick={() => window.open("/card-generator.html", "_blank")} className="bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer shrink-0" title="منظومة توليد الكروت الشاملة">
+              <span className="text-sm">👑</span><span>منظومة الكروت الذكية</span>
+            </button>
+          )}
 
           <button
             type="button"

@@ -245,6 +245,7 @@ export interface UserPermissions {
   canViewMailManual?: boolean;
   canViewFinancialReports?: boolean;
   canViewTrash?: boolean;
+  canUseSmartCards?: boolean;
   canImportExcel?: boolean;
   canExportExcel?: boolean;
 }

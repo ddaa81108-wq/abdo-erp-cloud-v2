@@ -204,15 +204,46 @@ export interface SmartCardStudioParams {
   date?: string;
 }
 
-// يفتح منظومة الكروت الذكية (card-generator.html) متملّية ببيانات القسم
+const SMART_CARD_PAYLOAD_PREFIX = "ABDO_SMART_CARD_PAYLOAD_";
+
+function canUseSmartCardStudio(): boolean {
+  try {
+    const session = JSON.parse(
+      sessionStorage.getItem("ABDO_ERP_V2_ACTIVE_USER") || "null",
+    );
+    return session?.role === "admin"
+      || session?.permissions?.canUseSmartCards === true;
+  } catch {
+    return false;
+  }
+}
+
+// Opens the studio without exposing client names or amounts in the URL.
 export const openSmartCardStudio = (params: SmartCardStudioParams): void => {
-  const url = new URL("/card-generator.html", window.location.origin);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      url.searchParams.set(key, String(value));
-    }
-  });
-  window.open(url.toString(), "_blank");
+  if (!canUseSmartCardStudio()) {
+    window.alert("هذا الحساب لا يملك صلاحية استخدام منظومة الكروت الذكية.");
+    return;
+  }
+  const payloadId = typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  sessionStorage.setItem(
+    `${SMART_CARD_PAYLOAD_PREFIX}${payloadId}`,
+    JSON.stringify(params),
+  );
+  const studioWindow = window.open(
+    `/card-generator.html#payload=${encodeURIComponent(payloadId)}`,
+    "_blank",
+  );
+  if (!studioWindow) {
+    sessionStorage.removeItem(`${SMART_CARD_PAYLOAD_PREFIX}${payloadId}`);
+    window.alert("تعذر فتح منظومة الكروت. اسمح بالنوافذ المنبثقة ثم حاول مجدداً.");
+    return;
+  }
+  studioWindow.opener = null;
+  window.setTimeout(() => {
+    sessionStorage.removeItem(`${SMART_CARD_PAYLOAD_PREFIX}${payloadId}`);
+  }, 5_000);
 };
 
 export const copySettledImage = async (name: string, titleText: string = "كارت مخالصة وتصفير حساب"): Promise<boolean> => {

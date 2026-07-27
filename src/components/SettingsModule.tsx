@@ -37,6 +37,7 @@ const permissionColumns: Array<{
   { key: 'canViewTreasury', label: 'الخزينة' },
   { key: 'canViewFinancialReports', label: 'التقارير المالية' },
   { key: 'canViewTrash', label: 'سلة المهملات' },
+  { key: 'canUseSmartCards', label: 'استخدام الكروت الذكية' },
   { key: 'canViewBackup', label: 'النسخ الاحتياطي' },
   { key: 'canImportExcel', label: 'استيراد Excel' },
   { key: 'canExportExcel', label: 'تصدير Excel' },
