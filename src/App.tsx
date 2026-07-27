@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu, Calculator } from "lucide-react";
 import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
@@ -19,15 +19,8 @@ import { db, auth } from "./firebase";
 import AlertCenter from "./components/AlertCenter";
 import { VoiceInputButton } from "./components/VoiceInputButton";
 import GlobalSearch from "./components/GlobalSearch";
-import BackupCenter from "./components/BackupCenter";
-import ExcelImporter from "./components/ExcelImporter";
-import ImageExporter from "./components/ImageExporter";
 import LoginScreen from "./components/LoginScreen";
-import SettingsModule from "./components/SettingsModule";
-import { copyCustomCardImage } from "./utils/imageExporterUtils";
 import { canAccessTab, firstAllowedTab, resolvePermissions } from "./utils/permissions";
-import { downloadXlsx } from "./utils/spreadsheet";
-import { createErpWorkbookSheets } from "./services/erpSpreadsheetExport";
 import {
   CHUNK_ARRAY_KEYS,
   loadCompleteErpState,
@@ -47,16 +40,31 @@ import {
   synchronizeTrustDeposit,
 } from "./domain/trustAccounts";
 
-// Import modules
-import CustomerDebtsModule from "./components/CustomerDebtsModule";
-import CompaniesModule from "./components/CompaniesModule";
-import TreasuryModule from "./components/TreasuryModule";
-import PurchasesModule from "./components/PurchasesModule";
-import DepositsModule from "./components/DepositsModule";
-import TrashCanModule from "./components/TrashCanModule";
-import MailManualModule from "./components/MailManualModule";
-import FinancialReportsModule from "./components/FinancialReportsModule";
 import GlobalCalculator from "./components/GlobalCalculator";
+
+// Large sections are loaded only when opened. This changes delivery size only;
+// accounting state and component behavior remain untouched.
+const CustomerDebtsModule = lazy(() => import("./components/CustomerDebtsModule"));
+const CompaniesModule = lazy(() => import("./components/CompaniesModule"));
+const TreasuryModule = lazy(() => import("./components/TreasuryModule"));
+const PurchasesModule = lazy(() => import("./components/PurchasesModule"));
+const DepositsModule = lazy(() => import("./components/DepositsModule"));
+const TrashCanModule = lazy(() => import("./components/TrashCanModule"));
+const MailManualModule = lazy(() => import("./components/MailManualModule"));
+const FinancialReportsModule = lazy(() => import("./components/FinancialReportsModule"));
+const BackupCenter = lazy(() => import("./components/BackupCenter"));
+const SettingsModule = lazy(() => import("./components/SettingsModule"));
+const ExcelImporter = lazy(() => import("./components/ExcelImporter"));
+const ImageExporter = lazy(() => import("./components/ImageExporter"));
+
+const SectionLoading = () => (
+  <div
+    className="flex min-h-[220px] items-center justify-center rounded-2xl border border-slate-200 bg-white text-xs font-black text-slate-500"
+    dir="rtl"
+  >
+    جارٍ تحميل القسم...
+  </div>
+);
 
 const normalizeBusinessState = (value: ERPState): ERPState => {
   const trustDeposits = (value.trustDeposits || []).map(synchronizeTrustDeposit);
@@ -617,8 +625,15 @@ export default function App() {
     }
   };
 
-  const handleExportAllToExcel = () => {
+  const handleExportAllToExcel = async () => {
     try {
+      const [
+        { downloadXlsx },
+        { createErpWorkbookSheets },
+      ] = await Promise.all([
+        import("./utils/spreadsheet"),
+        import("./services/erpSpreadsheetExport"),
+      ]);
       downloadXlsx(
         createErpWorkbookSheets(state),
         `ABDO_MULTY_LEDGER_MASTER_EXPORT_${new Date().toISOString().slice(0, 10)}.xlsx`,
@@ -960,6 +975,7 @@ export default function App() {
                       هذا القسم غير متاح ضمن صلاحيات حسابك.
                     </div>
                   )}
+                  <Suspense fallback={<SectionLoading />}>
                   {activeTabIsAllowed && activeTab === "debts" && <CustomerDebtsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "companies" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "merchants" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
@@ -976,6 +992,7 @@ export default function App() {
                   {activeTabIsAllowed && activeTab === "trash_can" && <TrashCanModule state={state} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "backup" && <BackupCenter state={state} isOnline={isOnlineMode} onRestoreState={handleRestoreState} onSaveBackupPoint={handleSaveBackupPoint} onDeleteBackupPoint={handleDeleteBackupPoint} />}
                   {activeTabIsAllowed && activeTab === "settings" && <SettingsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} onUpdateCurrentSession={handleUpdateCurrentSession} />}
+                  </Suspense>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -990,7 +1007,9 @@ export default function App() {
               <span className="font-extrabold text-sm text-slate-800">📊 استيراد ومعالجة ملفات الإكسل</span>
               <button id="close-excel-modal" onClick={() => setShowExcelImportModal(false)} className="bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold px-3 py-1.5 rounded-full text-xs transition">إغلاق ✕</button>
             </div>
-            <ExcelImporter state={state} onImportComplete={handleExcelImportComplete} onClose={() => setShowExcelImportModal(false)} />
+            <Suspense fallback={<SectionLoading />}>
+              <ExcelImporter state={state} onImportComplete={handleExcelImportComplete} onClose={() => setShowExcelImportModal(false)} />
+            </Suspense>
           </div>
         </div>
       )}
@@ -1010,7 +1029,7 @@ export default function App() {
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
               <button onClick={() => setShowCustomCardModal(false)} className="px-5 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-all">إلغاء</button>
-              <button onClick={async () => { if (!customCardValue) { alert("يرجى إدخال السعر أولاً."); return; } const success = await copyCustomCardImage(customCardValue); if (success) { setShowCustomCardModal(false); setCustomCardValue(""); } }} className="px-6 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+              <button onClick={async () => { if (!customCardValue) { alert("يرجى إدخال السعر أولاً."); return; } const { copyCustomCardImage } = await import("./utils/imageExporterUtils"); const success = await copyCustomCardImage(customCardValue); if (success) { setShowCustomCardModal(false); setCustomCardValue(""); } }} className="px-6 py-2.5 rounded-xl font-bold text-sm bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg transition-all flex items-center gap-2">
                 <span>إنشاء ونسخ الكارت</span><span>✨</span>
               </button>
             </div>
@@ -1019,7 +1038,9 @@ export default function App() {
       )}
 
       {showImageExportModal && (
+        <Suspense fallback={<SectionLoading />}>
         <ImageExporter sectionName={exportSectionTitle} activeCurrency="دينار ليبي د.ل" metrics={exportMetrics} tableHeaders={exportHeaders} tableRows={exportRows} footerMetrics={exportFooterMetrics} onClose={() => setShowImageExportModal(false)} />
+        </Suspense>
       )}
 
       <footer className="bg-slate-900 text-slate-500 text-center px-6 border-t border-slate-950 mt-12 text-xs">
