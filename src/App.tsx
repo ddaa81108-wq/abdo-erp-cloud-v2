@@ -66,6 +66,11 @@ const SectionLoading = () => (
   </div>
 );
 
+type SyncBatch = {
+  base: ERPState;
+  next: ERPState;
+};
+
 const normalizeBusinessState = (value: ERPState): ERPState => {
   const trustDeposits = (value.trustDeposits || []).map(synchronizeTrustDeposit);
   const normalized = {
@@ -361,8 +366,8 @@ export default function App() {
 
   const syncTimeoutRef = useRef<any>(null);
   const syncRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
-  const inFlightSyncRef = useRef<{ base: ERPState; next: ERPState } | null>(null);
+  const pendingSyncRef = useRef<SyncBatch | null>(null);
+  const inFlightSyncRef = useRef<SyncBatch | null>(null);
   const lastLoadedRevisionRef = useRef(0);
 
   // 🔄 Auto Backup Logic
@@ -592,10 +597,14 @@ export default function App() {
           const merged = normalizeBusinessState(
             await writeMergedErpState(db, pending.base, pending.next),
           );
-          const displayState = normalizeBusinessState(pendingSyncRef.current
+          // The ref can be populated by another edit while the awaited write
+          // is running. Capture it explicitly so newer TypeScript language
+          // servers do not incorrectly preserve the earlier null narrowing.
+          const queuedAfterWrite = pendingSyncRef.current as SyncBatch | null;
+          const displayState = normalizeBusinessState(queuedAfterWrite
             ? mergeErpStateChanges(
-                pendingSyncRef.current.base,
-                pendingSyncRef.current.next,
+                queuedAfterWrite.base,
+                queuedAfterWrite.next,
                 merged,
               )
             : merged);
@@ -609,8 +618,9 @@ export default function App() {
           }
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
-          pendingSyncRef.current = pendingSyncRef.current
-            ? { base: pending.base, next: pendingSyncRef.current.next }
+          const queuedAfterFailure = pendingSyncRef.current as SyncBatch | null;
+          pendingSyncRef.current = queuedAfterFailure
+            ? { base: pending.base, next: queuedAfterFailure.next }
             : pending;
           inFlightSyncRef.current = null;
           if (!syncRetryTimeoutRef.current) {
