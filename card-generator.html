@@ -172,6 +172,18 @@
 
             <div class="flex flex-col gap-4 mb-6">
                 <div>
+                    <label class="block text-sm text-gray-600 font-bold mb-1">شكل الكارت:</label>
+                    <select id="layoutSelect" class="solid-input" onchange="handleLayoutChange()">
+                        <option value="layout-banking">1. المصرفي الملكي</option>
+                        <option value="layout-executive">2. التنفيذي الرسمي</option>
+                        <option value="layout-fintech">3. المالي الحديث</option>
+                        <option value="layout-nature">4. الزجاجي الهادئ</option>
+                        <option value="layout-ledger">5. الكشف المحاسبي</option>
+                        <option value="layout-heritage">6. التراث الليبي</option>
+                    </select>
+                    <p class="mt-1 text-[11px] text-gray-500">يحفظ لكل قسم اختيار مستقل.</p>
+                </div>
+                <div>
                     <label class="block text-sm text-gray-600 font-bold mb-1">خلفية الكارت:</label>
                     <select id="themeSelect" class="solid-input" onchange="handleThemeChange()">
                         <optgroup label="✨ الألوان الأساسية">
@@ -194,6 +206,7 @@
                         <optgroup label="🧊 خلفيات ثلاثية الأبعاد">
                             <option value="bg-pyramids-3d">الأهرامات ثلاثية الأبعاد</option>
                             <option value="bg-libya-heritage-3d">الآثار الليبية ثلاثية الأبعاد</option>
+                            <option value="bg-nature-light">الطبيعة الفاتحة</option>
                             <option value="bg-custom-image">خلفية مخصصة</option>
                         </optgroup>
                     </select>

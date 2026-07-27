@@ -1,6 +1,33 @@
 let currentType = 'debt';
         const studioConfig = window.CARD_STUDIO_CONFIG || {};
         const sections = studioConfig.sections || [];
+        const layoutStorageKey = 'ABDO_CARD_STUDIO_LAYOUTS_V1';
+
+        function readSavedLayouts() {
+            try {
+                return JSON.parse(localStorage.getItem(layoutStorageKey) || '{}');
+            } catch {
+                return {};
+            }
+        }
+
+        function loadSavedLayout() {
+            const select = document.getElementById('layoutSelect');
+            if (!select) return;
+            const saved = readSavedLayouts();
+            select.value = saved[currentType] || 'layout-banking';
+        }
+
+        function handleLayoutChange() {
+            const select = document.getElementById('layoutSelect');
+            if (!select) return;
+            const saved = readSavedLayouts();
+            saved[currentType] = select.value;
+            try {
+                localStorage.setItem(layoutStorageKey, JSON.stringify(saved));
+            } catch {}
+            updateCard();
+        }
 
         function initDashboard() { generateDate(); renderTiles(); applyIncomingParams(); updateCard(); setTimeout(resizePreview, 100); }
 
@@ -62,7 +89,10 @@ let currentType = 'debt';
 
         function applyIncomingParams() {
             const incoming = readIncomingPayload();
-            if (!Object.keys(incoming).length) return;
+            if (!Object.keys(incoming).length) {
+                loadSavedLayout();
+                return;
+            }
             const getValue = (key) => incoming[key] === undefined || incoming[key] === null
                 ? null
                 : String(incoming[key]);
@@ -87,6 +117,9 @@ let currentType = 'debt';
             setVal('nameInput', 'name');
             setVal('customNote', 'note');
             setVal('themeSelect', 'theme');
+            const incomingLayout = getValue('layout');
+            if (incomingLayout) setVal('layoutSelect', 'layout');
+            else loadSavedLayout();
 
             if (currentType === 'masraweya') {
                 setVal('input-prev', 'prev');
@@ -128,6 +161,7 @@ let currentType = 'debt';
                 btn.onclick = () => {
                     currentType = sec.id;
                     renderTiles();
+                    loadSavedLayout();
                     document.getElementById('tafqeet-display').classList.add('hidden-element');
                     if (sec.id === 'vip') {
                         document.getElementById('themeSelect').value = 'bg-vip';
@@ -341,6 +375,7 @@ let currentType = 'debt';
                 'bg-vip': '#f5d76e',
                 'bg-pyramids-3d': '#fff4c2',
                 'bg-libya-heritage-3d': '#fff5d6',
+                'bg-nature-light': '#173d2b',
                 'bg-custom-image': '#ffffff',
                 'bg-gold': '#110c00',
                 'bg-silver': '#1a1a1a',
@@ -353,11 +388,12 @@ let currentType = 'debt';
 
         function updateCard() {
             let themeValue = document.getElementById('themeSelect').value;
+            let layoutValue = document.getElementById('layoutSelect').value;
             let cardContainer = document.getElementById('goldenCard');
             let exchangeContainer = document.getElementById('exchangeCard');
             window.CardStudioAI?.clearCustomBackgroundIfNeeded(themeValue);
-            cardContainer.className = "card " + themeValue;
-            exchangeContainer.className = "system-gold-card " + themeValue;
+            cardContainer.className = "card " + themeValue + " " + layoutValue;
+            exchangeContainer.className = "system-gold-card " + themeValue + " " + layoutValue;
             if (currentType === 'masraweya' || currentType === 'final_statement') {
                 cardContainer.classList.add('masraweya-card');
             }
@@ -669,7 +705,14 @@ let currentType = 'debt';
 
             try {
                 if (document.fonts?.ready) await document.fonts.ready;
-                const canvas = await html2canvas(card, { scale: 5, backgroundColor: null, dir: 'rtl', logging: false, useCORS: true });
+                const canvas = await html2canvas(card, {
+                    scale: 5,
+                    backgroundColor: null,
+                    dir: 'rtl',
+                    logging: false,
+                    useCORS: true,
+                    foreignObjectRendering: true
+                });
 
                 canvas.toBlob(async (blob) => {
                     try {

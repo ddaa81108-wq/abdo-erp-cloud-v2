@@ -31,6 +31,18 @@
             background-position: center !important;
             --text-main: #ffffff; --badge-bg: rgba(0,0,0,.5); --badge-border: rgba(255,255,255,.5); --corner-color: rgba(255,255,255,.72); --text-glow: rgba(0,0,0,.95);
         }
+        .bg-nature-light {
+            background-image:
+                linear-gradient(90deg, rgba(255,250,238,.86), rgba(255,255,255,.72), rgba(255,250,238,.86)),
+                url('/card-studio/assets/nature-light.png') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            --text-main: #173d2b;
+            --badge-bg: rgba(255,255,255,.72);
+            --badge-border: rgba(126,91,35,.3);
+            --corner-color: rgba(151,103,26,.68);
+            --text-glow: rgba(255,255,255,.9);
+        }
         .bg-pyramids-3d,
         .bg-libya-heritage-3d,
         .bg-custom-image {
@@ -102,62 +114,71 @@
         /* ======================================================== */
         .final-statement-box { 
             width: 92%; 
-            display: flex; 
-            flex-direction: column; 
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-content: start;
             margin: 0; 
             background: transparent; 
             border: none; 
-            gap: 0; 
+            gap: 16px;
         }
         .stmt-header-row { 
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: center;
             align-items: center;
-            gap: 18px; 
+            position: relative;
             width: 100%; 
-            margin-bottom: 22px;
-            padding: 10px 14px;
+            min-height: 84px;
+            margin-bottom: 6px;
+            padding: 14px 250px;
             border: 1px solid var(--badge-border);
             border-radius: 14px;
             background: var(--badge-bg);
+            box-sizing: border-box;
         }
         .stmt-header { 
-            text-align: right; 
-            font-size: 38pt; 
+            width: 100%;
+            text-align: center;
+            font-size: 32pt;
             font-weight: 900; 
             margin: 0; 
             color: var(--text-main); 
             transition: color 0.3s ease; 
-            line-height: 1.1; 
+            line-height: 1.5;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            overflow: visible;
             min-width: 0; 
-            letter-spacing: 1px;
         }
         .stmt-date { 
-            text-align: left; 
-            font-size: 20pt; 
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            text-align: center;
+            font-size: 17pt;
             font-weight: 700; 
             margin: 0; 
             color: var(--text-main); 
-            opacity: 0.75; 
+            opacity: 0.85;
             direction: ltr; 
             white-space: nowrap;
             background: var(--badge-bg);
-            padding: 6px 18px;
+            padding: 8px 16px;
             border-radius: 10px;
+            line-height: 1.4;
         }
         .stmt-row { 
             display: flex; 
-            justify-content: space-between; 
+            flex-direction: column;
+            justify-content: center;
             align-items: center; 
-            gap: 18px; 
-            padding: 22px 16px; 
-            background: transparent; 
-            border: none; 
-            min-height: 70px; 
-            flex-wrap: wrap; 
+            gap: 12px;
+            padding: 20px 16px;
+            background: var(--badge-bg);
+            border: 1px solid var(--badge-border);
+            border-radius: 16px;
+            min-height: 150px;
             width: 100%; 
             box-sizing: border-box; 
             transition: background 0.2s ease;
@@ -175,33 +196,45 @@
             overflow-wrap: anywhere; 
             white-space: normal; 
             word-break: break-word; 
-            flex: 1 1 45%; 
-            min-width: 180px; 
+            flex: none;
+            min-width: 0;
+            width: 100%;
+            text-align: center;
             opacity: 0.95;
         }
         .stmt-value { 
             font-size: 34pt; 
             font-weight: 900; 
             color: var(--text-main); 
-            text-align: left; 
+            text-align: center;
             border: none; 
             direction: ltr; 
-            line-height: 1; 
+            line-height: 1.35;
             white-space: nowrap; 
             overflow-wrap: normal; 
             word-break: normal; 
-            flex: 1 1 45%; 
-            min-width: 180px;
+            flex: none;
+            min-width: 0;
+            width: 100%;
             letter-spacing: 1px;
         }
         .stmt-row.final-row { 
-            border-bottom: none; 
+            grid-column: 1 / -1;
+            flex-direction: row;
+            justify-content: space-between;
+            min-height: 115px;
             border: 1px solid var(--badge-border);
             border-radius: 16px;
-            margin-top: 10px;
-            padding: 20px 16px;
+            margin-top: 2px;
+            padding: 18px 28px;
             box-shadow: none; 
             background: var(--badge-bg);
+        }
+        .stmt-row.final-row .stmt-label,
+        .stmt-row.final-row .stmt-value {
+            width: auto;
+            flex: 0 1 auto;
+            line-height: 1.45;
         }
         .stmt-row.final-row .stmt-label, .stmt-row.final-row .stmt-value { font-size: 40pt; }
         .masraweya-card { 
@@ -209,9 +242,9 @@
             gap: 24px; 
             padding: 35px 45px; 
         }
-        .masraweya-card .final-statement-box { width: 100%; gap: 0; }
+        .masraweya-card .final-statement-box { width: 100%; }
         .masraweya-card .stmt-header { font-size: 32pt; }
-        .masraweya-card .stmt-date { font-size: 20pt; }
+        .masraweya-card .stmt-date { font-size: 17pt; }
 
         /* ======================================================== */
         /* --- كارت المشتريات - التنسيق المحسن --- */
@@ -335,18 +368,340 @@
 
         /* لقطة التصدير تستخدم مقاسات ثابتة حتى تطابق المعاينة في كل المتصفحات. */
         .card.is-exporting .stmt-header-row {
-            grid-template-columns: minmax(0, 1fr) auto !important;
+            min-height: 92px !important;
+            padding-top: 14px !important;
+            padding-bottom: 14px !important;
         }
         .card.is-exporting .stmt-header {
             font-size: 32pt !important;
-            line-height: 1.15 !important;
+            line-height: 1.5 !important;
             white-space: nowrap !important;
+            overflow: visible !important;
         }
-        .card.is-exporting .stmt-date { font-size: 20pt !important; white-space: nowrap !important; }
-        .card.is-exporting .stmt-label { font-size: 22pt !important; }
-        .card.is-exporting .stmt-value { font-size: 30pt !important; }
+        .card.is-exporting .stmt-date { font-size: 17pt !important; line-height: 1.5 !important; white-space: nowrap !important; }
+        .card.is-exporting .stmt-label { font-size: 22pt !important; line-height: 1.5 !important; }
+        .card.is-exporting .stmt-value { font-size: 30pt !important; line-height: 1.45 !important; }
         .card.is-exporting .stmt-row.final-row .stmt-label,
-        .card.is-exporting .stmt-row.final-row .stmt-value { font-size: 36pt !important; }
+        .card.is-exporting .stmt-row.final-row .stmt-value { font-size: 34pt !important; line-height: 1.5 !important; }
+
+        /* ======================================================== */
+        /* القوالب الجديدة: الشكل مستقل عن الخلفية ويحفظ لكل قسم. */
+        /* ======================================================== */
+        .card.layout-banking,
+        .system-gold-card.layout-banking {
+            border-radius: 24px;
+            border: 2px solid var(--corner-color, rgba(212,175,55,.7));
+            box-shadow: 0 24px 55px rgba(0,0,0,.28), inset 0 0 55px rgba(255,255,255,.06);
+        }
+        .layout-banking .stmt-row,
+        .layout-banking .purchases-row {
+            box-shadow: 0 10px 22px rgba(0,0,0,.1);
+        }
+
+        .card.layout-executive,
+        .system-gold-card.layout-executive {
+            border-radius: 10px;
+            border: 2px solid var(--corner-color, rgba(20,52,43,.5));
+            box-shadow: 0 20px 42px rgba(0,0,0,.2);
+        }
+        .layout-executive::before { inset: 16px; border-radius: 4px; }
+        .layout-executive::after { display: none; }
+        .layout-executive .final-statement-box {
+            grid-template-columns: 1fr;
+            gap: 4px;
+        }
+        .layout-executive .stmt-row {
+            flex-direction: row;
+            justify-content: space-between;
+            min-height: 76px;
+            padding: 12px 24px;
+            border-radius: 5px;
+            background: rgba(255,255,255,.1);
+        }
+        .layout-executive .stmt-row .stmt-label,
+        .layout-executive .stmt-row .stmt-value {
+            width: auto;
+            text-align: initial;
+        }
+        .layout-executive .stmt-row.final-row {
+            grid-column: 1;
+            margin-top: 10px;
+            min-height: 105px;
+            background: var(--badge-bg);
+        }
+        .layout-executive .purchases-row {
+            border-radius: 5px;
+            border-bottom: 1px solid var(--badge-border);
+        }
+        .card.layout-executive > .header,
+        .card.layout-executive > .client-name,
+        .card.layout-executive > .label {
+            width: 92%;
+            text-align: right;
+        }
+        .card.layout-executive > .amount-box-wrapper {
+            width: 92%;
+            min-height: 190px;
+            border: 1px solid var(--badge-border);
+            border-radius: 6px;
+            background: var(--badge-bg);
+        }
+        .system-gold-card.layout-executive .card-line-1,
+        .system-gold-card.layout-executive .card-line-2 {
+            right: 55px;
+            left: 42%;
+            text-align: right;
+        }
+        .system-gold-card.layout-executive .card-price-value {
+            left: 42px;
+            right: 55%;
+            top: 145px;
+            font-size: 140px;
+        }
+
+        .card.layout-fintech,
+        .system-gold-card.layout-fintech {
+            border-radius: 30px;
+            border: 1px solid var(--badge-border);
+            box-shadow: 0 28px 65px rgba(0,0,0,.34);
+        }
+        .layout-fintech::before { inset: 0; border: none; }
+        .layout-fintech::after { display: none; }
+        .layout-fintech .final-statement-box {
+            grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr);
+            grid-template-areas:
+                "header header"
+                "final previous"
+                "final received"
+                "final total";
+            gap: 12px;
+        }
+        .layout-fintech .stmt-header-row { grid-area: header; }
+        .layout-fintech .stmt-row:nth-child(2) { grid-area: previous; }
+        .layout-fintech .stmt-row:nth-child(3) { grid-area: received; }
+        .layout-fintech .stmt-row:nth-child(4) { grid-area: total; }
+        .layout-fintech .stmt-row.final-row {
+            grid-area: final;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100%;
+            margin: 0;
+            background: rgba(0,76,60,.36);
+        }
+        .layout-fintech .stmt-row { min-height: 92px; padding: 10px 15px; }
+        .layout-fintech .stmt-row .stmt-label,
+        .layout-fintech .stmt-row .stmt-value { line-height: 1.25; }
+        .layout-fintech .purchases-box {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+        .layout-fintech .purchases-top-bar { grid-column: 1 / -1; margin-bottom: 4px; }
+        .layout-fintech .purchases-row { border: 1px solid var(--badge-border); border-radius: 14px; background: var(--badge-bg); }
+        .layout-fintech .purchases-row.row-5 { grid-column: 1 / -1; }
+        .card.layout-fintech > .header {
+            width: 92%;
+            text-align: right;
+            border-right: 7px solid var(--corner-color);
+            padding-right: 18px;
+        }
+        .card.layout-fintech > .client-name {
+            width: 88%;
+            padding: 18px;
+            border-radius: 18px;
+            background: rgba(0,0,0,.16);
+        }
+        .card.layout-fintech > .amount-box-wrapper {
+            width: 88%;
+            min-height: 210px;
+            border: 1px solid var(--badge-border);
+            border-radius: 24px;
+            background: rgba(0,76,60,.28);
+        }
+        .system-gold-card.layout-fintech .card-line-1 {
+            top: 48px;
+            right: 55px;
+            text-align: right;
+        }
+        .system-gold-card.layout-fintech .card-line-2 {
+            top: 105px;
+            right: 55px;
+            text-align: right;
+        }
+        .system-gold-card.layout-fintech .card-price-value {
+            top: 170px;
+            left: 45px;
+            right: 45px;
+            padding: 18px 0;
+            border: 1px solid var(--badge-border);
+            border-radius: 24px;
+            background: rgba(0,76,60,.25);
+        }
+
+        .card.layout-nature,
+        .system-gold-card.layout-nature {
+            border-radius: 34px;
+            border: 2px solid rgba(255,255,255,.72);
+            box-shadow: 0 25px 60px rgba(30,55,42,.26), inset 0 0 80px rgba(255,255,255,.12);
+        }
+        .layout-nature .stmt-header-row,
+        .layout-nature .stmt-row,
+        .layout-nature .purchases-top-bar,
+        .layout-nature .purchases-row,
+        .layout-nature .custom-note-box,
+        .layout-nature .price-badge {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 12px 28px rgba(31,63,47,.12);
+        }
+        .layout-nature .stmt-row,
+        .layout-nature .purchases-row { border-radius: 22px; }
+        .card.layout-nature > .header,
+        .card.layout-nature > .client-name,
+        .card.layout-nature > .label,
+        .card.layout-nature > .amount-box-wrapper {
+            padding: 14px 24px;
+            border: 1px solid var(--badge-border);
+            border-radius: 22px;
+            background: var(--badge-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .card.layout-nature > .amount-box-wrapper { width: 86%; }
+        .system-gold-card.layout-nature .card-line-1,
+        .system-gold-card.layout-nature .card-line-2,
+        .system-gold-card.layout-nature .card-price-value {
+            left: 45px;
+            right: 45px;
+            border-radius: 20px;
+            background: var(--badge-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .card.layout-ledger,
+        .system-gold-card.layout-ledger {
+            border-radius: 14px;
+            border: 1px solid rgba(10,35,70,.24);
+            box-shadow: 0 18px 38px rgba(8,30,57,.2);
+        }
+        .layout-ledger::before { inset: 0; border: none; }
+        .layout-ledger::after { display: none; }
+        .layout-ledger .final-statement-box { grid-template-columns: 1fr; gap: 0; }
+        .layout-ledger .stmt-header-row { border-radius: 0; margin: 0; border-width: 0 0 2px; }
+        .layout-ledger .stmt-row {
+            flex-direction: row;
+            justify-content: space-between;
+            min-height: 84px;
+            padding: 12px 26px;
+            border-width: 0 0 1px;
+            border-radius: 0;
+            background: rgba(255,255,255,.55);
+        }
+        .layout-ledger .stmt-row .stmt-label,
+        .layout-ledger .stmt-row .stmt-value { width: auto; text-align: initial; }
+        .layout-ledger .stmt-row.final-row {
+            grid-column: 1;
+            border: 0;
+            border-radius: 0;
+            margin: 0;
+            background: rgba(7,38,77,.9);
+        }
+        .layout-ledger .stmt-row.final-row .stmt-label,
+        .layout-ledger .stmt-row.final-row .stmt-value { color: #fff !important; }
+        .layout-ledger .purchases-row { border-bottom: 1px solid var(--badge-border); border-radius: 0; }
+        .card.layout-ledger > .header {
+            width: 92%;
+            text-align: right;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--badge-border);
+        }
+        .card.layout-ledger > .client-name { font-size: 42pt; }
+        .card.layout-ledger > .label {
+            width: 82%;
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--badge-border);
+        }
+        .card.layout-ledger > .amount-box-wrapper {
+            width: 82%;
+            min-height: 170px;
+            border-radius: 0;
+            border-bottom: 8px solid var(--corner-color);
+            background: rgba(255,255,255,.5);
+        }
+        .system-gold-card.layout-ledger .card-inner-line { border-radius: 0; border-width: 1px; }
+        .system-gold-card.layout-ledger .card-line-1,
+        .system-gold-card.layout-ledger .card-line-2 { text-align: right; right: 60px; }
+        .system-gold-card.layout-ledger .card-price-value {
+            top: 170px;
+            padding: 16px 0;
+            background: rgba(7,38,77,.88);
+            color: #fff !important;
+        }
+
+        .card.layout-heritage,
+        .system-gold-card.layout-heritage {
+            border-radius: 20px;
+            border: 3px solid var(--corner-color, rgba(199,139,59,.7));
+            box-shadow: 0 26px 62px rgba(0,0,0,.4), inset 0 0 90px rgba(0,0,0,.12);
+        }
+        .layout-heritage::before { inset: 12px; border-width: 2px; border-color: var(--corner-color); }
+        .layout-heritage::after { inset: 22px; border-color: var(--badge-border); }
+        .layout-heritage .final-statement-box {
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+            grid-template-areas:
+                "header header"
+                "final previous"
+                "final received"
+                "final total";
+            gap: 12px;
+        }
+        .layout-heritage .stmt-header-row { grid-area: header; }
+        .layout-heritage .stmt-row:nth-child(2) { grid-area: previous; }
+        .layout-heritage .stmt-row:nth-child(3) { grid-area: received; }
+        .layout-heritage .stmt-row:nth-child(4) { grid-area: total; }
+        .layout-heritage .stmt-row.final-row {
+            grid-area: final;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100%;
+            margin: 0;
+            border-width: 2px;
+        }
+        .layout-heritage .stmt-row { min-height: 92px; padding: 10px 15px; }
+        .layout-heritage .purchases-row { border: 1px solid var(--badge-border); border-radius: 12px; margin-bottom: 7px; background: rgba(0,0,0,.12); }
+        .card.layout-heritage > .header,
+        .card.layout-heritage > .client-name {
+            width: 88%;
+            padding: 10px 20px;
+            border: 1px solid var(--corner-color);
+            border-radius: 12px 12px 2px 2px;
+            background: rgba(0,0,0,.14);
+        }
+        .card.layout-heritage > .amount-box-wrapper {
+            width: 86%;
+            min-height: 210px;
+            border: 2px solid var(--corner-color);
+            border-radius: 28px 8px 28px 8px;
+            background: rgba(0,0,0,.18);
+        }
+        .system-gold-card.layout-heritage .card-inner-line { border-width: 4px 1px; }
+        .system-gold-card.layout-heritage .card-price-value {
+            top: 165px;
+            left: 70px;
+            right: 70px;
+            border: 2px solid var(--corner-color);
+            border-radius: 28px 8px 28px 8px;
+            background: rgba(0,0,0,.18);
+        }
+
+        .system-gold-card.layout-executive { border-radius: 10px; }
+        .system-gold-card.layout-fintech { border-radius: 30px; }
+        .system-gold-card.layout-nature { border-radius: 34px; }
+        .system-gold-card.layout-ledger { border-radius: 14px; }
+        .system-gold-card.layout-heritage { border-radius: 20px; }
 
         /* تنسيقات الواجهة المضيئة (Light Mode) */
         .solid-input { background-color: #ffffff; border: 1px solid #d1d5db; color: #1f2937; padding: 10px; border-radius: 8px; width: 100%; outline: none; transition: 0.3s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }

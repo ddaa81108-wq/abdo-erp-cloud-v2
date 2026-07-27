@@ -22,5 +22,18 @@ window.CARD_STUDIO_CONFIG = Object.freeze({
       label: "الآثار الليبية ثلاثية الأبعاد",
       asset: "/card-studio/assets/libya-heritage-3d.png",
     },
+    {
+      id: "bg-nature-light",
+      label: "الطبيعة الفاتحة",
+      asset: "/card-studio/assets/nature-light.png",
+    },
+  ],
+  layouts: [
+    { id: "layout-banking", label: "المصرفي الملكي" },
+    { id: "layout-executive", label: "التنفيذي الرسمي" },
+    { id: "layout-fintech", label: "المالي الحديث" },
+    { id: "layout-nature", label: "الزجاجي الهادئ" },
+    { id: "layout-ledger", label: "الكشف المحاسبي" },
+    { id: "layout-heritage", label: "التراث الليبي" },
   ],
 });
