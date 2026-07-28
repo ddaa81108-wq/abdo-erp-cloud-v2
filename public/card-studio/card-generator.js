@@ -705,12 +705,34 @@ let currentType = 'debt';
 
             try {
                 if (document.fonts?.ready) await document.fonts.ready;
+                // Let the export-only spacing settle before html2canvas reads
+                // the Arabic line boxes. This keeps the copied image aligned
+                // with the preview even at the largest font zoom.
+                await new Promise((resolve) => {
+                    requestAnimationFrame(() => requestAnimationFrame(resolve));
+                });
+
+                const exportWidth = Math.ceil(card.getBoundingClientRect().width);
+                const exportHeight = Math.ceil(card.getBoundingClientRect().height);
                 const canvas = await html2canvas(card, {
                     scale: 5,
                     backgroundColor: null,
                     dir: 'rtl',
                     logging: false,
-                    useCORS: true
+                    useCORS: true,
+                    width: exportWidth,
+                    height: exportHeight,
+                    windowWidth: Math.max(document.documentElement.clientWidth, exportWidth),
+                    windowHeight: Math.max(document.documentElement.clientHeight, exportHeight),
+                    onclone: (clonedDocument) => {
+                        const clonedCard = clonedDocument.getElementById(card.id);
+                        if (!clonedCard) return;
+                        clonedCard.classList.add('is-exporting');
+                        clonedCard.style.width = targetWidth;
+                        clonedCard.style.maxWidth = targetWidth;
+                        clonedCard.style.height = 'auto';
+                        clonedCard.style.transform = 'none';
+                    }
                 });
 
                 canvas.toBlob(async (blob) => {

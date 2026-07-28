@@ -384,6 +384,56 @@
         .card.is-exporting .stmt-row.final-row .stmt-label,
         .card.is-exporting .stmt-row.final-row .stmt-value { font-size: 34pt !important; line-height: 1.5 !important; }
 
+        /*
+         * html2canvas measures Arabic glyph baselines more tightly than the
+         * live browser preview. Apply the extra breathing room only while
+         * exporting so the preview stays unchanged and no decorative border
+         * can cross a title, customer name, label, or amount in the copy.
+         */
+        .card.is-exporting > .header,
+        .card.is-exporting > .price-card-title,
+        .card.is-exporting > .client-name,
+        .card.is-exporting > .label,
+        .card.is-exporting > .exchange-note,
+        .card.is-exporting > .amount-box-wrapper,
+        .card.is-exporting > .final-statement-box,
+        .card.is-exporting > .purchases-box,
+        .card.is-exporting > .price-badge,
+        .card.is-exporting > .custom-note-box,
+        .card.is-exporting > .footer,
+        .card.is-exporting > .card-date {
+            position: relative;
+            z-index: 3;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        .card.is-exporting > .header {
+            line-height: 1.55 !important;
+            padding-top: 14px !important;
+            padding-bottom: 22px !important;
+        }
+        .card.is-exporting > .client-name {
+            line-height: 1.45 !important;
+            padding-top: 22px !important;
+            padding-bottom: 34px !important;
+        }
+        .card.is-exporting > .label {
+            line-height: 1.55 !important;
+            padding-top: 8px !important;
+            padding-bottom: 16px !important;
+        }
+        .card.is-exporting > .amount-box-wrapper {
+            height: auto !important;
+            min-height: 225px !important;
+            padding: 30px 32px 46px !important;
+        }
+        .card.is-exporting .amount-text {
+            line-height: 1.16 !important;
+            padding: 0.1em 0 0.2em !important;
+            align-items: baseline !important;
+            box-sizing: border-box;
+        }
+
         /* ======================================================== */
         /* القوالب الجديدة: الشكل مستقل عن الخلفية ويحفظ لكل قسم. */
         /* ======================================================== */

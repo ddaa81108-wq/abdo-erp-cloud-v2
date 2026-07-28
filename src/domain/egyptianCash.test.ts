@@ -52,7 +52,7 @@ describe('Egyptian cash calculations', () => {
     ], '2026-07-26')).toBe(170);
   });
 
-  it('recalculates every later carry after an old day is edited', () => {
+  it('uses the saved closing balance of the nearest prior day without rebuilding all history', () => {
     expect(getEgyptianPreviousValue([
       {
         date: '2026-07-20',
@@ -66,6 +66,14 @@ describe('Egyptian cash calculations', () => {
         receivedValue: 50,
         rows: [{ value: 20, commission: 0 }],
       },
-    ], '2026-07-22')).toBe(110);
+    ], '2026-07-22')).toBe(1_000_029);
+  });
+
+  it('matches the reported day when its opening value is zero', () => {
+    expect(calculateEgyptianRemainder({
+      previousValue: 0,
+      receivedValue: 880_000,
+      rows: [{ value: 793_860, commission: 0 }],
+    })).toBe(86_140);
   });
 });

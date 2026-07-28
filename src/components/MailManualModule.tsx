@@ -7,6 +7,9 @@ import {
   ChevronRight,
   Sparkles,
   TableProperties,
+  PencilLine,
+  Check,
+  X,
 } from 'lucide-react';
 import { ERPState, EgyptianCashRow } from '../types';
 import {
@@ -47,6 +50,8 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
     previousValue: number;
     receivedValue: number;
   } | null>(null);
+  const [isEditingPrevious, setIsEditingPrevious] = useState(false);
+  const [previousDraft, setPreviousDraft] = useState('');
 
   useEffect(() => {
     const existing = state.egyptianCashRecords?.find(r => r.date === selectedDay);
@@ -61,9 +66,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
       setLocalEgyptRecord({
         date: existing.date,
         rows,
-        previousValue: state.egyptianCashRecords.some(r => r.date < selectedDay)
-          ? getEgyptianPreviousValue(state.egyptianCashRecords || [], selectedDay)
-          : Number(existing.previousValue) || 0,
+        previousValue: Number(existing.previousValue) || 0,
         receivedValue: Number(existing.receivedValue) || 0,
       });
     } else {
@@ -75,6 +78,8 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
         receivedValue: 0,
       });
     }
+    setIsEditingPrevious(false);
+    setPreviousDraft('');
   }, [state.egyptianCashRecords, selectedDay]);
 
   const queueRecordSave = (
@@ -117,6 +122,21 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
     };
     setLocalEgyptRecord(newRec);
     queueRecordSave(newRec);
+  };
+
+  const handlePreviousCorrection = () => {
+    if (!localEgyptRecord) return;
+    const correctedValue = Number(previousDraft.replace(/,/g, '').trim() || 0);
+    if (!Number.isFinite(correctedValue)) return;
+
+    const newRec = {
+      ...localEgyptRecord,
+      previousValue: correctedValue,
+    };
+    setLocalEgyptRecord(newRec);
+    setIsEditingPrevious(false);
+    setPreviousDraft('');
+    queueRecordSave(newRec, 0);
   };
 
   const handleOpenSmartImage = () => {
@@ -323,7 +343,72 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
             </div>
 
             <div className="divide-y divide-slate-100 pt-2">
-              <SummaryRow label="القيمة السابقة" value={previousValue} />
+              <div className="flex min-h-20 items-center justify-between gap-4 py-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-slate-800">القيمة السابقة</span>
+                  {!isEditingPrevious && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviousDraft(String(previousValue));
+                        setIsEditingPrevious(true);
+                      }}
+                      className="flex h-8 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-800"
+                      title="تصحيح القيمة الافتتاحية لهذا اليوم فقط"
+                    >
+                      <PencilLine className="h-3.5 w-3.5" />
+                      تصحيح
+                    </button>
+                  )}
+                </div>
+                {isEditingPrevious ? (
+                  <div className="flex w-1/2 items-center gap-2">
+                    <input
+                      type="number"
+                      step="any"
+                      autoFocus
+                      value={previousDraft}
+                      onChange={(event) => setPreviousDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') handlePreviousCorrection();
+                        if (event.key === 'Escape') {
+                          setIsEditingPrevious(false);
+                          setPreviousDraft('');
+                        }
+                      }}
+                      className="min-w-0 flex-1 rounded-xl border border-indigo-300 bg-indigo-50 px-3 py-2 text-left font-mono text-xl font-black text-slate-900 outline-none focus:ring-2 focus:ring-indigo-200"
+                      dir="ltr"
+                      aria-label="تصحيح القيمة السابقة"
+                    />
+                    <button
+                      type="button"
+                      onClick={handlePreviousCorrection}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-white transition hover:bg-emerald-700"
+                      aria-label="حفظ تصحيح القيمة السابقة"
+                    >
+                      <Check className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingPrevious(false);
+                        setPreviousDraft('');
+                      }}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-200 text-slate-700 transition hover:bg-slate-300"
+                      aria-label="إلغاء تصحيح القيمة السابقة"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <span
+                    className={`font-mono text-2xl font-black ${previousValue < 0 ? 'text-rose-600' : 'text-slate-900'}`}
+                    dir="ltr"
+                  >
+                    {previousValue.toLocaleString('en-US', { maximumFractionDigits: 2 })} ج.م
+                  </span>
+                )}
+              </div>
               <div className="flex min-h-20 items-center justify-between gap-4 py-4">
                 <span className="text-lg font-bold text-slate-800">المستلم اليوم</span>
                 <div className="flex w-1/2 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3">
