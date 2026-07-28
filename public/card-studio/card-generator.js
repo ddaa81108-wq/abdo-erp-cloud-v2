@@ -2,6 +2,20 @@ let currentType = 'debt';
         const studioConfig = window.CARD_STUDIO_CONFIG || {};
         const sections = studioConfig.sections || [];
         const layoutStorageKey = 'ABDO_CARD_STUDIO_LAYOUTS_V1';
+        const cardWidths = {
+            masraweya: 1050,
+            final_statement: 1050,
+            purchases: 1020,
+            vip: 960,
+            alert: 900,
+            mini_card: 600,
+            zero: 820,
+        };
+
+        function getCardWidth(type = currentType) {
+            if (type === 'exchange_rate') return 800;
+            return cardWidths[type] || 900;
+        }
 
         function readSavedLayouts() {
             try {
@@ -39,8 +53,7 @@ let currentType = 'debt';
             if (!wrapper || !container || !card) return;
             
             const containerWidth = container.clientWidth - 32;
-            const isMini = card.classList.contains('mini-card-layout');
-            const cardWidth = isExchange ? 800 : (isMini ? 600 : 1200);
+            const cardWidth = card.offsetWidth || getCardWidth();
             
             if (containerWidth < cardWidth) {
                 const scale = containerWidth / cardWidth;
@@ -393,9 +406,12 @@ let currentType = 'debt';
             let exchangeContainer = document.getElementById('exchangeCard');
             window.CardStudioAI?.clearCustomBackgroundIfNeeded(themeValue);
             cardContainer.className = "card " + themeValue + " " + layoutValue;
+            cardContainer.style.setProperty('--card-width', getCardWidth() + 'px');
             exchangeContainer.className = "system-gold-card " + themeValue + " " + layoutValue;
             if (currentType === 'masraweya' || currentType === 'final_statement') {
                 cardContainer.classList.add('masraweya-card');
+            } else if (currentType === 'purchases') {
+                cardContainer.classList.add('purchases-card');
             }
 
             let titleColor = document.getElementById('titleColorPicker').value;
@@ -690,8 +706,7 @@ let currentType = 'debt';
             const originalMaxWidth = card.style.maxWidth;
             const originalTransform = card.style.transform;
             
-            const isMini = card.classList.contains('mini-card-layout');
-            const targetWidth = isExchange ? '800px' : (isMini ? '600px' : '1200px');
+            const targetWidth = getCardWidth() + 'px';
 
             const originalWrapperTransform = wrapper.style.transform;
             const originalWrapperMargin = wrapper.style.marginBottom;
@@ -701,19 +716,17 @@ let currentType = 'debt';
             card.style.width = targetWidth;
             card.style.maxWidth = targetWidth;
             card.style.transform = 'none';
-            card.classList.add('is-exporting');
 
             try {
                 if (document.fonts?.ready) await document.fonts.ready;
-                // Let the export-only spacing settle before html2canvas reads
-                // the Arabic line boxes. This keeps the copied image aligned
-                // with the preview even at the largest font zoom.
+                // Wait for the exact preview layout to settle. Exporting must
+                // never apply a second typography or spacing system.
                 await new Promise((resolve) => {
                     requestAnimationFrame(() => requestAnimationFrame(resolve));
                 });
 
-                const exportWidth = Math.ceil(card.getBoundingClientRect().width);
-                const exportHeight = Math.ceil(card.getBoundingClientRect().height);
+                const exportWidth = card.offsetWidth;
+                const exportHeight = card.offsetHeight;
                 const canvas = await html2canvas(card, {
                     scale: 5,
                     backgroundColor: null,
@@ -727,10 +740,10 @@ let currentType = 'debt';
                     onclone: (clonedDocument) => {
                         const clonedCard = clonedDocument.getElementById(card.id);
                         if (!clonedCard) return;
-                        clonedCard.classList.add('is-exporting');
                         clonedCard.style.width = targetWidth;
                         clonedCard.style.maxWidth = targetWidth;
-                        clonedCard.style.height = 'auto';
+                        clonedCard.style.height = exportHeight + 'px';
+                        clonedCard.style.minHeight = exportHeight + 'px';
                         clonedCard.style.transform = 'none';
                     }
                 });
@@ -766,7 +779,6 @@ let currentType = 'debt';
                 btnElement.innerHTML = originalText;
                 btnElement.style.pointerEvents = "auto";
             } finally {
-                card.classList.remove('is-exporting');
                 card.style.width = originalWidth;
                 card.style.maxWidth = originalMaxWidth;
                 card.style.transform = originalTransform;

@@ -73,7 +73,7 @@
         .card .label { text-shadow: 0 2px 4px rgba(0,0,0,0.25), 0 0 12px var(--text-glow,transparent); }
 
         /* تنسيق الكارت الأساسي */
-        .card { width: 1200px !important; min-height: 600px; border-radius: 24px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; overflow: hidden; }
+        .card { width: var(--card-width, 900px) !important; max-width: var(--card-width, 900px) !important; min-height: 600px; border-radius: 24px; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; align-items: center; gap: 14px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); position: relative; color: var(--text-main); border: none; transition: background 0.3s ease; overflow: hidden; }
         .header { font-size: 26pt; font-weight: bold; margin: 0; transition: color 0.3s ease; text-align: center; line-height: 1.25; }
         .price-card-title { font-size: 42pt; font-weight: 900; margin: 30px 0; width: 85%; text-align: center; border-top: 3px solid rgba(255,255,255,0.4); border-bottom: 3px solid rgba(255,255,255,0.4); padding: 25px 0; line-height: 1.4; color: var(--text-main); }
         .client-name { font-size: 55pt; font-weight: 900; margin: 0; line-height: 1.15; text-align: center; transition: filter 0.3s ease, color 0.3s ease; max-width: 92%; overflow-wrap: anywhere; }
@@ -366,86 +366,25 @@
         .card-price-value { top: 140px; font-size: 160px; line-height: 1; }
         .card-footer-note { bottom: 45px; font-size: 28px; }
 
-        /* لقطة التصدير تستخدم مقاسات ثابتة حتى تطابق المعاينة في كل المتصفحات. */
-        .card.is-exporting .stmt-header-row {
-            min-height: 92px !important;
-            padding-top: 14px !important;
-            padding-bottom: 14px !important;
-        }
-        .card.is-exporting .stmt-header {
-            font-size: 32pt !important;
-            line-height: 1.5 !important;
-            white-space: nowrap !important;
-            overflow: visible !important;
-        }
-        .card.is-exporting .stmt-date { font-size: 17pt !important; line-height: 1.5 !important; white-space: nowrap !important; }
-        .card.is-exporting .stmt-label { font-size: 22pt !important; line-height: 1.5 !important; }
-        .card.is-exporting .stmt-value { font-size: 30pt !important; line-height: 1.45 !important; }
-        .card.is-exporting .stmt-row.final-row .stmt-label,
-        .card.is-exporting .stmt-row.final-row .stmt-value { font-size: 34pt !important; line-height: 1.5 !important; }
-
-        /*
-         * html2canvas measures Arabic glyph baselines more tightly than the
-         * live browser preview. Apply the extra breathing room only while
-         * exporting so the preview stays unchanged and no decorative border
-         * can cross a title, customer name, label, or amount in the copy.
-         */
-        .card.is-exporting > .header,
-        .card.is-exporting > .price-card-title,
-        .card.is-exporting > .client-name,
-        .card.is-exporting > .label,
-        .card.is-exporting > .exchange-note,
-        .card.is-exporting > .amount-box-wrapper,
-        .card.is-exporting > .final-statement-box,
-        .card.is-exporting > .purchases-box,
-        .card.is-exporting > .price-badge,
-        .card.is-exporting > .custom-note-box,
-        .card.is-exporting > .footer,
-        .card.is-exporting > .card-date {
-            position: relative;
-            z-index: 3;
-            flex-shrink: 0;
-            box-sizing: border-box;
-        }
-        .card.is-exporting > .header {
-            line-height: 1.55 !important;
-            padding-top: 14px !important;
-            padding-bottom: 22px !important;
-        }
-        .card.is-exporting > .client-name {
-            line-height: 1.45 !important;
-            padding-top: 22px !important;
-            padding-bottom: 34px !important;
-        }
-        .card.is-exporting > .label {
-            line-height: 1.55 !important;
-            padding-top: 8px !important;
-            padding-bottom: 16px !important;
-        }
-        .card.is-exporting > .amount-box-wrapper {
-            height: auto !important;
-            min-height: 225px !important;
-            padding: 30px 32px 46px !important;
-        }
-        .card.is-exporting .amount-text {
-            line-height: 1.16 !important;
-            padding: 0.1em 0 0.2em !important;
-            align-items: baseline !important;
-            box-sizing: border-box;
-        }
-
         /* ======================================================== */
         /* القوالب الجديدة: الشكل مستقل عن الخلفية ويحفظ لكل قسم. */
         /* ======================================================== */
         .card.layout-banking,
         .system-gold-card.layout-banking {
-            border-radius: 24px;
-            border: 2px solid var(--corner-color, rgba(212,175,55,.7));
-            box-shadow: 0 24px 55px rgba(0,0,0,.28), inset 0 0 55px rgba(255,255,255,.06);
+            border-radius: 26px;
+            border: 1px solid var(--badge-border, rgba(255,255,255,.24));
+            box-shadow: 0 22px 48px rgba(0,0,0,.22);
         }
+        .card.layout-banking::before,
+        .card.layout-banking::after { display: none; }
+        .card.layout-banking #corner-tl,
+        .card.layout-banking #corner-tr,
+        .card.layout-banking #corner-bl,
+        .card.layout-banking #corner-br,
+        .card.layout-banking #crown-top { display: none !important; }
         .layout-banking .stmt-row,
         .layout-banking .purchases-row {
-            box-shadow: 0 10px 22px rgba(0,0,0,.1);
+            box-shadow: none;
         }
 
         .card.layout-executive,
