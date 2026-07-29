@@ -633,7 +633,7 @@ export default function CompaniesModule({
                   </span>
                 </div>
                 <div className="max-h-[48vh] overflow-auto">
-                  <table className="record-ledger-table business-ledger-table w-full min-w-[880px] border-collapse text-xs">
+                  <table className="w-full min-w-[880px] border-collapse text-xs">
                     <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
                       <tr>
                         <th className="p-3 text-right">التسلسل</th>
@@ -657,13 +657,7 @@ export default function CompaniesModule({
                           return (
                             <tr
                               key={transaction.id}
-                              className={`ledger-row ${
-                                kind === 'payment'
-                                  ? 'ledger-payment'
-                                  : kind === 'opening_balance'
-                                    ? 'ledger-opening'
-                                    : 'ledger-debt'
-                              } border-r-4 transition-colors hover:bg-slate-50 ${
+                              className={`border-r-4 transition-colors hover:bg-slate-50 ${
                                 kind === 'payment'
                                   ? 'border-r-emerald-400 bg-emerald-50/35'
                                   : kind === 'opening_balance'

@@ -1339,7 +1339,7 @@ export default function CustomerDebtsModule({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="record-ledger-table customer-ledger-table w-full border-collapse text-[11px]">
+                  <table className="w-full text-[11px] border-collapse">
                     <thead>
                       <tr className="bg-slate-200 text-slate-700 font-bold border-b border-slate-300">
                         <th className="p-2 text-right">الوقت والتاريخ</th>
@@ -1356,7 +1356,7 @@ export default function CustomerDebtsModule({
                         .map((tx) => (
                           <tr
                             key={tx.id}
-                            className={`ledger-row ${tx.type === 'debt' ? 'ledger-debt' : 'ledger-payment'} font-mono`}
+                            className="hover:bg-slate-50 font-mono"
                           >
                             <td className="p-2 font-sans text-[10.5px]">
                               {new Date(tx.date).toLocaleDateString("ar-LY")}{" "}

@@ -798,7 +798,7 @@ function TrustLedger({
 }) {
   return (
     <div className="max-h-[55vh] overflow-auto">
-      <table className="record-ledger-table trust-ledger-table w-full min-w-[1250px] border-collapse text-xs">
+      <table className="w-full min-w-[1250px] text-xs">
         <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
           <tr>
             <th className="p-3">#</th><th className="p-3">التاريخ</th><th className="p-3">الحركة والبيان</th>
@@ -812,17 +812,7 @@ function TrustLedger({
           {rows.map(({ transaction, amountLyd, amountEgp, index }) => (
             <tr
               key={transaction.id}
-              className={`ledger-row ${
-                transaction.type === 'deposit_lyd'
-                  ? 'ledger-trust-deposit-lyd'
-                  : transaction.type === 'withdraw_lyd'
-                    ? 'ledger-trust-withdraw-lyd'
-                    : transaction.type === 'convert_to_egp'
-                      ? 'ledger-trust-convert'
-                      : transaction.type === 'deposit_egp'
-                        ? 'ledger-trust-deposit-egp'
-                        : 'ledger-trust-withdraw-egp'
-              } border-r-4 transition-colors hover:bg-slate-50 ${transactionRowTone[transaction.type]}`}
+              className={`border-r-4 transition-colors hover:bg-slate-50 ${transactionRowTone[transaction.type]}`}
             >
               <td className="p-3 font-bold text-slate-400">{index + 1}</td>
               <td className="whitespace-nowrap p-3">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
@@ -839,7 +829,7 @@ function TrustLedger({
           ))}
           {!rows.length && <tr><td colSpan={11} className="p-10 text-center text-slate-400">لا توجد حركات مسجلة.</td></tr>}
         </tbody>
-        <tfoot className="ledger-total sticky bottom-0 border-t-2 border-indigo-300 bg-indigo-50">
+        <tfoot className="sticky bottom-0 border-t-2 border-indigo-300 bg-indigo-50">
           <tr>
             <td colSpan={7} className="p-3 text-left font-black text-indigo-900">الإجمالي النهائي</td>
             <td className={`p-3 font-black ${totalLyd < 0 ? 'bg-rose-100 text-rose-800' : 'bg-indigo-100 text-indigo-900'}`}>{signedBalance(totalLyd, 'lyd')}</td>
