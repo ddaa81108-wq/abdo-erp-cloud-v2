@@ -551,9 +551,9 @@ export default function CompaniesModule({
                 onClick={() => setSelectedId(account.id)}
                 className="min-h-24 w-full rounded-xl p-3 text-right"
               >
-                <div className="mb-4 flex items-start justify-between gap-1">
-                  <strong className="line-clamp-2 text-[11px]">{account.name}</strong>
-                  <span className="shrink-0 rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold">
+                <div className="mb-4 pl-12 text-right">
+                  <strong className="block line-clamp-2 text-[11px]">{account.name}</strong>
+                  <span className="mt-1 inline-block rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold">
                     {account.accountType === 'merchant' ? 'تاجر' : 'شركة'}
                   </span>
                 </div>
