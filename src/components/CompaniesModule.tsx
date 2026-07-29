@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Building2,
   Check,
+  Copy,
   CircleDollarSign,
   FileText,
   HandCoins,
@@ -23,6 +24,7 @@ import {
 } from '../domain/businessAccounts';
 import { VoiceInputButton } from './VoiceInputButton';
 import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
+import { openSmartCardStudio } from '../utils/imageExporterUtils';
 
 interface CompaniesModuleProps {
   state: ERPState;
@@ -397,6 +399,17 @@ export default function CompaniesModule({
     }
   };
 
+  const copyBusinessCard = (account: Company) => {
+    const summary = calculateBusinessSummary(transactions, account.id);
+    openSmartCardStudio({
+      type: 'companies',
+      name: account.name,
+      amount: summary.finalBalance,
+      currency: 'د.ل',
+      acctype: account.accountType === 'merchant' ? 'merchant' : 'company',
+    });
+  };
+
   const exportLedger = () => {
     if (!selected || !selectedSummary) return;
     let running = 0;
@@ -509,20 +522,45 @@ export default function CompaniesModule({
         <div className="max-h-[58vh] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9">
           {activeAccounts.map((account) => (
-            <button
+            <article
               key={account.id}
-              onClick={() => setSelectedId(account.id)}
-              className="min-h-24 rounded-xl border border-indigo-500 bg-gradient-to-br from-indigo-700 to-indigo-950 p-3 text-right text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+              className="group relative min-h-24 rounded-xl border border-indigo-500 bg-gradient-to-br from-indigo-700 to-indigo-950 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
             >
-              <div className="mb-4 flex items-start justify-between gap-1">
-                <strong className="line-clamp-2 text-[11px]">{account.name}</strong>
-                <span className="shrink-0 rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold">
-                  {account.accountType === 'merchant' ? 'تاجر' : 'شركة'}
-                </span>
+              <div className="absolute left-1.5 top-1.5 z-10 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => copyBusinessCard(account)}
+                  className="rounded-lg bg-white/15 p-1.5 text-white hover:bg-white/30"
+                  title="نسخ كارت الدين إلى منظومة الكروت الذكية"
+                  aria-label={`نسخ كارت ${account.name}`}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => archiveAccount(account)}
+                  className="rounded-lg bg-rose-500/85 p-1.5 text-white hover:bg-rose-600"
+                  title="نقل الحساب إلى سلة المهملات"
+                  aria-label={`نقل ${account.name} إلى سلة المهملات`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <span className="block text-[10px] text-white/65">الدين الفعلي</span>
-              <span className="text-sm font-black">{money(account.balance)}</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelectedId(account.id)}
+                className="min-h-24 w-full rounded-xl p-3 text-right"
+              >
+                <div className="mb-4 flex items-start justify-between gap-1">
+                  <strong className="line-clamp-2 text-[11px]">{account.name}</strong>
+                  <span className="shrink-0 rounded-full bg-white/15 px-2 py-1 text-[9px] font-bold">
+                    {account.accountType === 'merchant' ? 'تاجر' : 'شركة'}
+                  </span>
+                </div>
+                <span className="block text-[10px] text-white/65">الدين الفعلي</span>
+                <span className="text-sm font-black">{money(account.balance)}</span>
+              </button>
+            </article>
           ))}
         </div>
         </div>
@@ -682,14 +720,6 @@ export default function CompaniesModule({
                 <SummaryCard label="الرصيد الحالي" value={selectedSummary.finalBalance} color="slate" strong />
               </section>
 
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => archiveAccount(selected)}
-                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-[10px] font-bold text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> نقل الحساب إلى سلة المهملات
-                </button>
-              </div>
             </main>
           </div>
         </div>
