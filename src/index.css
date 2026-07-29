@@ -174,6 +174,68 @@ table td {
   color: #ffffff !important;
 }
 
+/* Unified transaction ledgers: same clear planning as the treasury ledger. */
+.erp-ledger-table th,
+.erp-entry-table th {
+  background-color: #065f46 !important;
+  border: 1px solid #064e3b !important;
+  color: #ffffff !important;
+}
+
+.erp-ledger-table .erp-ledger-row > td {
+  border: 1px solid rgb(255 255 255 / 0.38) !important;
+  color: #ffffff !important;
+  line-height: 1.25 !important;
+}
+
+.erp-ledger-table .erp-ledger-row > td * {
+  color: inherit !important;
+}
+
+.erp-ledger-table .erp-ledger-positive > td {
+  background-color: #078547 !important;
+}
+
+.erp-ledger-table .erp-ledger-negative > td {
+  background-color: #c52f39 !important;
+}
+
+.erp-ledger-table .erp-ledger-opening > td {
+  background-color: #334c8c !important;
+}
+
+.erp-ledger-table .erp-ledger-conversion > td {
+  background-color: #7041a6 !important;
+}
+
+.erp-ledger-table .erp-ledger-warning > td {
+  background-color: #ad6300 !important;
+}
+
+.erp-ledger-table .erp-ledger-row:hover > td {
+  filter: brightness(1.08);
+}
+
+.erp-ledger-table .erp-ledger-action {
+  background-color: rgb(255 255 255 / 0.18) !important;
+  color: #ffffff !important;
+}
+
+.erp-ledger-table .erp-ledger-action:hover {
+  background-color: rgb(255 255 255 / 0.3) !important;
+}
+
+.erp-ledger-table .erp-ledger-total > tr > td {
+  background-color: #123b5d !important;
+  border: 1px solid #071f33 !important;
+  color: #ffffff !important;
+}
+
+/* Editable records keep white inputs while gaining a planned grid/header. */
+.erp-entry-table td {
+  border: 1px solid var(--border-color) !important;
+}
+
 select option {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;

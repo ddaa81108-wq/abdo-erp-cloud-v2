@@ -549,7 +549,7 @@ export default function PurchasesModule({
         </div>
 
         <div className="max-h-[72vh] overflow-auto">
-          <table className="min-w-[1250px] w-full table-fixed border-collapse text-[11px]">
+          <table className="erp-entry-table min-w-[1250px] w-full table-fixed border-collapse text-[11px]">
             <thead className="sticky top-0 z-20 bg-emerald-800 font-black text-white shadow-sm">
               <tr>
                 <th className="w-[4%] border-l border-emerald-700 p-2 text-center">ت</th>

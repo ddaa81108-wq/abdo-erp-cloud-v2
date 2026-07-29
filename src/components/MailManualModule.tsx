@@ -309,7 +309,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
             </div>
 
             <div className="max-h-[720px] overflow-auto rounded-2xl border border-slate-200">
-              <table className="w-full border-collapse text-right text-xs">
+              <table className="erp-entry-table w-full border-collapse text-right text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-100 font-bold text-slate-700">
                   <tr>
                     <th className="w-14 border border-slate-200 p-3 text-center">رقم</th>

@@ -633,7 +633,7 @@ export default function CompaniesModule({
                   </span>
                 </div>
                 <div className="max-h-[48vh] overflow-auto">
-                  <table className="w-full min-w-[880px] border-collapse text-xs">
+                  <table className="erp-ledger-table w-full min-w-[880px] border-collapse text-xs">
                     <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
                       <tr>
                         <th className="p-3 text-right">التسلسل</th>
@@ -657,12 +657,12 @@ export default function CompaniesModule({
                           return (
                             <tr
                               key={transaction.id}
-                              className={`border-r-4 transition-colors hover:bg-slate-50 ${
+                              className={`erp-ledger-row ${
                                 kind === 'payment'
-                                  ? 'border-r-emerald-400 bg-emerald-50/35'
+                                  ? 'erp-ledger-positive'
                                   : kind === 'opening_balance'
-                                    ? 'border-r-indigo-400 bg-indigo-50/35'
-                                    : 'border-r-rose-400 bg-rose-50/35'
+                                    ? 'erp-ledger-opening'
+                                    : 'erp-ledger-negative'
                               }`}
                             >
                               <td className="p-3 font-bold text-slate-400">{index + 1}</td>
@@ -691,7 +691,7 @@ export default function CompaniesModule({
                               <td className="p-3 text-center">
                                 <button
                                   onClick={() => beginEdit(transaction)}
-                                  className="rounded-lg bg-amber-50 p-2 text-amber-700 hover:bg-amber-100"
+                                  className="erp-ledger-action rounded-lg p-2"
                                   title="تعديل الحركة"
                                 >
                                   <Pencil className="h-4 w-4" />
@@ -700,7 +700,7 @@ export default function CompaniesModule({
                               <td className="p-3 text-center">
                                 <button
                                   onClick={() => setDeleteTransaction(transaction)}
-                                  className="rounded-lg bg-rose-50 p-2 text-rose-700 hover:bg-rose-100"
+                                  className="erp-ledger-action rounded-lg p-2"
                                   title="مسح الحركة"
                                 >
                                   <Trash2 className="h-4 w-4" />
