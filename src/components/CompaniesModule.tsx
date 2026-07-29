@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { Company, CompanyTransaction, ERPState } from '../types';
 import {
+  businessLastActivityAt,
   calculateBusinessSummary,
   synchronizeBusinessBalances,
   transactionKind,
@@ -94,7 +95,12 @@ export default function CompaniesModule({
         ...account,
         balance: calculateBusinessSummary(transactions, account.id).finalBalance,
       }))
-      .sort((a, b) => b.name.localeCompare(a.name, 'ar'));
+      .sort(
+        (a, b) =>
+          businessLastActivityAt(b, transactions)
+          - businessLastActivityAt(a, transactions)
+          || a.name.localeCompare(b.name, 'ar'),
+      );
   }, [state.companies, transactions, searchQuery]);
 
   const selected = selectedId
@@ -170,6 +176,7 @@ export default function CompaniesModule({
       newDebt: 0,
       paymentToday: 0,
       createdAt: now,
+      updatedAt: now,
       isDeleted: false,
     };
     const nextTransactions = [...transactions];
@@ -232,7 +239,9 @@ export default function CompaniesModule({
     commitLedger(
       nextTransactions,
       state.companies.map((item) =>
-        item.id === account.id ? { ...item, isDeleted: false } : item),
+        item.id === account.id
+          ? { ...item, isDeleted: false, updatedAt: now }
+          : item),
     );
     setSelectedId(account.id);
     setShowCreate(false);
@@ -281,7 +290,12 @@ export default function CompaniesModule({
           selected.name,
         )
       : state.treasuryTransactions || [];
-    commitLedger([...transactions, nextTransaction], state.companies, nextTreasuryTransactions);
+    commitLedger(
+      [...transactions, nextTransaction],
+      state.companies.map((account) =>
+        account.id === selected.id ? { ...account, updatedAt: now } : account),
+      nextTreasuryTransactions,
+    );
     setEntryAction(null);
     setEntryAmount('');
     setEntryNote('');
@@ -302,6 +316,7 @@ export default function CompaniesModule({
     if (!editing) return;
     const value = Number(editAmount);
     if (!Number.isFinite(value) || value <= 0 || !editDate) return;
+    const now = new Date().toISOString();
     const nextTransactions = transactions.map((transaction) =>
       transaction.id === editing.id
         ? {
@@ -309,7 +324,7 @@ export default function CompaniesModule({
             amount: value,
             note: editNote.trim(),
             date: new Date(editDate).toISOString(),
-            updatedAt: new Date().toISOString(),
+            updatedAt: now,
           }
         : transaction,
     );
@@ -319,7 +334,12 @@ export default function CompaniesModule({
       editedTransaction,
       selected?.name || 'حساب شركة أو تاجر',
     );
-    commitLedger(nextTransactions, state.companies, nextTreasuryTransactions);
+    commitLedger(
+      nextTransactions,
+      state.companies.map((account) =>
+        account.id === editing.companyId ? { ...account, updatedAt: now } : account),
+      nextTreasuryTransactions,
+    );
     setEditing(null);
     showToast('تم تعديل الحركة وإعادة حساب الناتج النهائي.');
   };
@@ -328,9 +348,10 @@ export default function CompaniesModule({
     if (!deleteTransaction) return;
     const target = deleteTransaction;
     const execute = () => {
+      const now = new Date().toISOString();
       const nextTransactions = state.companyTransactions.map((transaction) =>
         transaction.id === target.id
-          ? { ...transaction, isDeleted: true, updatedAt: new Date().toISOString() }
+          ? { ...transaction, isDeleted: true, updatedAt: now }
           : transaction,
       );
       const deletedPayment = nextTransactions.find((transaction) => transaction.id === target.id)!;
@@ -339,7 +360,12 @@ export default function CompaniesModule({
         deletedPayment,
         selected?.name || 'حساب شركة أو تاجر',
       );
-      commitLedger(nextTransactions, state.companies, nextTreasuryTransactions);
+      commitLedger(
+        nextTransactions,
+        state.companies.map((account) =>
+          account.id === target.companyId ? { ...account, updatedAt: now } : account),
+        nextTreasuryTransactions,
+      );
       setDeleteTransaction(null);
       showToast('تم حذف الحركة وإعادة حساب الناتج النهائي.');
     };

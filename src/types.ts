@@ -57,6 +57,7 @@ export interface Company {
   lastRolloverDate?: string; // تاريخ آخر ترحيل للـ 12:00
   isDeleted?: boolean; // للأرشفة حتى لو اتمسح
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CompanyTransaction {

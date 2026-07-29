@@ -44,13 +44,34 @@ export function calculateBusinessSummary(
   now = new Date(),
 ) {
   const dayKey = now.toLocaleDateString('en-CA');
+  const accountRows = transactions
+    .filter((transaction) =>
+      transaction.companyId === companyId && !transaction.isDeleted)
+    .sort(
+      (left, right) =>
+        new Date(left.date).getTime() - new Date(right.date).getTime(),
+    );
+  let runningBalance = 0;
+  let currentCycleStart = 0;
+
+  for (const [index, transaction] of accountRows.entries()) {
+    const value = finiteAmount(transaction.amount);
+    runningBalance += transactionKind(transaction) === 'payment'
+      ? -value
+      : value;
+    if (Math.abs(runningBalance) < 0.000001) {
+      currentCycleStart = index + 1;
+    }
+  }
+
+  // The ledger remains complete, but the summary cards describe only the
+  // currently open debt cycle after the latest zero balance.
+  const currentCycleRows = accountRows.slice(currentCycleStart);
   let balanceBeforeToday = 0;
   let debtAddedToday = 0;
-  let allPayments = 0;
   let paymentsToday = 0;
 
-  for (const transaction of transactions) {
-    if (transaction.companyId !== companyId || transaction.isDeleted) continue;
+  for (const transaction of currentCycleRows) {
     const value = finiteAmount(transaction.amount);
     const kind = transactionKind(transaction);
     const transactionDay = new Date(transaction.date).toLocaleDateString('en-CA');
@@ -62,13 +83,17 @@ export function calculateBusinessSummary(
       if (isToday) debtAddedToday += value;
       else balanceBeforeToday += value;
     } else {
-      allPayments += value;
       if (isToday) paymentsToday += value;
       else balanceBeforeToday -= value;
     }
   }
 
-  const finalBalance = balanceBeforeToday + debtAddedToday - paymentsToday;
+  const allPayments = currentCycleRows
+    .filter((transaction) => transactionKind(transaction) === 'payment')
+    .reduce((sum, transaction) => sum + finiteAmount(transaction.amount), 0);
+  const finalBalance = Math.abs(runningBalance) < 0.000001
+    ? 0
+    : runningBalance;
   const isSettled = Math.abs(finalBalance) < 0.000001;
 
   return {
@@ -82,6 +107,34 @@ export function calculateBusinessSummary(
     paymentsToday,
     finalBalance: isSettled ? 0 : finalBalance,
   };
+}
+
+const activityTimestamp = (value?: string) => {
+  const timestamp = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+export function businessLastActivityAt(
+  account: Company,
+  transactions: CompanyTransaction[],
+) {
+  return transactions
+    .filter((transaction) => transaction.companyId === account.id)
+    .reduce(
+      (latest, transaction) =>
+        Math.max(
+          latest,
+          activityTimestamp(
+            transaction.updatedAt
+            || transaction.createdAt
+            || transaction.date,
+          ),
+        ),
+      Math.max(
+        activityTimestamp(account.updatedAt),
+        activityTimestamp(account.createdAt),
+      ),
+    );
 }
 
 export function synchronizeBusinessBalances(

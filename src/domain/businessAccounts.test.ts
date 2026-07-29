@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CompanyTransaction } from '../types';
 import {
+  businessLastActivityAt,
   calculateBusinessBalance,
   calculateBusinessSummary,
   migrateLegacyBusinessAccounts,
@@ -81,7 +82,7 @@ describe('unified business ledger', () => {
     expect(summary.finalBalance).toBe(1200);
   });
 
-  it('clears old and new debt cards after a full settlement', () => {
+  it('clears every summary card after a full settlement', () => {
     const rows = [
       transaction('old-debt', 'purchase_invoice', 1000, {
         entryKind: 'debt',
@@ -107,9 +108,54 @@ describe('unified business ledger', () => {
       newDebt: 0,
       balanceBeforeToday: 0,
       debtAddedToday: 0,
-      paymentsToday: 1400,
+      paymentsToday: 0,
       finalBalance: 0,
     });
+  });
+
+  it('starts clean summary cards when a new debt follows a full settlement', () => {
+    const rows = [
+      transaction('old-debt', 'purchase_invoice', 1987, {
+        entryKind: 'debt',
+        date: '2026-07-10T09:00:00.000Z',
+      }),
+      transaction('full-payment', 'payment', 1987, {
+        entryKind: 'payment',
+        paymentMode: 'full',
+        date: '2026-07-29T03:03:00.000Z',
+      }),
+      transaction('new-debt', 'purchase_invoice', 1210, {
+        entryKind: 'debt',
+        date: '2026-07-29T03:04:00.000Z',
+      }),
+    ];
+
+    expect(calculateBusinessSummary(
+      rows,
+      'account-1',
+      new Date('2026-07-29T12:00:00.000Z'),
+    )).toMatchObject({
+      balanceBeforeToday: 0,
+      debtAddedToday: 1210,
+      paymentsToday: 0,
+      finalBalance: 1210,
+    });
+  });
+
+  it('uses edits and deletions as the latest card activity', () => {
+    const account = {
+      id: 'account-1',
+      name: 'حساب',
+      balance: 0,
+      createdAt: '2026-07-01T00:00:00.000Z',
+    };
+    expect(businessLastActivityAt(account, [
+      transaction('old', 'purchase_invoice', 100, {
+        createdAt: '2026-07-10T00:00:00.000Z',
+        updatedAt: '2026-07-29T10:00:00.000Z',
+        isDeleted: true,
+      }),
+    ])).toBe(new Date('2026-07-29T10:00:00.000Z').getTime());
   });
 
   it('recalculates after editing or soft deleting any row', () => {
