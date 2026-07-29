@@ -688,7 +688,7 @@ function PurchaseTableRow({
   );
 
   return (
-    <tr className={`border-b border-slate-200 ${active ? 'bg-emerald-50/60' : 'bg-white'} ${isVodafonePurchase(row.type) ? 'font-bold' : ''}`}>
+    <tr className={`border-b border-r-4 border-slate-200 transition-colors ${active ? 'border-r-emerald-500 bg-emerald-50/60 hover:bg-emerald-50' : 'border-r-slate-300 bg-slate-50/45 hover:bg-slate-100'} ${isVodafonePurchase(row.type) ? 'font-bold' : ''}`}>
       <td className="p-2 text-center font-black">{row.seq || '-'}</td>
       <td className="p-2 text-center font-mono">{row.date}</td>
       <td className="border-x border-slate-200 p-0">{field('type', 'نوع العملية')}</td>

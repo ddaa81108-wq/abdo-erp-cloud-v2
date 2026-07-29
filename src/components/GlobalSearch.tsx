@@ -214,7 +214,7 @@ export default function GlobalSearch({ state, searchQuery, onNavigateToItem, can
                       <div 
                         key={cy.id}
                         onClick={() => onNavigateToItem('archive', cy.customerName)}
-                        className="flex items-center justify-between text-[11px] bg-white hover:bg-zinc-100 border p-2 rounded cursor-pointer transition-all font-mono"
+                        className="flex items-center justify-between border-r-4 border-r-zinc-400 bg-zinc-50/70 p-2 text-[11px] font-mono transition-all hover:bg-zinc-100 rounded cursor-pointer"
                       >
                         <div className="flex flex-col text-right">
                           <span className="font-sans font-semibold text-slate-900">{cy.customerName}</span>

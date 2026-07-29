@@ -322,7 +322,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                   {rows.map((row, index) => {
                     const netValue = calculateEgyptianRowTotal(row);
                     return (
-                      <tr key={index} className="group transition hover:bg-slate-50">
+                      <tr key={index} className="group transition even:bg-slate-50/50 hover:bg-indigo-50/45">
                         <td className="border border-slate-200 bg-slate-50 p-2 text-center font-semibold text-slate-500">
                           {index + 1}
                         </td>

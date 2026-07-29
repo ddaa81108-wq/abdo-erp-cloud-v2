@@ -974,7 +974,14 @@ function LedgerTable({
           {transactions.map((transaction, index) => {
             running += transaction.type === 'debt' ? transaction.amount : -transaction.amount;
             return (
-              <tr key={transaction.id} className="hover:bg-slate-50">
+              <tr
+                key={transaction.id}
+                className={`border-r-4 transition-colors hover:bg-slate-50 ${
+                  transaction.type === 'debt'
+                    ? 'border-r-rose-400 bg-rose-50/35'
+                    : 'border-r-emerald-400 bg-emerald-50/35'
+                }`}
+              >
                 <td className="p-3 font-bold text-slate-400">{index + 1}</td>
                 <td className="whitespace-nowrap p-3 text-slate-600">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
                 <td className="max-w-72 p-3">

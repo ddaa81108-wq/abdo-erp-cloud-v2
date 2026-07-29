@@ -103,6 +103,14 @@ const transactionLabel: Record<TrustDepositTx['type'], string> = {
   withdraw_egp: 'سحب مصري',
 };
 
+const transactionRowTone: Record<TrustDepositTx['type'], string> = {
+  deposit_lyd: 'border-r-indigo-400 bg-indigo-50/35',
+  withdraw_lyd: 'border-r-rose-400 bg-rose-50/35',
+  convert_to_egp: 'border-r-violet-400 bg-violet-50/35',
+  deposit_egp: 'border-r-emerald-400 bg-emerald-50/35',
+  withdraw_egp: 'border-r-amber-400 bg-amber-50/35',
+};
+
 function cardColor(amountLyd: number, amountEgp: number) {
   if (amountLyd < 0 || amountEgp < 0) {
     return 'border-rose-500 bg-rose-700';
@@ -802,7 +810,10 @@ function TrustLedger({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map(({ transaction, amountLyd, amountEgp, index }) => (
-            <tr key={transaction.id} className="hover:bg-slate-50">
+            <tr
+              key={transaction.id}
+              className={`border-r-4 transition-colors hover:bg-slate-50 ${transactionRowTone[transaction.type]}`}
+            >
               <td className="p-3 font-bold text-slate-400">{index + 1}</td>
               <td className="whitespace-nowrap p-3">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
               <td className="max-w-72 p-3"><strong className="block">{transactionLabel[transaction.type]}</strong><span className="block truncate text-[10px] text-slate-500">{transaction.note}</span></td>
@@ -868,7 +879,7 @@ const PrintableLedger = React.forwardRef<
               ? `- ${money(transaction.amountEgp, 'egp')}`
               : '—';
           return (
-            <tr key={transaction.id} className="even:bg-slate-50">
+            <tr key={transaction.id} className={`${transactionRowTone[transaction.type]} border-r-4 even:bg-slate-50`}>
               <td className="border p-2 text-center">{index + 1}</td>
               <td className="whitespace-nowrap border p-2">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
               <td className="border p-2 font-bold">{transactionLabel[transaction.type]}</td>
