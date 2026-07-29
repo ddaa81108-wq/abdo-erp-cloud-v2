@@ -217,7 +217,7 @@ export default function CustomerDebtsModule({
     const normalizedTimestamp = typeof timestamp === "number" ? new Date(timestamp).toISOString() : timestamp;
     return customers.map((cust) =>
       cust.id === customerId
-        ? { ...cust, updatedAt: normalizedTimestamp, lastUpdated: normalizedTimestamp }
+        ? { ...cust, updatedAt: normalizedTimestamp }
         : cust,
     );
   };
@@ -308,7 +308,6 @@ export default function CustomerDebtsModule({
       collector,
       createdAt: timestamp,
       updatedAt: timestamp,
-      lastUpdated: timestamp,
       isDeleted: false,
       type: "customer", // دائماً زبون عادي
     };
@@ -649,12 +648,12 @@ export default function CustomerDebtsModule({
       (t) => t.cycleId === activeCycle?.id
     );
     const totalPurchases = transactions
-      .filter((t) => t.type === "purchase")
+      .filter((t) => t.type === "debt")
       .reduce((sum, t) => sum + t.amount, 0);
     const totalPayments = transactions
       .filter((t) => t.type === "payment")
       .reduce((sum, t) => sum + t.amount, 0);
-    const outstanding = (activeCycle?.startBalance || 0) + totalPurchases - totalPayments;
+    const outstanding = (activeCycle?.initialBalance || 0) + totalPurchases - totalPayments;
 
     const timestamp = new Date().toISOString();
     const docNum = generateDocNumber();
@@ -692,7 +691,7 @@ export default function CustomerDebtsModule({
 
     const updatedCustomers = currentState.customers.map((c) => {
       if (c.id === custId) {
-        return { ...c, isDeleted: true, updatedAt: timestamp, lastUpdated: timestamp };
+        return { ...c, isDeleted: true, updatedAt: timestamp };
       }
       return c;
     });
@@ -1340,7 +1339,7 @@ export default function CustomerDebtsModule({
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] border-collapse">
+                  <table className="record-ledger-table customer-ledger-table w-full border-collapse text-[11px]">
                     <thead>
                       <tr className="bg-slate-200 text-slate-700 font-bold border-b border-slate-300">
                         <th className="p-2 text-right">الوقت والتاريخ</th>
@@ -1357,7 +1356,7 @@ export default function CustomerDebtsModule({
                         .map((tx) => (
                           <tr
                             key={tx.id}
-                            className="hover:bg-slate-50 font-mono"
+                            className={`ledger-row ${tx.type === 'debt' ? 'ledger-debt' : 'ledger-payment'} font-mono`}
                           >
                             <td className="p-2 font-sans text-[10.5px]">
                               {new Date(tx.date).toLocaleDateString("ar-LY")}{" "}

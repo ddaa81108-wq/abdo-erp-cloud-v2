@@ -174,6 +174,74 @@ table td {
   color: #ffffff !important;
 }
 
+.record-ledger-table th {
+  background-color: #1e3a5f !important;
+  border: 1px solid #10253e !important;
+  color: #ffffff !important;
+}
+
+.record-ledger-table .ledger-row > td {
+  border: 1px solid rgb(255 255 255 / 0.32) !important;
+  color: #ffffff !important;
+  line-height: 1.25 !important;
+}
+
+.record-ledger-table .ledger-row .text-slate-400,
+.record-ledger-table .ledger-row .text-slate-500,
+.record-ledger-table .ledger-row .text-slate-600,
+.record-ledger-table .ledger-row .text-slate-700,
+.record-ledger-table .ledger-row .text-slate-800,
+.record-ledger-table .ledger-row .text-slate-900,
+.record-ledger-table .ledger-row .text-rose-600,
+.record-ledger-table .ledger-row .text-rose-700,
+.record-ledger-table .ledger-row .text-emerald-600,
+.record-ledger-table .ledger-row .text-emerald-700,
+.record-ledger-table .ledger-row .text-indigo-600,
+.record-ledger-table .ledger-row .text-indigo-700,
+.record-ledger-table .ledger-row .text-amber-600,
+.record-ledger-table .ledger-row .text-amber-700 {
+  color: #ffffff !important;
+}
+
+.record-ledger-table .ledger-row input {
+  color: #ffffff !important;
+}
+
+.record-ledger-table .ledger-row input:disabled {
+  color: #f8fafc !important;
+  opacity: 1 !important;
+}
+
+.record-ledger-table .ledger-row input:focus {
+  background-color: rgb(255 255 255 / 0.16) !important;
+}
+
+.record-ledger-table .ledger-debt > td { background-color: #c52f39 !important; }
+.record-ledger-table .ledger-payment > td { background-color: #078547 !important; }
+.record-ledger-table .ledger-opening > td { background-color: #365f9d !important; }
+.record-ledger-table .ledger-trust-deposit-lyd > td { background-color: #365f9d !important; }
+.record-ledger-table .ledger-trust-withdraw-lyd > td { background-color: #c52f39 !important; }
+.record-ledger-table .ledger-trust-convert > td { background-color: #6d4db3 !important; }
+.record-ledger-table .ledger-trust-deposit-egp > td { background-color: #078547 !important; }
+.record-ledger-table .ledger-trust-withdraw-egp > td { background-color: #b76a18 !important; }
+.record-ledger-table .ledger-purchase-active > td { background-color: #087a63 !important; }
+.record-ledger-table .ledger-purchase-archive > td { background-color: #526174 !important; }
+.record-ledger-table .ledger-egyptian-row > td { background-color: #31557d !important; }
+.record-ledger-table .ledger-egyptian-row:nth-child(even) > td { background-color: #41698e !important; }
+
+.record-ledger-table .ledger-total > tr > td {
+  background-color: #123b5d !important;
+  border: 1px solid #071f33 !important;
+  color: #ffffff !important;
+}
+
+.record-ledger-table .ledger-row .bg-rose-50,
+.record-ledger-table .ledger-row .bg-amber-50,
+.record-ledger-table .ledger-row .bg-emerald-50 {
+  background-color: rgb(255 255 255 / 0.18) !important;
+  color: #ffffff !important;
+}
+
 select option {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;

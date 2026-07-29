@@ -549,7 +549,7 @@ export default function PurchasesModule({
         </div>
 
         <div className="max-h-[72vh] overflow-auto">
-          <table className="min-w-[1250px] w-full table-fixed border-collapse text-[11px]">
+          <table className="record-ledger-table purchase-ledger-table min-w-[1250px] w-full table-fixed border-collapse text-[11px]">
             <thead className="sticky top-0 z-20 bg-emerald-800 font-black text-white shadow-sm">
               <tr>
                 <th className="w-[4%] border-l border-emerald-700 p-2 text-center">ت</th>
@@ -621,7 +621,7 @@ export default function PurchasesModule({
                   </React.Fragment>
                 );
               })}
-              <tr className="sticky bottom-0 z-10 border-t-2 border-emerald-700 bg-emerald-50 font-black">
+              <tr className="ledger-total sticky bottom-0 z-10 border-t-2 border-emerald-700 bg-emerald-50 font-black">
                 <td colSpan={6} className="p-2 text-center font-sans">الإجماليات الحالية</td>
                 <td className="p-2 text-center">{money(totals.todayWork)}</td>
                 <td className="p-2 text-center text-emerald-800">{money(totals.todayPaid)}</td>
@@ -688,7 +688,7 @@ function PurchaseTableRow({
   );
 
   return (
-    <tr className={`border-b border-r-4 border-slate-200 transition-colors ${active ? 'border-r-emerald-500 bg-emerald-50/60 hover:bg-emerald-50' : 'border-r-slate-300 bg-slate-50/45 hover:bg-slate-100'} ${isVodafonePurchase(row.type) ? 'font-bold' : ''}`}>
+    <tr className={`ledger-row ${active ? 'ledger-purchase-active' : 'ledger-purchase-archive'} border-b border-r-4 border-slate-200 transition-colors ${active ? 'border-r-emerald-500 bg-emerald-50/60 hover:bg-emerald-50' : 'border-r-slate-300 bg-slate-50/45 hover:bg-slate-100'} ${isVodafonePurchase(row.type) ? 'font-bold' : ''}`}>
       <td className="p-2 text-center font-black">{row.seq || '-'}</td>
       <td className="p-2 text-center font-mono">{row.date}</td>
       <td className="border-x border-slate-200 p-0">{field('type', 'نوع العملية')}</td>

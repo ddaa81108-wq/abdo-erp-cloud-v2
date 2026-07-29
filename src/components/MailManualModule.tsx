@@ -309,7 +309,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
             </div>
 
             <div className="max-h-[720px] overflow-auto rounded-2xl border border-slate-200">
-              <table className="w-full border-collapse text-right text-xs">
+              <table className="record-ledger-table egyptian-ledger-table w-full border-collapse text-right text-xs">
                 <thead className="sticky top-0 z-10 bg-slate-100 font-bold text-slate-700">
                   <tr>
                     <th className="w-14 border border-slate-200 p-3 text-center">رقم</th>
@@ -322,7 +322,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                   {rows.map((row, index) => {
                     const netValue = calculateEgyptianRowTotal(row);
                     return (
-                      <tr key={index} className="group transition even:bg-slate-50/50 hover:bg-indigo-50/45">
+                      <tr key={index} className="ledger-row ledger-egyptian-row group transition even:bg-slate-50/50 hover:bg-indigo-50/45">
                         <td className="border border-slate-200 bg-slate-50 p-2 text-center font-semibold text-slate-500">
                           {index + 1}
                         </td>
