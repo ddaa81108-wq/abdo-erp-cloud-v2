@@ -17,6 +17,7 @@ import {
   calculateEgyptianRowTotal,
   calculateEgyptianWorkTotal,
   getEgyptianPreviousValue,
+  parseEgyptianEntry,
 } from '../domain/egyptianCash';
 import { openSmartCardStudio } from '../utils/imageExporterUtils';
 
@@ -24,6 +25,13 @@ interface MailManualModuleProps {
   state: ERPState;
   onUpdateState: (newState: ERPState) => void;
 }
+
+type EgyptianRecordDraft = {
+  date: string;
+  rows: EgyptianCashRow[];
+  previousValue: number;
+  receivedValue: number;
+};
 
 export default function MailManualModule({ state, onUpdateState }: MailManualModuleProps) {
   const latestStateRef = useRef(state);
@@ -44,17 +52,24 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
     return today.toISOString().slice(0, 10);
   });
 
-  const [localEgyptRecord, setLocalEgyptRecord] = useState<{
-    date: string;
-    rows: EgyptianCashRow[];
-    previousValue: number;
-    receivedValue: number;
-  } | null>(null);
+  const [localEgyptRecord, setLocalEgyptRecord] = useState<EgyptianRecordDraft | null>(null);
+  const localEgyptRecordRef = useRef<EgyptianRecordDraft | null>(null);
+  const [entryDrafts, setEntryDrafts] = useState<Record<string, string>>({});
   const [isEditingPrevious, setIsEditingPrevious] = useState(false);
   const [previousDraft, setPreviousDraft] = useState('');
 
   useEffect(() => {
+    const activeElement = document.activeElement as HTMLElement | null;
+    const isEditingEgyptianEntry =
+      activeElement?.dataset.egyptianEntry === 'true'
+      && localEgyptRecordRef.current?.date === selectedDay;
+
+    // Firestore can publish an older snapshot while the user is still typing.
+    // Never replace the active local draft; the queued save will publish it.
+    if (isEditingEgyptianEntry) return;
+
     const existing = state.egyptianCashRecords?.find(r => r.date === selectedDay);
+    let nextRecord: EgyptianRecordDraft;
     if (existing) {
       const rows = existing.rows.map(r => ({ 
         value: Number(r.value) || 0,
@@ -63,24 +78,45 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
       while (rows.length < 7) {
         rows.push({ value: 0, commission: 0 });
       }
-      setLocalEgyptRecord({
+      nextRecord = {
         date: existing.date,
         rows,
         previousValue: Number(existing.previousValue) || 0,
         receivedValue: Number(existing.receivedValue) || 0,
-      });
+      };
     } else {
       const defaultRows = Array.from({ length: 7 }, () => ({ value: 0, commission: 0 }));
-      setLocalEgyptRecord({
+      nextRecord = {
         date: selectedDay,
         rows: defaultRows,
         previousValue: getEgyptianPreviousValue(state.egyptianCashRecords || [], selectedDay),
         receivedValue: 0,
-      });
+      };
     }
+    localEgyptRecordRef.current = nextRecord;
+    setLocalEgyptRecord(nextRecord);
+    setEntryDrafts({});
     setIsEditingPrevious(false);
     setPreviousDraft('');
   }, [state.egyptianCashRecords, selectedDay]);
+
+  const updateLocalEgyptRecord = (record: EgyptianRecordDraft) => {
+    localEgyptRecordRef.current = record;
+    setLocalEgyptRecord(record);
+  };
+
+  const commitLatestRecord = () => {
+    const latestRecord = localEgyptRecordRef.current;
+    if (latestRecord) queueRecordSave(latestRecord, 0);
+  };
+
+  const clearEntryDraft = (key: string) => {
+    setEntryDrafts((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
 
   const queueRecordSave = (
     record: NonNullable<typeof localEgyptRecord>,
@@ -100,27 +136,32 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
   };
 
   const handleEgyptRowChange = (index: number, field: 'value' | 'commission', val: string) => {
-    if (!localEgyptRecord) return;
-    const numVal = parseFloat(val) || 0;
-    const updatedRows = [...localEgyptRecord.rows];
+    const currentRecord = localEgyptRecordRef.current;
+    if (!currentRecord) return;
+    const draftKey = `${index}:${field}`;
+    setEntryDrafts((current) => ({ ...current, [draftKey]: val }));
+    const numVal = parseEgyptianEntry(val);
+    const updatedRows = [...currentRecord.rows];
     updatedRows[index] = { ...updatedRows[index], [field]: numVal };
 
     const newRec = {
-      ...localEgyptRecord,
+      ...currentRecord,
       rows: updatedRows
     };
-    setLocalEgyptRecord(newRec);
+    updateLocalEgyptRecord(newRec);
     queueRecordSave(newRec);
   };
 
   const handleEgyptSummaryChange = (val: string) => {
-    if (!localEgyptRecord) return;
-    const numVal = parseFloat(val) || 0;
+    const currentRecord = localEgyptRecordRef.current;
+    if (!currentRecord) return;
+    setEntryDrafts((current) => ({ ...current, received: val }));
+    const numVal = parseEgyptianEntry(val);
     const newRec = {
-      ...localEgyptRecord,
+      ...currentRecord,
       receivedValue: numVal,
     };
-    setLocalEgyptRecord(newRec);
+    updateLocalEgyptRecord(newRec);
     queueRecordSave(newRec);
   };
 
@@ -133,7 +174,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
       ...localEgyptRecord,
       previousValue: correctedValue,
     };
-    setLocalEgyptRecord(newRec);
+    updateLocalEgyptRecord(newRec);
     setIsEditingPrevious(false);
     setPreviousDraft('');
     queueRecordSave(newRec, 0);
@@ -171,7 +212,7 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
         // Add a new row dynamically
         const updatedRows = [...localEgyptRecord.rows, { value: 0, commission: 0 }];
         const newRec = { ...localEgyptRecord, rows: updatedRows };
-        setLocalEgyptRecord(newRec);
+        updateLocalEgyptRecord(newRec);
         queueRecordSave(newRec);
 
         setTimeout(() => {
@@ -291,9 +332,13 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                             type="text"
                             inputMode="decimal"
                             placeholder="0"
-                            value={row.value || ''}
+                            data-egyptian-entry="true"
+                            value={entryDrafts[`${index}:value`] ?? (row.value || '')}
                             onChange={(event) => handleEgyptRowChange(index, 'value', event.target.value)}
-                            onBlur={() => localEgyptRecord && queueRecordSave(localEgyptRecord, 0)}
+                            onBlur={() => {
+                              clearEntryDraft(`${index}:value`);
+                              commitLatestRecord();
+                            }}
                             onKeyDown={(event) => handleKeyDown(event, index, 'value')}
                             className="h-full w-full border-0 bg-transparent px-3 py-2 text-center font-mono font-bold text-slate-900 outline-none focus:bg-indigo-50"
                             aria-label={`القيمة في الصف ${index + 1}`}
@@ -305,9 +350,13 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                             type="text"
                             inputMode="decimal"
                             placeholder="0"
-                            value={row.commission || ''}
+                            data-egyptian-entry="true"
+                            value={entryDrafts[`${index}:commission`] ?? (row.commission || '')}
                             onChange={(event) => handleEgyptRowChange(index, 'commission', event.target.value)}
-                            onBlur={() => localEgyptRecord && queueRecordSave(localEgyptRecord, 0)}
+                            onBlur={() => {
+                              clearEntryDraft(`${index}:commission`);
+                              commitLatestRecord();
+                            }}
                             onKeyDown={(event) => handleKeyDown(event, index, 'commission')}
                             className="h-full w-full border-0 bg-transparent px-3 py-2 text-center font-mono font-bold text-rose-900 outline-none focus:bg-rose-100/70"
                             aria-label={`العمولة في الصف ${index + 1}`}
@@ -413,12 +462,16 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                 <span className="text-lg font-bold text-slate-800">المستلم اليوم</span>
                 <div className="flex w-1/2 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3">
                   <input
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     placeholder="0"
-                    value={localEgyptRecord.receivedValue || ''}
+                    data-egyptian-entry="true"
+                    value={entryDrafts.received ?? (localEgyptRecord.receivedValue || '')}
                     onChange={(event) => handleEgyptSummaryChange(event.target.value)}
-                    onBlur={() => localEgyptRecord && queueRecordSave(localEgyptRecord, 0)}
+                    onBlur={() => {
+                      clearEntryDraft('received');
+                      commitLatestRecord();
+                    }}
                     className="min-w-0 flex-1 bg-transparent py-3 text-left font-mono text-2xl font-black text-slate-900 outline-none"
                     dir="ltr"
                     aria-label="المستلم اليوم"

@@ -4,6 +4,7 @@ import {
   calculateEgyptianRowTotal,
   calculateEgyptianWorkTotal,
   getEgyptianPreviousValue,
+  parseEgyptianEntry,
 } from './egyptianCash';
 
 describe('Egyptian cash calculations', () => {
@@ -75,5 +76,12 @@ describe('Egyptian cash calculations', () => {
       receivedValue: 880_000,
       rows: [{ value: 793_860, commission: 0 }],
     })).toBe(86_140);
+  });
+
+  it('keeps large, negative, and formatted entries exact', () => {
+    expect(parseEgyptianEntry('1,000,000')).toBe(1_000_000);
+    expect(parseEgyptianEntry('-13,964,462')).toBe(-13_964_462);
+    expect(parseEgyptianEntry('')).toBe(0);
+    expect(parseEgyptianEntry('not-a-number')).toBe(0);
   });
 });

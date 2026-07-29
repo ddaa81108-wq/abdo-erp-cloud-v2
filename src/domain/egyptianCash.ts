@@ -5,6 +5,13 @@ const amount = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+export function parseEgyptianEntry(value: unknown): number {
+  const normalized = typeof value === 'string'
+    ? value.replace(/,/g, '').trim()
+    : value;
+  return amount(normalized);
+}
+
 export function calculateEgyptianRowTotal(row: EgyptianCashRow): number {
   return amount(row.value) + amount(row.commission);
 }

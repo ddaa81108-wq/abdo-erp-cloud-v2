@@ -5,6 +5,7 @@ import type {
 } from '../types';
 import { transactionKind } from './businessAccounts';
 import {
+  calculateEgyptianRemainder,
   calculateEgyptianWorkTotal,
 } from './egyptianCash';
 import { isManualTreasuryTransaction } from './treasurySummary';
@@ -60,17 +61,14 @@ const purchaseLydResult = (row: PurchaseRecord) =>
   purchaseInteger(row.result);
 
 function egyptianClosingBalance(state: ERPState, day: string) {
-  const records = (state.egyptianCashRecords || [])
+  const record = (state.egyptianCashRecords || [])
     .filter((record) => record.date <= day)
-    .sort((left, right) => left.date.localeCompare(right.date));
-  if (!records.length) return 0;
-  return records.reduce(
-    (balance, record, index) =>
-      (index === 0 ? finite(record.previousValue) : balance)
-      + finite(record.receivedValue)
-      - calculateEgyptianWorkTotal(record.rows || []),
-    0,
-  );
+    .sort((left, right) => right.date.localeCompare(left.date))[0];
+
+  // Every saved Masraweya day owns its opening snapshot. The financial report
+  // must use the nearest day's saved closing balance, not rebuild all days and
+  // count carried balances a second time.
+  return record ? calculateEgyptianRemainder(record) : 0;
 }
 
 export interface FinancialPosition {
