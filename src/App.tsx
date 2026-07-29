@@ -17,6 +17,7 @@ import { db, auth } from "./firebase";
 
 // Import subcomponents
 import AlertCenter from "./components/AlertCenter";
+import DebtBird from "./components/DebtBird";
 import { VoiceInputButton } from "./components/VoiceInputButton";
 import GlobalSearch from "./components/GlobalSearch";
 import LoginScreen from "./components/LoginScreen";
@@ -39,6 +40,7 @@ import {
 import {
   synchronizeTrustDeposit,
 } from "./domain/trustAccounts";
+import { calculateTreasurySummary } from "./domain/treasurySummary";
 
 import GlobalCalculator from "./components/GlobalCalculator";
 
@@ -887,6 +889,7 @@ export default function App() {
         }}
         onPostPurchaseToTreasury={postUnpostedPurchaseFromAlert}
       />
+      <DebtBird totalDebt={calculateTreasurySummary(state).purchaseObligations} />
 
       {state.customers.length === 0 && (
         <div className={`w-full px-4 mt-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}>

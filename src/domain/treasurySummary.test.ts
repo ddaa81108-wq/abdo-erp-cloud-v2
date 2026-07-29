@@ -167,4 +167,50 @@ describe('treasury summary', () => {
     ];
     expect(calculateTreasurySummary(state).customerDebts).toBe(400);
   });
+
+  it('adds Baqy and Semsem payable debts without allowing one credit to offset the other', () => {
+    const state = emptyState();
+    state.purchaseAccounts = [
+      {
+        id: 'purchase_account_baqy',
+        merchant: 'baqy',
+        openingBalanceLyd: 100,
+        openingBalanceEgp: 0,
+        activeDate: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+      {
+        id: 'purchase_account_semsem',
+        merchant: 'semsem',
+        openingBalanceLyd: 0,
+        openingBalanceEgp: 0,
+        activeDate: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    ];
+    state.purchases = [
+      {
+        id: 'baqy-debt', merchant: 'baqy', date: '2026-01-01',
+        createdAt: '2026-01-01', result: 500, paid: 100,
+      },
+      {
+        id: 'semsem-credit', merchant: 'semsem', date: '2026-01-01',
+        createdAt: '2026-01-01', result: 300, paid: 500,
+      },
+    ];
+
+    expect(calculateTreasurySummary(state).purchaseObligations).toBe(500);
+  });
+
+  it('includes purchase rows during migration even before their account is saved', () => {
+    const state = emptyState();
+    state.purchases = [
+      {
+        id: 'semsem-debt', merchant: 'semsem', date: '2026-01-01',
+        createdAt: '2026-01-01', result: 750, paid: 250,
+      },
+    ];
+
+    expect(calculateTreasurySummary(state).purchaseObligations).toBe(500);
+  });
 });

@@ -1,4 +1,9 @@
-import type { ERPState, TreasuryTransaction } from '../types';
+import type {
+  ERPState,
+  PurchaseAccountState,
+  PurchaseRecord,
+  TreasuryTransaction,
+} from '../types';
 import { calculateBusinessSummary } from './businessAccounts';
 import { calculateActiveCycleBalance } from './customerAccounts';
 import { calculateTreasuryBalance } from './financialCalculations';
@@ -16,6 +21,30 @@ export const isManualTreasuryTransaction = (
 
 export const manualTreasuryTransactions = (state: ERPState) =>
   (state.treasuryTransactions || []).filter(isManualTreasuryTransaction);
+
+const purchaseAccountsForSummary = (state: ERPState): PurchaseAccountState[] => {
+  const accountsByMerchant = new Map<PurchaseRecord['merchant'], PurchaseAccountState>();
+
+  for (const account of state.purchaseAccounts || []) {
+    if (!accountsByMerchant.has(account.merchant)) {
+      accountsByMerchant.set(account.merchant, account);
+    }
+  }
+
+  for (const row of state.purchases || []) {
+    if (!row.merchant || accountsByMerchant.has(row.merchant)) continue;
+    accountsByMerchant.set(row.merchant, {
+      id: `purchase_account_${row.merchant}`,
+      merchant: row.merchant,
+      openingBalanceLyd: 0,
+      openingBalanceEgp: 0,
+      activeDate: row.date,
+      updatedAt: row.updatedAt || row.createdAt,
+    });
+  }
+
+  return [...accountsByMerchant.values()];
+};
 
 export function calculateTreasurySummary(state: ERPState) {
   const manualTransactions = manualTreasuryTransactions(state);
@@ -75,13 +104,19 @@ export function calculateTreasurySummary(state: ERPState) {
       0,
     );
 
-  const purchaseObligations = (state.purchaseAccounts || []).reduce(
+  // Every merchant is calculated independently. A credit with one merchant
+  // must not hide a payable debt owed to the other merchant in the treasury.
+  // Rows without a persisted account are included defensively during migration.
+  const purchaseObligations = purchaseAccountsForSummary(state).reduce(
     (sum, account) =>
       sum
-      + calculatePurchaseTotals(
-        state.purchases || [],
-        account,
-      ).totalDebtLyd,
+      + Math.max(
+        calculatePurchaseTotals(
+          state.purchases || [],
+          account,
+        ).totalDebtLyd,
+        0,
+      ),
     0,
   );
 
