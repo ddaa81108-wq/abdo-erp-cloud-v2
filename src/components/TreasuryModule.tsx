@@ -275,8 +275,8 @@ export default function TreasuryModule({
         </header>
 
         <div className="max-h-[68vh] overflow-auto">
-          <table className="min-w-[1050px] w-full border-collapse text-[11px]">
-            <thead className="sticky top-0 z-20 bg-emerald-800 text-white shadow-sm">
+          <table className="treasury-ledger-table min-w-[1050px] w-full border-collapse text-[11px]">
+            <thead className="sticky top-0 z-20 shadow-sm">
               <tr>
                 {[
                   'ت',
@@ -290,7 +290,7 @@ export default function TreasuryModule({
                   'تعديل',
                   'مسح',
                 ].map((header) => (
-                  <th key={header} className="border-l border-emerald-700 px-2 py-2 font-black">
+                  <th key={header} className="border border-emerald-950 px-2 py-1.5 font-black">
                     {header}
                   </th>
                 ))}
@@ -302,14 +302,14 @@ export default function TreasuryModule({
                 return (
                   <tr
                     key={transaction.id}
-                    className={`border-b ${
+                    className={`treasury-ledger-row ${
                       inbound
-                        ? 'border-emerald-100 bg-emerald-50/70'
-                        : 'border-rose-100 bg-rose-50/70'
+                        ? 'treasury-ledger-deposit'
+                        : 'treasury-ledger-withdraw'
                     }`}
                   >
-                    <td className="px-2 py-2 text-center font-mono font-black">{sequence}</td>
-                    <td className="px-2 py-2 text-center font-mono">
+                    <td className="px-2 py-1.5 text-center font-mono font-black">{sequence}</td>
+                    <td className="px-2 py-1.5 text-center font-mono">
                       {new Date(transaction.date).toLocaleString('ar-LY', {
                         year: 'numeric',
                         month: '2-digit',
@@ -318,41 +318,37 @@ export default function TreasuryModule({
                         minute: '2-digit',
                       })}
                     </td>
-                    <td className={`px-2 py-2 text-center font-black ${
-                      inbound ? 'text-emerald-700' : 'text-rose-700'
-                    }`}>
+                    <td className="px-2 py-1.5 text-center font-black">
                       {inbound ? 'إيداع' : 'سحب'}
                     </td>
-                    <td className="px-2 py-2 font-bold">{transaction.actorName || 'غير محدد'}</td>
-                    <td className="max-w-[260px] truncate px-2 py-2" title={transaction.note || ''}>
+                    <td className="px-2 py-1.5 font-bold">{transaction.actorName || 'غير محدد'}</td>
+                    <td className="max-w-[260px] truncate px-2 py-1.5" title={transaction.note || ''}>
                       {transaction.note || '—'}
                     </td>
-                    <td className="px-2 py-2 text-center font-mono font-black text-emerald-700">
+                    <td className="px-2 py-1.5 text-center font-mono font-black">
                       {inbound ? money(transaction.amount) : '—'}
                     </td>
-                    <td className="px-2 py-2 text-center font-mono font-black text-rose-700">
+                    <td className="px-2 py-1.5 text-center font-mono font-black">
                       {!inbound ? money(transaction.amount) : '—'}
                     </td>
-                    <td className={`px-2 py-2 text-center font-mono font-black ${
-                      runningBalance < 0 ? 'text-rose-700' : 'text-slate-900'
-                    }`}>
+                    <td className="px-2 py-1.5 text-center font-mono font-black">
                       {money(runningBalance)}
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-2 py-1.5 text-center">
                       <button
                         type="button"
                         onClick={() => openEdit(transaction)}
-                        className="rounded-lg p-1.5 text-emerald-700 hover:bg-emerald-100"
+                        className="treasury-ledger-action rounded-lg p-1"
                         aria-label="تعديل الحركة"
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                     </td>
-                    <td className="px-2 py-2 text-center">
+                    <td className="px-2 py-1.5 text-center">
                       <button
                         type="button"
                         onClick={() => setDeleting(transaction)}
-                        className="rounded-lg p-1.5 text-rose-700 hover:bg-rose-100"
+                        className="treasury-ledger-action rounded-lg p-1"
                         aria-label="مسح الحركة"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -369,17 +365,14 @@ export default function TreasuryModule({
                 </tr>
               )}
             </tbody>
-            <tfoot className="sticky bottom-0 bg-emerald-100 text-emerald-950">
+            <tfoot className="treasury-ledger-total sticky bottom-0">
               <tr>
                 <td colSpan={7} className="px-4 py-2 text-left font-black">
                   الرصيد النشط الحالي
                 </td>
-                <td className={`px-2 py-2 text-center font-mono text-sm font-black ${
-                  summary.activeCash < 0 ? 'text-rose-700' : 'text-emerald-800'
-                }`}>
+                <td colSpan={3} className="px-2 py-2 text-center font-mono text-sm font-black">
                   {money(summary.activeCash)}
                 </td>
-                <td colSpan={2} />
               </tr>
             </tfoot>
           </table>

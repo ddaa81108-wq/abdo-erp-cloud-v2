@@ -140,6 +140,40 @@ table td {
   border-bottom-color: var(--border-color) !important;
 }
 
+/* Active treasury ledger: clear grid and high-contrast transaction rows. */
+.treasury-ledger-table th {
+  background-color: #065f46 !important;
+  color: #ffffff !important;
+}
+
+.treasury-ledger-table .treasury-ledger-row > td {
+  border: 1px solid rgb(255 255 255 / 0.38) !important;
+  color: #ffffff !important;
+  line-height: 1.25 !important;
+}
+
+.treasury-ledger-table .treasury-ledger-deposit > td {
+  background-color: #078547 !important;
+}
+
+.treasury-ledger-table .treasury-ledger-withdraw > td {
+  background-color: #c52f39 !important;
+}
+
+.treasury-ledger-table .treasury-ledger-action {
+  color: #ffffff !important;
+}
+
+.treasury-ledger-table .treasury-ledger-action:hover {
+  background-color: rgb(255 255 255 / 0.22) !important;
+}
+
+.treasury-ledger-table .treasury-ledger-total > tr > td {
+  background-color: #123b5d !important;
+  border: 1px solid #071f33 !important;
+  color: #ffffff !important;
+}
+
 select option {
   background-color: var(--bg-surface) !important;
   color: var(--text-primary) !important;
