@@ -2,6 +2,14 @@ let currentType = 'debt';
         const studioConfig = window.CARD_STUDIO_CONFIG || {};
         const sections = studioConfig.sections || [];
         const layoutStorageKey = 'ABDO_CARD_STUDIO_LAYOUTS_V1';
+        const fontStorageKey = 'ABDO_CARD_STUDIO_FONT_V1';
+        const cardFontFamilies = Object.freeze({
+            cairo: "'Card Cairo', Arial, sans-serif",
+            tajawal: "'Card Tajawal', Arial, sans-serif",
+            almarai: "'Card Almarai', Arial, sans-serif",
+            'noto-kufi': "'Card Noto Kufi Arabic', Arial, sans-serif",
+            'ibm-plex': "'Card IBM Plex Sans Arabic', Arial, sans-serif",
+        });
         const cardWidths = {
             masraweya: 1050,
             final_statement: 1050,
@@ -43,7 +51,49 @@ let currentType = 'debt';
             updateCard();
         }
 
-        function initDashboard() { generateDate(); renderTiles(); applyIncomingParams(); updateCard(); setTimeout(resizePreview, 100); }
+        function readSavedFontFamily() {
+            try {
+                const savedFont = localStorage.getItem(fontStorageKey);
+                return cardFontFamilies[savedFont] ? savedFont : 'cairo';
+            } catch {
+                return 'cairo';
+            }
+        }
+
+        function applySelectedFont() {
+            const select = document.getElementById('fontFamilySelect');
+            const fontKey = select && cardFontFamilies[select.value] ? select.value : readSavedFontFamily();
+            const fontFamily = cardFontFamilies[fontKey] || cardFontFamilies.cairo;
+            const card = document.getElementById('goldenCard');
+            const exchangeCard = document.getElementById('exchangeCard');
+            if (card) card.style.setProperty('--card-font', fontFamily);
+            if (exchangeCard) exchangeCard.style.setProperty('--card-font', fontFamily);
+        }
+
+        function loadSavedFontFamily() {
+            const select = document.getElementById('fontFamilySelect');
+            if (select) select.value = readSavedFontFamily();
+            applySelectedFont();
+        }
+
+        function handleFontFamilyChange() {
+            const select = document.getElementById('fontFamilySelect');
+            if (!select || !cardFontFamilies[select.value]) return;
+            try {
+                localStorage.setItem(fontStorageKey, select.value);
+            } catch {}
+            applySelectedFont();
+            setTimeout(resizePreview, 50);
+        }
+
+        function initDashboard() {
+            generateDate();
+            renderTiles();
+            applyIncomingParams();
+            loadSavedFontFamily();
+            updateCard();
+            setTimeout(resizePreview, 100);
+        }
 
         function resizePreview() {
             const wrapper = document.getElementById('preview-wrapper');
@@ -408,6 +458,7 @@ let currentType = 'debt';
             cardContainer.className = "card " + themeValue + " " + layoutValue;
             cardContainer.style.setProperty('--card-width', getCardWidth() + 'px');
             exchangeContainer.className = "system-gold-card " + themeValue + " " + layoutValue;
+            applySelectedFont();
             if (currentType === 'masraweya' || currentType === 'final_statement') {
                 cardContainer.classList.add('masraweya-card');
             } else if (currentType === 'purchases') {
@@ -718,12 +769,12 @@ let currentType = 'debt';
             card.style.transform = 'none';
 
             try {
-                if (document.fonts?.ready) await document.fonts.ready;
-                // Wait for the exact preview layout to settle. Exporting must
-                // never apply a second typography or spacing system.
+                // First let the selected font reach the rendered card, then
+                // wait for its local file before taking the export snapshot.
                 await new Promise((resolve) => {
                     requestAnimationFrame(() => requestAnimationFrame(resolve));
                 });
+                if (document.fonts?.ready) await document.fonts.ready;
 
                 const exportWidth = card.offsetWidth;
                 const exportHeight = card.offsetHeight;

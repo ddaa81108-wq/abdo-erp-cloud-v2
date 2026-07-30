@@ -35,5 +35,6 @@ window.CARD_STUDIO_CONFIG = Object.freeze({
     { id: "layout-nature", label: "الزجاجي الهادئ" },
     { id: "layout-ledger", label: "الكشف المحاسبي" },
     { id: "layout-heritage", label: "التراث الليبي" },
+    { id: "layout-official", label: "الأهرام الرسمي الفخم" },
   ],
 });

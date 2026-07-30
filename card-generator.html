@@ -22,6 +22,11 @@
     
     <link rel="stylesheet" href="/src/index.css">
     <script src="/card-studio/vendor/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="/card-studio/fonts/css/cairo.css">
+    <link rel="stylesheet" href="/card-studio/fonts/css/tajawal.css">
+    <link rel="stylesheet" href="/card-studio/fonts/css/almarai.css">
+    <link rel="stylesheet" href="/card-studio/fonts/css/noto-kufi-arabic.css">
+    <link rel="stylesheet" href="/card-studio/fonts/css/ibm-plex-sans-arabic.css">
     <link rel="stylesheet" href="/src/card-studio/card-generator.css">
 <base target="_blank">
 </head>
@@ -127,6 +132,14 @@
                     <div class="card-date hidden-element" id="card-date-display"></div>
                     <div class="footer" id="card-footer">شركة الأهرام للاتصالات وتقنية المعلومات</div>
                     <div class="spacer" id="card-spacer"></div>
+
+                    <div class="official-brand-mark" aria-hidden="true">
+                        <span class="official-brand-pyramid"></span>
+                    </div>
+                    <div class="official-company-stamp" aria-label="ختم شركة الأهرام">
+                        <span>شركة الأهرام</span>
+                        <small>للاتصالات وتقنية المعلومات</small>
+                    </div>
                     
                     <div id="corner-tl" style="position:absolute;top:26px;left:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
                     <div id="corner-tr" style="position:absolute;top:26px;right:22px;font-size:26pt;color:var(--corner-color,transparent);pointer-events:none;z-index:3;">◆</div>
@@ -146,6 +159,13 @@
                     <div class="card-text-layer card-line-2">المعلومات</div>
                     <div class="card-text-layer card-price-value" id="exchangePriceDisplay">5.98</div>
                     <div class="card-text-layer card-footer-note">الأسعار متغيرة بتغير سعر الصرف</div>
+                    <div class="official-brand-mark" aria-hidden="true">
+                        <span class="official-brand-pyramid"></span>
+                    </div>
+                    <div class="official-company-stamp" aria-label="ختم شركة الأهرام">
+                        <span>شركة الأهرام</span>
+                        <small>للاتصالات وتقنية المعلومات</small>
+                    </div>
                 </div>
 
             </div>
@@ -170,9 +190,21 @@
                 </div>
             </div>
 
+            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
+                <label class="block text-sm text-gray-600 mb-2 font-bold" for="fontFamilySelect">🔤 تغيير الخط:</label>
+                <select id="fontFamilySelect" class="solid-input font-picker-select" onchange="handleFontFamilyChange()">
+                    <option value="cairo">1. القاهرة — متوازن وواضح</option>
+                    <option value="tajawal">2. تجوال — حديث وخفيف</option>
+                    <option value="almarai">3. المراعي — عملي وقوي</option>
+                    <option value="noto-kufi">4. نوتو كوفي عربي — رسمي</option>
+                    <option value="ibm-plex">5. آي بي إم بليكس عربي — مصرفي</option>
+                </select>
+                <p class="mt-1 text-[11px] text-gray-500">الاختيار يطبّق على الكارت كاملًا وفي جميع الأقسام.</p>
+            </div>
+
             <div class="flex flex-col gap-4 mb-6">
                 <div>
-                    <label class="block text-sm text-gray-600 font-bold mb-1">شكل الكارت:</label>
+                    <label class="block text-sm text-gray-600 font-bold mb-1" for="layoutSelect">شكل الكارت:</label>
                     <select id="layoutSelect" class="solid-input" onchange="handleLayoutChange()">
                         <option value="layout-banking">1. الأساسي النظيف</option>
                         <option value="layout-executive">2. التنفيذي الرسمي</option>
@@ -180,11 +212,12 @@
                         <option value="layout-nature">4. الزجاجي الهادئ</option>
                         <option value="layout-ledger">5. الكشف المحاسبي</option>
                         <option value="layout-heritage">6. التراث الليبي</option>
+                        <option value="layout-official">7. الأهرام الرسمي الفخم</option>
                     </select>
                     <p class="mt-1 text-[11px] text-gray-500">يحفظ لكل قسم اختيار مستقل.</p>
                 </div>
                 <div>
-                    <label class="block text-sm text-gray-600 font-bold mb-1">خلفية الكارت:</label>
+                    <label class="block text-sm text-gray-600 font-bold mb-1" for="themeSelect">خلفية الكارت:</label>
                     <select id="themeSelect" class="solid-input" onchange="handleThemeChange()">
                         <optgroup label="✨ الألوان الأساسية">
                             <option value="bg-gold">الذهبي الملكي (الافتراضي)</option>

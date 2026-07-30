@@ -1,6 +1,14 @@
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
+        /* الخط المختار يطبّق على جميع عناصر الكارت، بما فيها كارت أسعار الصرف. */
+        .card,
+        .card *,
+        .system-gold-card,
+        .system-gold-card * {
+            font-family: var(--card-font, 'Card Cairo', Arial, sans-serif) !important;
+        }
+
         /* الألوان والخلفيات */
         .bg-gold { background: linear-gradient(135deg, #fceabb 0%, #f8b500 40%, #d4af37 70%, #b38728 100%) !important; --text-main: #110c00; --badge-bg: rgba(255, 255, 255, 0.4); --badge-border: rgba(255, 255, 255, 0.6); --corner-color: rgba(180,140,30,0.55); --text-glow: rgba(200,160,40,0.35); }
         .bg-exchange { background: linear-gradient(160deg, #f9d976 0%, #e9b64c 10%, #fdf0a6 22%, #d4942e 36%, #f9e076 50%, #c5811e 64%, #fdf0a6 78%, #e9b64c 90%, #d4af37 100%) !important; --text-main: #0a0500; --corner-color: rgba(150,100,15,0.45); }
@@ -691,6 +699,283 @@
         .system-gold-card.layout-nature { border-radius: 34px; }
         .system-gold-card.layout-ledger { border-radius: 14px; }
         .system-gold-card.layout-heritage { border-radius: 20px; }
+
+        /* ======================================================== */
+        /* --- كارت الأهرام الرسمي: فخم، نظيف، بدون بيانات زائدة --- */
+        /* ======================================================== */
+        .official-brand-mark,
+        .official-company-stamp {
+            display: none;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .card.layout-official,
+        .system-gold-card.layout-official {
+            border: 1px solid var(--corner-color, rgba(185,145,59,.58));
+            border-radius: 20px;
+            box-shadow:
+                0 26px 58px rgba(4,18,38,.24),
+                inset 0 0 0 1px rgba(255,255,255,.16);
+        }
+
+        .card.layout-official::before,
+        .system-gold-card.layout-official::before {
+            inset: 15px;
+            border: 1px solid var(--corner-color, rgba(185,145,59,.54));
+            border-radius: 14px;
+            opacity: .76;
+        }
+
+        .card.layout-official::after,
+        .system-gold-card.layout-official::after {
+            display: block;
+            content: '';
+            position: absolute;
+            inset: 27px;
+            border: 1px solid var(--badge-border, rgba(255,255,255,.2));
+            border-radius: 10px;
+            opacity: .5;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .layout-official .official-brand-mark {
+            display: grid;
+            place-items: center;
+            position: absolute;
+            top: 32px;
+            right: 34px;
+            width: 68px;
+            height: 68px;
+            border: 1px solid var(--corner-color);
+            border-radius: 16px;
+            background: var(--badge-bg);
+            box-shadow: inset 0 0 0 6px rgba(255,255,255,.06);
+            z-index: 4;
+        }
+
+        .card.layout-official #corner-tl,
+        .card.layout-official #corner-tr,
+        .card.layout-official #corner-bl,
+        .card.layout-official #corner-br,
+        .card.layout-official #crown-top {
+            display: none !important;
+        }
+
+        .layout-official .official-brand-pyramid {
+            width: 39px;
+            height: 34px;
+            background: var(--corner-color);
+            clip-path: polygon(50% 0, 100% 100%, 0 100%);
+            position: relative;
+        }
+
+        .layout-official .official-brand-pyramid::after {
+            content: '';
+            position: absolute;
+            left: 10px;
+            bottom: 0;
+            width: 19px;
+            height: 16px;
+            background: var(--badge-bg);
+            clip-path: polygon(50% 0, 100% 100%, 0 100%);
+        }
+
+        .layout-official .official-company-stamp {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            bottom: 31px;
+            left: 34px;
+            width: 112px;
+            height: 112px;
+            padding: 13px;
+            border: 3px double var(--corner-color);
+            border-radius: 50%;
+            color: var(--text-main);
+            background: rgba(255,255,255,.035);
+            text-align: center;
+            line-height: 1.35;
+            transform: rotate(-7deg);
+            opacity: .86;
+            z-index: 4;
+        }
+
+        .layout-official .official-company-stamp span {
+            font-size: 15pt;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .layout-official .official-company-stamp small {
+            display: block;
+            margin-top: 2px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            max-width: 82px;
+        }
+
+        .card.layout-official > .header {
+            width: 74%;
+            min-height: 70px;
+            padding: 12px 78px;
+            border-bottom: 1px solid var(--badge-border);
+            background: transparent;
+        }
+
+        .card.layout-official:not(.mini-card-layout):not(.masraweya-card):not(.purchases-card) > .client-name {
+            font-size: 44pt !important;
+        }
+
+        .card.layout-official:not(.mini-card-layout):not(.masraweya-card):not(.purchases-card) > .label {
+            font-size: 20pt !important;
+        }
+
+        .card.layout-official:not(.mini-card-layout):not(.masraweya-card):not(.purchases-card) .amount-text {
+            font-size: 78pt !important;
+        }
+
+        .card.layout-official:not(.mini-card-layout):not(.masraweya-card):not(.purchases-card) .currency {
+            font-size: 26pt !important;
+        }
+
+        .layout-official .final-statement-box,
+        .layout-official .purchases-box {
+            width: 86%;
+        }
+
+        .layout-official .stmt-header-row,
+        .layout-official .stmt-row,
+        .layout-official .purchases-top-bar,
+        .layout-official .purchases-row,
+        .layout-official .custom-note-box,
+        .layout-official .price-badge {
+            border-color: var(--badge-border);
+            background: var(--badge-bg);
+            box-shadow: none;
+        }
+
+        .layout-official .stmt-header-row,
+        .layout-official .purchases-top-bar {
+            border-radius: 12px;
+        }
+
+        .layout-official .stmt-row,
+        .layout-official .purchases-row {
+            border-radius: 10px;
+        }
+
+        .card.layout-official > .footer {
+            max-width: 62%;
+            padding: 8px 18px;
+            border-top: 1px solid var(--badge-border);
+            font-size: 17pt;
+        }
+
+        .system-gold-card.layout-official {
+            border-radius: 18px;
+        }
+
+        .system-gold-card.layout-official .card-inner-line {
+            inset: 16px;
+            border: 1px solid var(--corner-color);
+            border-radius: 12px;
+        }
+
+        .system-gold-card.layout-official .card-corner {
+            display: none;
+        }
+
+        .system-gold-card.layout-official .card-line-1,
+        .system-gold-card.layout-official .card-line-2 {
+            left: 105px;
+            right: 105px;
+            font-size: 38px;
+        }
+
+        .system-gold-card.layout-official .card-price-value {
+            top: 162px;
+            left: 84px;
+            right: 84px;
+            padding: 12px 0;
+            border-top: 1px solid var(--badge-border);
+            border-bottom: 1px solid var(--badge-border);
+            font-size: 138px;
+        }
+
+        .system-gold-card.layout-official .card-footer-note {
+            left: 145px;
+            right: 145px;
+            bottom: 42px;
+            font-size: 23px;
+        }
+
+        .system-gold-card.layout-official .official-brand-mark {
+            top: 24px;
+            right: 26px;
+            width: 58px;
+            height: 58px;
+        }
+
+        .system-gold-card.layout-official .official-company-stamp {
+            bottom: 25px;
+            left: 28px;
+            width: 86px;
+            height: 86px;
+        }
+
+        .system-gold-card.layout-official .official-company-stamp span {
+            font-size: 11pt;
+        }
+
+        .system-gold-card.layout-official .official-company-stamp small {
+            font-size: 6pt;
+            max-width: 64px;
+        }
+
+        .card.layout-official.mini-card-layout .official-brand-mark {
+            top: 18px;
+            right: 20px;
+            width: 46px;
+            height: 46px;
+            border-radius: 11px;
+        }
+
+        .card.layout-official.mini-card-layout .official-brand-pyramid {
+            width: 28px;
+            height: 24px;
+        }
+
+        .card.layout-official.mini-card-layout .official-brand-pyramid::after {
+            left: 7px;
+            width: 14px;
+            height: 12px;
+        }
+
+        .card.layout-official.mini-card-layout .official-company-stamp {
+            bottom: 18px;
+            left: 20px;
+            width: 70px;
+            height: 70px;
+            padding: 8px;
+        }
+
+        .card.layout-official.mini-card-layout .official-company-stamp span {
+            font-size: 9pt;
+        }
+
+        .card.layout-official.mini-card-layout .official-company-stamp small {
+            font-size: 5pt;
+            max-width: 54px;
+        }
+
+        .font-picker-select {
+            cursor: pointer;
+            font-weight: 700;
+        }
 
         /* تنسيقات الواجهة المضيئة (Light Mode) */
         .solid-input { background-color: #ffffff; border: 1px solid #d1d5db; color: #1f2937; padding: 10px; border-radius: 8px; width: 100%; outline: none; transition: 0.3s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
