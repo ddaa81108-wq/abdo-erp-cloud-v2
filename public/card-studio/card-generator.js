@@ -320,12 +320,16 @@ let currentType = 'debt';
             const isMini = document.getElementById('goldenCard').classList.contains('mini-card-layout');
             const isMiniCentered = document.getElementById('goldenCard').classList.contains('mini-card-centered');
             const isExchange = currentType === 'exchange_rate';
+            const isOfficialLayout = document.getElementById('layoutSelect')?.value === 'layout-official';
             
             if (isExchange) {
-                document.getElementById('exchangeCard').querySelector('.card-line-1').style.fontSize = (44 + (zoomLevel * 3)) + 'px';
-                document.getElementById('exchangeCard').querySelector('.card-line-2').style.fontSize = (44 + (zoomLevel * 3)) + 'px';
-                document.getElementById('exchangePriceDisplay').style.fontSize = (160 + (zoomLevel * 12)) + 'px';
-                document.getElementById('exchangeCard').querySelector('.card-footer-note').style.fontSize = (28 + (zoomLevel * 2)) + 'px';
+                const exchangeTitleSize = isOfficialLayout ? 38 : 44;
+                const exchangePriceSize = isOfficialLayout ? 138 : 160;
+                const exchangeNoteSize = isOfficialLayout ? 23 : 28;
+                document.getElementById('exchangeCard').querySelector('.card-line-1').style.fontSize = (exchangeTitleSize + (zoomLevel * 3)) + 'px';
+                document.getElementById('exchangeCard').querySelector('.card-line-2').style.fontSize = (exchangeTitleSize + (zoomLevel * 3)) + 'px';
+                document.getElementById('exchangePriceDisplay').style.fontSize = (exchangePriceSize + (zoomLevel * 10)) + 'px';
+                document.getElementById('exchangeCard').querySelector('.card-footer-note').style.fontSize = (exchangeNoteSize + (zoomLevel * 2)) + 'px';
             } 
             else if (isMini) {
                 if (isMiniCentered) {
