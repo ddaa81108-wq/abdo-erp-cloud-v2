@@ -170,6 +170,40 @@ describe('unified business ledger', () => {
     expect(calculateBusinessBalance(deleted, 'account-1')).toBe(-350);
   });
 
+  it('keeps an overpayment as a negative balance and applies later debt to it', () => {
+    const rows = [
+      transaction('debt', 'purchase_invoice', 500, {
+        entryKind: 'debt',
+        date: '2026-07-28T10:00:00.000Z',
+      }),
+      transaction('overpayment', 'payment', 700, {
+        entryKind: 'payment',
+        paymentMode: 'partial',
+        date: '2026-07-29T10:00:00.000Z',
+      }),
+    ];
+
+    expect(calculateBusinessBalance(rows, 'account-1')).toBe(-200);
+    expect(calculateBusinessSummary(
+      rows,
+      'account-1',
+      new Date('2026-07-29T12:00:00.000Z'),
+    )).toMatchObject({
+      balanceBeforeToday: 500,
+      paymentsToday: 700,
+      finalBalance: -200,
+    });
+
+    const withLaterDebt = [
+      ...rows,
+      transaction('later-debt', 'purchase_invoice', 80, {
+        entryKind: 'debt',
+        date: '2026-07-30T10:00:00.000Z',
+      }),
+    ];
+    expect(calculateBusinessBalance(withLaterDebt, 'account-1')).toBe(-120);
+  });
+
   it('merges legacy merchants without changing their identifiers', () => {
     const result = migrateLegacyBusinessAccounts([], [], [{
       id: 'mer-1',

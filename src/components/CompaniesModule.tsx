@@ -259,10 +259,6 @@ export default function CompaniesModule({
     const isFull = entryAction === 'full';
     const value = isFull ? selectedSummary.finalBalance : Number(entryAmount);
     if (!Number.isFinite(value) || value <= 0) return;
-    if (entryAction === 'partial' && value > selectedSummary.finalBalance) {
-      showToast('الدفعة الجزئية لا يمكن أن تتجاوز الدين الفعلي.');
-      return;
-    }
     const now = new Date().toISOString();
     const isPayment = entryAction !== 'debt';
     const nextTransaction: CompanyTransaction = {
@@ -574,8 +570,8 @@ export default function CompaniesModule({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 backdrop-blur-sm sm:p-5">
           <div className="flex max-h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-[#f8fafc] shadow-2xl">
             <header className="border-b border-slate-200 bg-white p-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="ml-auto min-w-52 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+              <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-3 xl:grid-cols-[minmax(190px,1.35fr)_repeat(5,minmax(120px,1fr))]">
+                <div className="flex min-h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                   <div className="flex items-center gap-2">
                     {selected.accountType === 'merchant'
                       ? <Store className="h-5 w-5 text-indigo-600" />
@@ -588,33 +584,32 @@ export default function CompaniesModule({
                 </div>
                 <button
                   onClick={() => setEntryAction('debt')}
-                  className="flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-black text-white hover:bg-rose-700"
+                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 py-2 text-xs font-black text-white hover:bg-rose-700"
                 >
                   <Plus className="h-4 w-4" /> إضافة دين
                 </button>
                 <button
                   onClick={() => setEntryAction('partial')}
-                  disabled={selectedSummary.finalBalance <= 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700"
                 >
                   <HandCoins className="h-4 w-4" /> دفع جزئي
                 </button>
                 <button
                   onClick={() => setEntryAction('full')}
                   disabled={selectedSummary.finalBalance <= 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-black text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
+                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Check className="h-4 w-4" /> تسديد كلي
                 </button>
                 <button
                   onClick={exportLedger}
-                  className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-black text-indigo-700 hover:bg-indigo-100"
+                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-100"
                 >
                   <FileText className="h-4 w-4" /> طباعة كشف السجل
                 </button>
                 <button
                   onClick={() => setSelectedId(null)}
-                  className="mr-auto flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black text-slate-600 hover:bg-slate-100"
+                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-100"
                 >
                   <X className="h-4 w-4" /> إغلاق
                 </button>
@@ -633,17 +628,17 @@ export default function CompaniesModule({
                   </span>
                 </div>
                 <div className="max-h-[48vh] overflow-auto">
-                  <table className="erp-ledger-table w-full min-w-[880px] border-collapse text-xs">
+                  <table className="erp-ledger-table w-full min-w-[760px] border-collapse text-[11px]">
                     <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
                       <tr>
-                        <th className="p-3 text-right">التسلسل</th>
-                        <th className="p-3 text-right">التاريخ</th>
-                        <th className="p-3 text-right">البيان</th>
-                        <th className="p-3 text-right">دين مضاف</th>
-                        <th className="p-3 text-right">مدفوع</th>
-                        <th className="p-3 text-right">الإجمالي الكلي</th>
-                        <th className="p-3 text-center">تعديل</th>
-                        <th className="p-3 text-center">مسح</th>
+                        <th className="p-2 text-right">التسلسل</th>
+                        <th className="p-2 text-right">التاريخ</th>
+                        <th className="p-2 text-right">البيان</th>
+                        <th className="p-2 text-right">دين مضاف</th>
+                        <th className="p-2 text-right">مدفوع</th>
+                        <th className="p-2 text-right">الإجمالي الكلي</th>
+                        <th className="p-2 text-center">تعديل</th>
+                        <th className="p-2 text-center">مسح</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -665,10 +660,10 @@ export default function CompaniesModule({
                                     : 'erp-ledger-negative'
                               }`}
                             >
-                              <td className="p-3 font-bold text-slate-400">{index + 1}</td>
-                              <td className="whitespace-nowrap p-3 text-slate-600">{localDateTime(transaction.date)}</td>
-                              <td className="max-w-72 p-3">
-                                <span className={`mb-1 inline-block rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                              <td className="p-2 font-bold text-slate-400">{index + 1}</td>
+                              <td className="whitespace-nowrap p-2 text-slate-600">{localDateTime(transaction.date)}</td>
+                              <td className="max-w-60 p-2">
+                                <span className={`mb-0.5 inline-block rounded-full px-2 py-0.5 text-[8px] font-bold ${
                                   kind === 'payment'
                                     ? 'bg-emerald-100 text-emerald-700'
                                     : kind === 'opening_balance'
@@ -681,29 +676,29 @@ export default function CompaniesModule({
                                 </span>
                                 <span className="block truncate font-semibold text-slate-700">{transaction.note}</span>
                               </td>
-                              <td className="p-3 font-black text-rose-600">
+                              <td className="p-2 font-black text-rose-600">
                                 {kind === 'payment' ? '—' : money(transaction.amount)}
                               </td>
-                              <td className="p-3 font-black text-emerald-600">
+                              <td className="p-2 font-black text-emerald-600">
                                 {kind === 'payment' ? money(transaction.amount) : '—'}
                               </td>
-                              <td className="p-3 font-black text-slate-900">{money(running)}</td>
-                              <td className="p-3 text-center">
+                              <td className="p-2 font-black text-slate-900">{money(running)}</td>
+                              <td className="p-2 text-center">
                                 <button
                                   onClick={() => beginEdit(transaction)}
-                                  className="erp-ledger-action rounded-lg p-2"
+                                  className="erp-ledger-action rounded-lg p-1.5"
                                   title="تعديل الحركة"
                                 >
-                                  <Pencil className="h-4 w-4" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </button>
                               </td>
-                              <td className="p-3 text-center">
+                              <td className="p-2 text-center">
                                 <button
                                   onClick={() => setDeleteTransaction(transaction)}
-                                  className="erp-ledger-action rounded-lg p-2"
+                                  className="erp-ledger-action rounded-lg p-1.5"
                                   title="مسح الحركة"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </button>
                               </td>
                             </tr>

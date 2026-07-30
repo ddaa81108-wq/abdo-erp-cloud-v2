@@ -182,10 +182,18 @@ table td {
   color: #ffffff !important;
 }
 
+.erp-ledger-table th {
+  padding: 0.5rem 0.625rem !important;
+  font-size: 0.7rem !important;
+  line-height: 1.15 !important;
+}
+
 .erp-ledger-table .erp-ledger-row > td {
   border: 1px solid rgb(255 255 255 / 0.38) !important;
   color: #ffffff !important;
-  line-height: 1.25 !important;
+  padding: 0.4rem 0.625rem !important;
+  line-height: 1.15 !important;
+  vertical-align: middle !important;
 }
 
 .erp-ledger-table .erp-ledger-row > td * {
@@ -219,6 +227,7 @@ table td {
 .erp-ledger-table .erp-ledger-action {
   background-color: rgb(255 255 255 / 0.18) !important;
   color: #ffffff !important;
+  padding: 0.35rem !important;
 }
 
 .erp-ledger-table .erp-ledger-action:hover {
