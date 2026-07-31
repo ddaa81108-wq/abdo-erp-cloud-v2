@@ -25,6 +25,7 @@ const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'users',
   'egyptianCashRecords',
   'financialReportRates',
+  'financialReportSnapshots',
   'notesAndReminders',
 ]);
 

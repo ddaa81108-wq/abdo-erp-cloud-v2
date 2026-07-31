@@ -1,24 +1,26 @@
 import type {
   ERPState,
   FinancialReportRate,
-  PurchaseRecord,
+  FinancialReportSnapshot,
+  PurchaseAccountState,
 } from '../types';
-import { transactionKind } from './businessAccounts';
+import { calculateEgyptianRemainder } from './egyptianCash';
 import {
-  calculateEgyptianRemainder,
-  calculateEgyptianWorkTotal,
-} from './egyptianCash';
-import { isManualTreasuryTransaction } from './treasurySummary';
+  calculatePurchaseTotals,
+  type PurchaseMerchant,
+} from './purchaseLedger';
+import { calculateTreasurySummary } from './treasurySummary';
 import {
   calculateTrustAccountBalances,
   trustHistory,
 } from './trustAccounts';
-import { isVodafonePurchase, purchaseInteger } from './purchaseLedger';
 
 const finite = (value: unknown) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+
+const integer = (value: unknown) => Math.trunc(finite(value));
 
 export const reportDayKey = (value: string | Date) => {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -33,335 +35,182 @@ export const reportDayKey = (value: string | Date) => {
   ].join('-');
 };
 
-const onDay = (value: string | Date, day: string) =>
-  reportDayKey(value) === day;
-
-const throughDay = (value: string | Date, day: string) => {
+const throughDay = (value: string | Date | undefined, day: string) => {
+  if (!value) return false;
   const key = reportDayKey(value);
   return Boolean(key) && key <= day;
-};
-
-const previousCalendarDay = (day: string) => {
-  const date = new Date(`${day}T12:00:00`);
-  date.setDate(date.getDate() - 1);
-  return reportDayKey(date);
 };
 
 export function resolveFinancialReportRate(
   rates: FinancialReportRate[] = [],
   day: string,
 ) {
-  return rates
-    .filter((rate) => rate.date <= day && finite(rate.egpPerLyd) > 0)
-    .sort((left, right) => right.date.localeCompare(left.date))[0]?.egpPerLyd
-    || 0;
+  return rates.find((rate) => rate.date === day && finite(rate.egpPerLyd) > 0)
+    ?.egpPerLyd || 0;
 }
-
-const purchaseLydResult = (row: PurchaseRecord) =>
-  purchaseInteger(row.result);
 
 function egyptianClosingBalance(state: ERPState, day: string) {
   const record = (state.egyptianCashRecords || [])
-    .filter((record) => record.date <= day)
+    .filter((item) => item.date <= day)
     .sort((left, right) => right.date.localeCompare(left.date))[0];
-
-  // Every saved Masraweya day owns its opening snapshot. The financial report
-  // must use the nearest day's saved closing balance, not rebuild all days and
-  // count carried balances a second time.
-  return record ? calculateEgyptianRemainder(record) : 0;
+  return record ? integer(calculateEgyptianRemainder(record)) : 0;
 }
 
-export interface FinancialPosition {
-  activeCashLyd: number;
-  customerBalanceLyd: number;
-  businessBalanceLyd: number;
-  purchaseDebtLyd: number;
-  trustBalanceLyd: number;
-  egyptianRemainderEgp: number;
-  vodafoneRemainderEgp: number;
+function purchaseAccount(
+  state: ERPState,
+  merchant: PurchaseMerchant,
+  day: string,
+): PurchaseAccountState {
+  const existing = (state.purchaseAccounts || [])
+    .find((account) => account.merchant === merchant);
+  if (existing) return existing;
+
+  const latestRowDate = (state.purchases || [])
+    .filter((row) => row.merchant === merchant && !row.isDeleted && row.date <= day)
+    .sort((left, right) => right.date.localeCompare(left.date))[0]?.date;
+  return {
+    id: `purchase_account_${merchant}`,
+    merchant,
+    openingBalanceLyd: 0,
+    openingBalanceEgp: 0,
+    activeDate: latestRowDate || day,
+    updatedAt: day,
+  };
+}
+
+function vodafoneRemainder(
+  state: ERPState,
+  merchant: PurchaseMerchant,
+  day: string,
+) {
+  const rows = (state.purchases || []).filter((row) =>
+    !row.isDeleted && row.date <= day);
+  return integer(
+    calculatePurchaseTotals(
+      rows,
+      purchaseAccount(state, merchant, day),
+    ).remainingEgp,
+  );
+}
+
+function trustEgyptianBalance(state: ERPState, day: string) {
+  return integer(
+    (state.trustDeposits || [])
+      .filter((deposit) => !deposit.isDeleted)
+      .reduce((sum, deposit) => {
+        const history = trustHistory(deposit).filter((transaction) =>
+          !transaction.isDeleted
+          && throughDay(
+            transaction.date || transaction.createdAt || deposit.date,
+            day,
+          ));
+        return sum + calculateTrustAccountBalances(history).amountEgp;
+      }, 0),
+  );
+}
+
+export interface FinancialReportSources {
+  treasuryPositivesLyd: number;
+  treasuryObligationsLyd: number;
+  egyptianCashRemainderEgp: number;
+  vodafoneBaqyRemainderEgp: number;
+  vodafoneSemsemRemainderEgp: number;
   trustBalanceEgp: number;
   netEgyptianPositionEgp: number;
-  egpPerLyd: number;
-  egyptianPositionLyd: number;
-  conversionReady: boolean;
-  netPositionLyd: number | null;
 }
 
-export function calculateFinancialPosition(
+export function calculateFinancialReportSources(
   state: ERPState,
   day: string,
-  requestedRate?: number,
-): FinancialPosition {
-  const activeCashLyd = (state.treasuryTransactions || [])
-    .filter((transaction) =>
-      isManualTreasuryTransaction(transaction)
-      && !transaction.isDeleted
-      && throughDay(transaction.date, day))
-    .reduce(
-      (sum, transaction) =>
-        sum
-        + (transaction.type === 'in' ? 1 : -1)
-        * finite(transaction.amount)
-        * finite(transaction.conversionRate || 1),
-      0,
-    );
+): FinancialReportSources {
+  const treasury = calculateTreasurySummary(state);
+  const egyptianCashRemainderEgp = egyptianClosingBalance(state, day);
+  const vodafoneBaqyRemainderEgp = vodafoneRemainder(state, 'baqy', day);
+  const vodafoneSemsemRemainderEgp = vodafoneRemainder(state, 'semsem', day);
+  const trustBalanceEgp = trustEgyptianBalance(state, day);
 
-  const activeCustomerIds = new Set(
-    (state.customers || [])
-      .filter((customer) => !customer.isDeleted)
-      .map((customer) => customer.id),
+  // Positive trust is money owed to custody owners and must be deducted.
+  // Negative trust is money owed to us, so subtracting it correctly adds it.
+  const netEgyptianPositionEgp = integer(
+    egyptianCashRemainderEgp
+    + vodafoneBaqyRemainderEgp
+    + vodafoneSemsemRemainderEgp
+    - trustBalanceEgp,
   );
-  const customerBalanceLyd = (state.cycles || [])
-    .filter((cycle) =>
-      activeCustomerIds.has(cycle.customerId)
-      && throughDay(cycle.startDate, day))
-    .reduce((total, cycle) => {
-      const movement = (state.debtTransactions || [])
-        .filter((transaction) =>
-          transaction.cycleId === cycle.id
-          && !transaction.isDeleted
-          && throughDay(transaction.date, day))
-        .reduce(
-          (sum, transaction) =>
-            sum
-            + (transaction.type === 'debt' ? 1 : -1)
-            * finite(transaction.amount)
-            * finite(transaction.conversionRate || 1),
-          0,
-        );
-      return total + finite(cycle.initialBalance) + movement;
-    }, 0);
-
-  const activeBusinessIds = new Set(
-    (state.companies || [])
-      .filter((account) => !account.isDeleted)
-      .map((account) => account.id),
-  );
-  const businessBalanceLyd = (state.companyTransactions || [])
-    .filter((transaction) =>
-      activeBusinessIds.has(transaction.companyId)
-      && !transaction.isDeleted
-      && throughDay(transaction.date, day))
-    .reduce(
-      (sum, transaction) =>
-        sum
-        + (transactionKind(transaction) === 'payment' ? -1 : 1)
-        * finite(transaction.amount),
-      0,
-    );
-
-  const rowsThroughDay = (state.purchases || [])
-    .filter((row) => !row.isDeleted && throughDay(row.date, day));
-  const purchaseDebtLyd = (state.purchaseAccounts || [])
-    .reduce(
-      (sum, account) => sum + finite(account.openingBalanceLyd),
-      0,
-    )
-    + rowsThroughDay.reduce(
-      (sum, row) =>
-        sum + purchaseLydResult(row) - purchaseInteger(row.paid),
-      0,
-    );
-  const vodafoneRemainderEgp = (state.purchaseAccounts || [])
-    .reduce(
-      (sum, account) => sum + finite(account.openingBalanceEgp),
-      0,
-    )
-    + rowsThroughDay.reduce(
-      (sum, row) =>
-        sum
-        + (isVodafonePurchase(row.type || '') ? purchaseInteger(row.value) : 0)
-        - purchaseInteger(row.consumer),
-      0,
-    );
-
-  const trustBalances = (state.trustDeposits || [])
-    .filter((deposit) => !deposit.isDeleted)
-    .reduce(
-      (totals, deposit) => {
-        const balance = calculateTrustAccountBalances(
-          trustHistory(deposit).filter((transaction) =>
-            throughDay(
-              transaction.date || transaction.createdAt || deposit.date,
-              day,
-            )),
-        );
-        totals.amountLyd += balance.amountLyd;
-        totals.amountEgp += balance.amountEgp;
-        return totals;
-      },
-      { amountLyd: 0, amountEgp: 0 },
-    );
-
-  const egyptianRemainderEgp = egyptianClosingBalance(state, day);
-  // Positive Masraweya and Vodafone balances belong to us. Positive trust
-  // balances belong to their owners and are therefore obligations.
-  const netEgyptianPositionEgp =
-    egyptianRemainderEgp
-    + vodafoneRemainderEgp
-    - trustBalances.amountEgp;
-  const egpPerLyd = finite(
-    requestedRate
-    || resolveFinancialReportRate(state.financialReportRates || [], day),
-  );
-  const conversionReady = netEgyptianPositionEgp === 0 || egpPerLyd > 0;
-  const egyptianPositionLyd = egpPerLyd > 0
-    ? netEgyptianPositionEgp / egpPerLyd
-    : 0;
-  const netPositionLyd = conversionReady
-    ? activeCashLyd
-      + customerBalanceLyd
-      + businessBalanceLyd
-      - purchaseDebtLyd
-      - trustBalances.amountLyd
-      + egyptianPositionLyd
-    : null;
 
   return {
-    activeCashLyd,
-    customerBalanceLyd,
-    businessBalanceLyd,
-    purchaseDebtLyd,
-    trustBalanceLyd: trustBalances.amountLyd,
-    egyptianRemainderEgp,
-    vodafoneRemainderEgp,
-    trustBalanceEgp: trustBalances.amountEgp,
+    treasuryPositivesLyd: integer(treasury.totalPositives),
+    treasuryObligationsLyd: integer(treasury.totalObligations),
+    egyptianCashRemainderEgp,
+    vodafoneBaqyRemainderEgp,
+    vodafoneSemsemRemainderEgp,
+    trustBalanceEgp,
     netEgyptianPositionEgp,
-    egpPerLyd,
-    egyptianPositionLyd,
-    conversionReady,
+  };
+}
+
+export function createFinancialReportSnapshot(
+  state: ERPState,
+  day: string,
+  egpPerLyd: number,
+  now = new Date().toISOString(),
+): FinancialReportSnapshot {
+  const rate = finite(egpPerLyd);
+  if (rate <= 0) {
+    throw new Error('سعر الصرف يجب أن يكون أكبر من صفر.');
+  }
+  const sources = calculateFinancialReportSources(state, day);
+  const egyptianEquivalentLyd = Math.trunc(
+    sources.netEgyptianPositionEgp / rate,
+  );
+  const totalOwnedLyd = integer(
+    sources.treasuryPositivesLyd + egyptianEquivalentLyd,
+  );
+  const netPositionLyd = integer(
+    totalOwnedLyd - sources.treasuryObligationsLyd,
+  );
+  const existing = (state.financialReportSnapshots || [])
+    .find((snapshot) => snapshot.date === day);
+
+  return {
+    id: existing?.id || `financial_snapshot_${day}`,
+    date: day,
+    ...sources,
+    egpPerLyd: rate,
+    egyptianEquivalentLyd,
+    totalOwnedLyd,
     netPositionLyd,
+    createdAt: existing?.createdAt || now,
+    updatedAt: now,
   };
 }
 
-export interface DailyFinancialMovement {
-  customerDebtsAddedLyd: number;
-  customerPaymentsLyd: number;
-  businessDebtsAddedLyd: number;
-  businessPaymentsLyd: number;
-  trustDepositsLyd: number;
-  trustWithdrawalsLyd: number;
-  trustDepositsEgp: number;
-  trustWithdrawalsEgp: number;
-  purchaseWorkLyd: number;
-  purchasePaidLyd: number;
-  baqyWorkLyd: number;
-  semsemWorkLyd: number;
-  egyptianWorkEgp: number;
-  egyptianReceivedEgp: number;
-  treasuryDepositsLyd: number;
-  treasuryWithdrawalsLyd: number;
-}
-
-export function calculateDailyFinancialMovement(
-  state: ERPState,
-  day: string,
-): DailyFinancialMovement {
-  const customerRows = (state.debtTransactions || [])
-    .filter((row) => !row.isDeleted && onDay(row.date, day));
-  const businessRows = (state.companyTransactions || [])
-    .filter((row) => !row.isDeleted && onDay(row.date, day));
-  const purchaseRows = (state.purchases || [])
-    .filter((row) => !row.isDeleted && onDay(row.date, day));
-  const trustRows = (state.trustDeposits || [])
-    .filter((deposit) => !deposit.isDeleted)
-    .flatMap((deposit) => trustHistory(deposit))
-    .filter((row) => !row.isDeleted && onDay(row.date || row.createdAt || '', day));
-  const treasuryRows = (state.treasuryTransactions || [])
-    .filter((row) =>
-      isManualTreasuryTransaction(row)
-      && !row.isDeleted
-      && onDay(row.date, day));
-  const egyptianRecord = (state.egyptianCashRecords || [])
-    .find((record) => record.date === day);
-
-  const customerAmount = (type: 'debt' | 'payment') =>
-    customerRows
-      .filter((row) => row.type === type)
-      .reduce(
-        (sum, row) =>
-          sum + finite(row.amount) * finite(row.conversionRate || 1),
-        0,
-      );
-  const businessAmount = (kind: 'debt' | 'payment') =>
-    businessRows
-      .filter((row) => {
-        const rowKind = transactionKind(row);
-        return kind === 'debt'
-          ? rowKind === 'debt' || rowKind === 'opening_balance'
-          : rowKind === 'payment';
-      })
-      .reduce((sum, row) => sum + finite(row.amount), 0);
-  const purchaseWork = (merchant?: PurchaseRecord['merchant']) =>
-    purchaseRows
-      .filter((row) => !merchant || row.merchant === merchant)
-      .reduce((sum, row) => sum + purchaseLydResult(row), 0);
-
-  return {
-    customerDebtsAddedLyd: customerAmount('debt'),
-    customerPaymentsLyd: customerAmount('payment'),
-    businessDebtsAddedLyd: businessAmount('debt'),
-    businessPaymentsLyd: businessAmount('payment'),
-    trustDepositsLyd: trustRows
-      .filter((row) => row.type === 'deposit_lyd')
-      .reduce((sum, row) => sum + finite(row.amountLyd), 0),
-    trustWithdrawalsLyd: trustRows
-      .filter((row) =>
-        row.type === 'withdraw_lyd' || row.type === 'convert_to_egp')
-      .reduce((sum, row) => sum + finite(row.amountLyd), 0),
-    trustDepositsEgp: trustRows
-      .filter((row) =>
-        row.type === 'deposit_egp' || row.type === 'convert_to_egp')
-      .reduce((sum, row) => sum + finite(row.amountEgp), 0),
-    trustWithdrawalsEgp: trustRows
-      .filter((row) => row.type === 'withdraw_egp')
-      .reduce((sum, row) => sum + finite(row.amountEgp), 0),
-    purchaseWorkLyd: purchaseWork(),
-    purchasePaidLyd: purchaseRows
-      .reduce((sum, row) => sum + purchaseInteger(row.paid), 0),
-    baqyWorkLyd: purchaseWork('baqy'),
-    semsemWorkLyd: purchaseWork('semsem'),
-    egyptianWorkEgp: egyptianRecord
-      ? calculateEgyptianWorkTotal(egyptianRecord.rows || [])
-      : 0,
-    egyptianReceivedEgp: finite(egyptianRecord?.receivedValue),
-    treasuryDepositsLyd: treasuryRows
-      .filter((row) => row.type === 'in')
-      .reduce(
-        (sum, row) =>
-          sum + finite(row.amount) * finite(row.conversionRate || 1),
-        0,
-      ),
-    treasuryWithdrawalsLyd: treasuryRows
-      .filter((row) => row.type === 'out')
-      .reduce(
-        (sum, row) =>
-          sum + finite(row.amount) * finite(row.conversionRate || 1),
-        0,
-      ),
-  };
-}
-
-export function calculateDailyFinancialReport(
-  state: ERPState,
-  day: string,
-  requestedRate?: number,
+export function upsertFinancialReportSnapshot(
+  snapshots: FinancialReportSnapshot[] = [],
+  nextSnapshot: FinancialReportSnapshot,
 ) {
-  const position = calculateFinancialPosition(state, day, requestedRate);
-  const previousDay = previousCalendarDay(day);
-  const previousPosition = calculateFinancialPosition(state, previousDay);
-  const positionChangeLyd =
-    position.netPositionLyd !== null
-    && previousPosition.netPositionLyd !== null
-      ? position.netPositionLyd - previousPosition.netPositionLyd
-      : null;
+  const withoutDay = snapshots.filter(
+    (snapshot) => snapshot.date !== nextSnapshot.date,
+  );
+  return [...withoutDay, nextSnapshot]
+    .sort((left, right) => left.date.localeCompare(right.date));
+}
 
-  return {
-    day,
-    previousDay,
-    movement: calculateDailyFinancialMovement(state, day),
-    position,
-    previousNetPositionLyd: previousPosition.netPositionLyd,
-    positionChangeLyd,
+export function upsertFinancialReportRate(
+  rates: FinancialReportRate[] = [],
+  day: string,
+  egpPerLyd: number,
+  updatedAt: string,
+) {
+  const existing = rates.find((rate) => rate.date === day);
+  const next: FinancialReportRate = {
+    id: existing?.id || `financial_rate_${day}`,
+    date: day,
+    egpPerLyd,
+    updatedAt,
   };
+  return [
+    ...rates.filter((rate) => rate.date !== day),
+    next,
+  ].sort((left, right) => left.date.localeCompare(right.date));
 }

@@ -1,19 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
+  Banknote,
   CircleDollarSign,
   Landmark,
-  RefreshCw,
+  Save,
   Scale,
+  ShieldCheck,
   WalletCards,
 } from 'lucide-react';
 import type { ERPState } from '../types';
 import {
-  calculateDailyFinancialReport,
+  calculateFinancialReportSources,
+  createFinancialReportSnapshot,
   reportDayKey,
-  resolveFinancialReportRate,
+  upsertFinancialReportRate,
+  upsertFinancialReportSnapshot,
 } from '../domain/financialReports';
 
 interface FinancialReportsModuleProps {
@@ -21,292 +22,297 @@ interface FinancialReportsModuleProps {
   onUpdateState: (newState: ERPState) => void;
 }
 
-const localToday = () => reportDayKey(new Date());
-
-const shiftDay = (day: string, amount: number) => {
-  const date = new Date(`${day}T12:00:00`);
-  date.setDate(date.getDate() + amount);
-  return reportDayKey(date);
+const integer = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
 };
 
-const integer = (value: number) => Math.trunc(Number.isFinite(value) ? value : 0);
-
-const formatNumber = (value: number) =>
-  integer(value).toLocaleString('en-US');
-
 const money = (value: number, currency: 'lyd' | 'egp') =>
-  `${formatNumber(value)} ${currency === 'lyd' ? 'د.ل' : 'ج.م'}`;
+  `${integer(value).toLocaleString('en-US')} ${currency === 'lyd' ? 'د.ل' : 'ج.م'}`;
+
+const rateLabel = (value: number) =>
+  value.toLocaleString('en-US', { maximumFractionDigits: 4 });
 
 export default function FinancialReportsModule({
   state,
   onUpdateState,
 }: FinancialReportsModuleProps) {
-  const [selectedDay, setSelectedDay] = useState(localToday);
-  const savedRate = resolveFinancialReportRate(
-    state.financialReportRates || [],
-    selectedDay,
+  const today = reportDayKey(new Date());
+  const [rateInput, setRateInput] = useState('');
+  const [message, setMessage] = useState('');
+  const rate = Number(rateInput);
+  const validRate = Number.isFinite(rate) && rate > 0;
+  const sources = useMemo(
+    () => calculateFinancialReportSources(state, today),
+    [state, today],
   );
-  const [rateInput, setRateInput] = useState(
-    savedRate > 0 ? String(savedRate) : '',
-  );
-  const typedRate = Number(rateInput);
-  const effectiveRate = Number.isFinite(typedRate) && typedRate > 0
-    ? typedRate
-    : undefined;
+  const egyptianEquivalentLyd = validRate
+    ? Math.trunc(sources.netEgyptianPositionEgp / rate)
+    : null;
+  const totalOwnedLyd = egyptianEquivalentLyd === null
+    ? null
+    : integer(sources.treasuryPositivesLyd + egyptianEquivalentLyd);
+  const netPositionLyd = totalOwnedLyd === null
+    ? null
+    : integer(totalOwnedLyd - sources.treasuryObligationsLyd);
+  const snapshots = [...(state.financialReportSnapshots || [])]
+    .sort((left, right) => right.date.localeCompare(left.date));
 
-  useEffect(() => {
-    const nextRate = resolveFinancialReportRate(
-      state.financialReportRates || [],
-      selectedDay,
-    );
-    setRateInput(nextRate > 0 ? String(nextRate) : '');
-  }, [selectedDay, state.financialReportRates]);
-
-  const report = useMemo(
-    () => calculateDailyFinancialReport(state, selectedDay, effectiveRate),
-    [state, selectedDay, effectiveRate],
-  );
-
-  const saveRate = () => {
-    if (!effectiveRate) return;
+  const saveToday = () => {
+    if (!validRate) {
+      setMessage('أدخل سعر صرف اليوم بصورة صحيحة أولًا.');
+      return;
+    }
     const now = new Date().toISOString();
-    const current = state.financialReportRates || [];
-    const exact = current.find((item) => item.date === selectedDay);
-    const nextRates = exact
-      ? current.map((item) =>
-          item.date === selectedDay
-            ? { ...item, egpPerLyd: effectiveRate, updatedAt: now }
-            : item)
-      : [
-          ...current,
-          {
-            id: `financial_rate_${selectedDay}`,
-            date: selectedDay,
-            egpPerLyd: effectiveRate,
-            updatedAt: now,
-          },
-        ];
-    if (
-      exact?.egpPerLyd === effectiveRate
-      && state.financialReportRates?.length === nextRates.length
-    ) return;
-    onUpdateState({ ...state, financialReportRates: nextRates });
+    try {
+      const snapshot = createFinancialReportSnapshot(state, today, rate, now);
+      onUpdateState({
+        ...state,
+        financialReportSnapshots: upsertFinancialReportSnapshot(
+          state.financialReportSnapshots || [],
+          snapshot,
+        ),
+        financialReportRates: upsertFinancialReportRate(
+          state.financialReportRates || [],
+          today,
+          rate,
+          now,
+        ),
+      });
+      setMessage('تم حفظ نتيجة اليوم. إذا أعدت الحفظ اليوم سيتم تحديث الصف نفسه.');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'تعذر حفظ نتيجة اليوم.');
+    }
   };
-
-  const { movement, position } = report;
-  const isPositive = (position.netPositionLyd || 0) >= 0;
 
   return (
     <div className="space-y-3 text-right animate-fadeIn" dir="rtl">
-      <div className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-2 px-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-950 text-white">
+      {message && (
+        <div className="fixed left-1/2 top-20 z-[120] -translate-x-1/2 rounded-xl bg-slate-950 px-5 py-3 text-xs font-black text-white shadow-2xl">
+          {message}
+        </div>
+      )}
+
+      <header className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-950 text-white">
             <Scale className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-sm font-black text-slate-900">التقرير المالي اليومي</h2>
-            <p className="text-[10px] font-bold text-slate-500">الأرقام محسوبة مباشرة من سجلات الأقسام</p>
+            <h2 className="text-sm font-black text-slate-950">سجل المركز المالي اليومي</h2>
+            <p className="text-[10px] font-bold text-slate-500">
+              النتيجة مأخوذة من كروت إجماليات الأقسام وليست من حركات يومية منفصلة
+            </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <label className="flex h-11 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3">
+          <label className="flex min-h-11 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3">
             <CircleDollarSign className="h-4 w-4 text-amber-700" />
-            <span className="whitespace-nowrap text-[10px] font-black text-amber-900">1 د.ل =</span>
+            <span className="whitespace-nowrap text-[10px] font-black text-amber-950">سعر اليوم: 1 د.ل =</span>
             <input
               value={rateInput}
-              onChange={(event) => setRateInput(event.target.value)}
-              onBlur={saveRate}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.currentTarget.blur();
-                }
+              onChange={(event) => {
+                setRateInput(event.target.value);
+                setMessage('');
               }}
               inputMode="decimal"
-              placeholder="سعر الصرف"
+              placeholder="أدخل السعر"
               className="w-24 bg-transparent text-center font-mono text-sm font-black text-amber-950 outline-none"
             />
-            <span className="text-[10px] font-black text-amber-900">ج.م</span>
+            <span className="text-[10px] font-black text-amber-950">ج.م</span>
           </label>
-
-          <div className="flex h-11 items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
-            <button
-              type="button"
-              onClick={() => setSelectedDay((day) => shiftDay(day, -1))}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 hover:bg-white hover:shadow-sm"
-              aria-label="اليوم السابق"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-            <label className="flex items-center gap-2 px-2">
-              <CalendarDays className="h-4 w-4 text-emerald-800" />
-              <input
-                type="date"
-                value={selectedDay}
-                onChange={(event) => setSelectedDay(event.target.value)}
-                className="bg-transparent font-mono text-xs font-black text-slate-800 outline-none"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => setSelectedDay((day) => shiftDay(day, 1))}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-700 hover:bg-white hover:shadow-sm"
-              aria-label="اليوم التالي"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={saveToday}
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-5 text-xs font-black text-white shadow-sm transition hover:bg-emerald-800"
+          >
+            <Save className="h-4 w-4" />
+            تسجيل نتيجة اليوم
+          </button>
         </div>
-      </div>
+      </header>
 
-      <ReportSection
-        title="حركة اليوم"
-        icon={<RefreshCw className="h-4 w-4" />}
-      >
-        <Metric label="ديون عملاء مضافة" value={money(movement.customerDebtsAddedLyd, 'lyd')} />
-        <Metric label="تحصيلات العملاء" value={money(movement.customerPaymentsLyd, 'lyd')} tone="positive" />
-        <Metric label="ديون شركات وتجار" value={money(movement.businessDebtsAddedLyd, 'lyd')} />
-        <Metric label="تحصيلات الشركات والتجار" value={money(movement.businessPaymentsLyd, 'lyd')} tone="positive" />
-        <Metric label="مشتريات اليوم" value={money(movement.purchaseWorkLyd, 'lyd')} tone="negative" />
-        <Metric label="المسدد للمشتريات" value={money(movement.purchasePaidLyd, 'lyd')} />
-        <Metric label="شغل البيان" value={money(movement.baqyWorkLyd, 'lyd')} />
-        <Metric label="شغل سمسم" value={money(movement.semsemWorkLyd, 'lyd')} />
-        <Metric label="أمانات داخلة ليبي" value={money(movement.trustDepositsLyd, 'lyd')} />
-        <Metric label="أمانات خارجة ليبي" value={money(movement.trustWithdrawalsLyd, 'lyd')} />
-        <Metric label="إيداع الخزينة" value={money(movement.treasuryDepositsLyd, 'lyd')} tone="positive" />
-        <Metric label="سحب الخزينة" value={money(movement.treasuryWithdrawalsLyd, 'lyd')} tone="negative" />
-        <Metric label="المستلم بالمصراوية" value={money(movement.egyptianReceivedEgp, 'egp')} />
-        <Metric label="شغل المصراوية" value={money(movement.egyptianWorkEgp, 'egp')} />
-        <Metric label="أمانات داخلة مصري" value={money(movement.trustDepositsEgp, 'egp')} />
-        <Metric label="أمانات خارجة مصري" value={money(movement.trustWithdrawalsEgp, 'egp')} />
-      </ReportSection>
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="mb-2 flex items-center gap-2 text-xs font-black text-slate-800">
+          <Banknote className="h-4 w-4 text-emerald-700" />
+          تفاصيل الأموال المصرية الحالية
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+          <SmallMetric label="باقي المصراوية" value={money(sources.egyptianCashRemainderEgp, 'egp')} />
+          <SmallMetric label="فودافون — البيان" value={money(sources.vodafoneBaqyRemainderEgp, 'egp')} />
+          <SmallMetric label="فودافون — سمسم" value={money(sources.vodafoneSemsemRemainderEgp, 'egp')} />
+          <SmallMetric
+            label="صافي أمانات المصري"
+            value={money(sources.trustBalanceEgp, 'egp')}
+            note={sources.trustBalanceEgp < 0 ? 'السالب حق لنا' : 'الموجب التزام علينا'}
+            negative={sources.trustBalanceEgp > 0}
+          />
+          <SmallMetric
+            label="صافي المصري بعد الأمانات"
+            value={money(sources.netEgyptianPositionEgp, 'egp')}
+            highlight
+            negative={sources.netEgyptianPositionEgp < 0}
+          />
+        </div>
+      </section>
 
-      <ReportSection
-        title="المركز المالي في نهاية اليوم"
-        icon={<Landmark className="h-4 w-4" />}
-      >
-        <Metric label="الرصيد النشط بالخزينة" value={money(position.activeCashLyd, 'lyd')} />
-        <Metric label="رصيد ديون العملاء" value={money(position.customerBalanceLyd, 'lyd')} signed />
-        <Metric label="رصيد الشركات والتجار" value={money(position.businessBalanceLyd, 'lyd')} signed />
-        <Metric label="التزامات المشتريات" value={money(position.purchaseDebtLyd, 'lyd')} signed invertSign />
-        <Metric label="الأمانات الليبية" value={money(position.trustBalanceLyd, 'lyd')} signed invertSign />
-        <Metric label="باقي المصراوية" value={money(position.egyptianRemainderEgp, 'egp')} signed />
-        <Metric label="متبقي فودافون" value={money(position.vodafoneRemainderEgp, 'egp')} signed />
-        <Metric label="الأمانات المصرية" value={money(position.trustBalanceEgp, 'egp')} signed invertSign />
-        <Metric label="صافي المصري" value={money(position.netEgyptianPositionEgp, 'egp')} signed />
-        <Metric
-          label="قيمة صافي المصري بالليبي"
-          value={position.conversionReady ? money(position.egyptianPositionLyd, 'lyd') : 'أدخل سعر الصرف'}
-          signed
+      <section className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <MainMetric
+          icon={<Landmark />}
+          label="إجمالي إيجابيات الخزينة"
+          value={money(sources.treasuryPositivesLyd, 'lyd')}
         />
-      </ReportSection>
+        <MainMetric
+          icon={<ShieldCheck />}
+          label="إجمالي الالتزامات علينا"
+          value={money(sources.treasuryObligationsLyd, 'lyd')}
+          negative
+        />
+        <MainMetric
+          icon={<CircleDollarSign />}
+          label="المصري بعد التحويل لليبي"
+          value={egyptianEquivalentLyd === null ? 'أدخل سعر اليوم' : money(egyptianEquivalentLyd, 'lyd')}
+        />
+        <MainMetric
+          icon={<WalletCards />}
+          label="النتيجة النهائية اليوم"
+          value={netPositionLyd === null
+            ? 'أدخل سعر اليوم'
+            : `${netPositionLyd >= 0 ? 'لك' : 'عليك'} ${money(Math.abs(netPositionLyd), 'lyd')}`}
+          negative={netPositionLyd !== null && netPositionLyd < 0}
+          highlight
+        />
+      </section>
 
-      <div className={`grid gap-2 rounded-2xl border p-3 shadow-sm sm:grid-cols-[1fr_auto] ${
-        !position.conversionReady
-          ? 'border-amber-300 bg-amber-50'
-          : isPositive
-            ? 'border-emerald-300 bg-emerald-950 text-white'
-            : 'border-rose-300 bg-rose-950 text-white'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-            position.conversionReady ? 'bg-white/10' : 'bg-amber-100 text-amber-800'
-          }`}>
-            <WalletCards className="h-6 w-6" />
-          </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
           <div>
-            <p className={`text-[10px] font-black ${
-              position.conversionReady ? 'text-white/65' : 'text-amber-800'
-            }`}>
-              النتيجة النهائية حتى نهاية {selectedDay}
-            </p>
-            <p className={`text-xl font-black ${
-              position.conversionReady ? '' : 'text-amber-950'
-            }`}>
-              {!position.conversionReady
-                ? 'أدخل سعر الصرف لإكمال النتيجة'
-                : `${isPositive ? 'ليك' : 'عليك'} ${money(Math.abs(position.netPositionLyd || 0), 'lyd')}`}
-            </p>
+            <h3 className="text-sm font-black text-slate-900">سجل النتائج اليومية</h3>
+            <p className="text-[10px] font-bold text-slate-500">كل يوم صف مستقل — الأحدث ظاهر أولًا</p>
           </div>
+          <span className="rounded-lg bg-emerald-100 px-3 py-1 text-[10px] font-black text-emerald-800">
+            {snapshots.length} يوم
+          </span>
         </div>
 
-        <div className={`flex min-w-48 flex-col justify-center rounded-xl px-4 py-2 ${
-          position.conversionReady ? 'bg-white/10' : 'bg-white'
-        }`}>
-          <span className={`text-[10px] font-black ${
-            position.conversionReady ? 'text-white/65' : 'text-slate-500'
-          }`}>
-            فرق المركز عن أمس
-          </span>
-          <span className={`font-mono text-base font-black ${
-            position.conversionReady
-              ? 'text-white'
-              : 'text-slate-900'
-          }`}>
-            {report.positionChangeLyd === null
-              ? 'غير مكتمل'
-              : `${report.positionChangeLyd >= 0 ? '+' : '-'} ${money(Math.abs(report.positionChangeLyd), 'lyd')}`}
-          </span>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1100px] border-collapse text-[11px]">
+            <thead className="bg-emerald-950 text-white">
+              <tr>
+                {[
+                  'ت',
+                  'التاريخ',
+                  'إيجابيات الخزينة',
+                  'الالتزامات علينا',
+                  'صافي المصري',
+                  'سعر الصرف',
+                  'المصري بالليبي',
+                  'إجمالي ما لنا',
+                  'النتيجة النهائية',
+                ].map((header) => (
+                  <th key={header} className="border border-emerald-900 px-3 py-2 font-black">{header}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {snapshots.map((snapshot, index) => (
+                <tr
+                  key={snapshot.id}
+                  className={`border-b ${
+                    snapshot.netPositionLyd >= 0
+                      ? 'bg-emerald-50/60'
+                      : 'bg-rose-50/70'
+                  }`}
+                >
+                  <td className="px-3 py-2 text-center font-mono font-black">{snapshots.length - index}</td>
+                  <td className="whitespace-nowrap px-3 py-2 text-center font-mono font-black">{snapshot.date}</td>
+                  <td className="px-3 py-2 text-center font-mono font-black">{money(snapshot.treasuryPositivesLyd, 'lyd')}</td>
+                  <td className="px-3 py-2 text-center font-mono font-black text-rose-700">{money(snapshot.treasuryObligationsLyd, 'lyd')}</td>
+                  <td className="px-3 py-2 text-center font-mono font-black">{money(snapshot.netEgyptianPositionEgp, 'egp')}</td>
+                  <td className="px-3 py-2 text-center font-mono font-black">{rateLabel(snapshot.egpPerLyd)}</td>
+                  <td className="px-3 py-2 text-center font-mono font-black">{money(snapshot.egyptianEquivalentLyd, 'lyd')}</td>
+                  <td className="px-3 py-2 text-center font-mono font-black">{money(snapshot.totalOwnedLyd, 'lyd')}</td>
+                  <td className={`px-3 py-2 text-center font-mono text-sm font-black ${
+                    snapshot.netPositionLyd >= 0 ? 'text-emerald-800' : 'text-rose-800'
+                  }`}>
+                    {snapshot.netPositionLyd >= 0 ? 'لك' : 'عليك'} {money(Math.abs(snapshot.netPositionLyd), 'lyd')}
+                  </td>
+                </tr>
+              ))}
+              {!snapshots.length && (
+                <tr>
+                  <td colSpan={9} className="p-12 text-center font-bold text-slate-400">
+                    لا توجد نتيجة محفوظة بعد. أدخل سعر اليوم ثم اضغط «تسجيل نتيجة اليوم».
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-function ReportSection({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-sm">
-      <div className="mb-2 flex items-center gap-2 px-1 text-xs font-black text-slate-800">
-        <span className="text-emerald-800">{icon}</span>
-        {title}
-      </div>
-      <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4 xl:grid-cols-5">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function Metric({
+function SmallMetric({
   label,
   value,
-  tone = 'neutral',
-  signed = false,
-  invertSign = false,
+  note,
+  highlight = false,
+  negative = false,
 }: {
   label: string;
   value: string;
-  tone?: 'neutral' | 'positive' | 'negative';
-  signed?: boolean;
-  invertSign?: boolean;
+  note?: string;
+  highlight?: boolean;
+  negative?: boolean;
 }) {
-  const parsed = Number(value.replace(/[^0-9.-]/g, '').replace(/,/g, '')) || 0;
-  const signValue = invertSign ? -parsed : parsed;
-  const resolvedTone = signed
-    ? signValue > 0
-      ? 'positive'
-      : signValue < 0
-        ? 'negative'
-        : 'neutral'
-    : tone;
-  const classes = {
-    neutral: 'border-slate-200 bg-slate-50 text-slate-900',
-    positive: 'border-emerald-200 bg-emerald-50 text-emerald-950',
-    negative: 'border-rose-200 bg-rose-50 text-rose-950',
-  }[resolvedTone];
-
   return (
-    <div className={`min-w-0 rounded-xl border px-2.5 py-2 ${classes}`}>
-      <p className="truncate text-[9px] font-black opacity-65" title={label}>{label}</p>
-      <p className="mt-0.5 truncate font-mono text-xs font-black sm:text-sm" title={value}>{value}</p>
+    <div className={`rounded-xl border px-3 py-2 ${
+      negative
+        ? 'border-rose-200 bg-rose-50 text-rose-950'
+        : highlight
+          ? 'border-emerald-300 bg-emerald-50 text-emerald-950'
+          : 'border-slate-200 bg-slate-50 text-slate-900'
+    }`}>
+      <span className="block text-[9px] font-black opacity-65">{label}</span>
+      <strong className="mt-1 block font-mono text-sm font-black">{value}</strong>
+      {note && <span className="mt-0.5 block text-[8px] font-bold opacity-70">{note}</span>}
+    </div>
+  );
+}
+
+function MainMetric({
+  icon,
+  label,
+  value,
+  negative = false,
+  highlight = false,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  negative?: boolean;
+  highlight?: boolean;
+}) {
+  return (
+    <div className={`flex min-h-24 items-center gap-3 rounded-2xl border p-3 shadow-sm ${
+      negative
+        ? 'border-rose-300 bg-rose-950 text-white'
+        : highlight
+          ? 'border-emerald-300 bg-emerald-950 text-white'
+          : 'border-emerald-300 bg-white text-slate-950'
+    }`}>
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
+        negative || highlight ? 'bg-white/10' : 'bg-emerald-100 text-emerald-800'
+      } [&_svg]:h-5 [&_svg]:w-5`}>
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <span className="block truncate text-[9px] font-black opacity-65">{label}</span>
+        <strong className="mt-1 block truncate font-mono text-sm font-black sm:text-base" title={value}>{value}</strong>
+      </div>
     </div>
   );
 }

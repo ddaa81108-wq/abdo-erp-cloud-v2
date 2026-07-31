@@ -76,16 +76,37 @@ describe('ERP concurrent merge', () => {
       egpPerLyd: 10,
       updatedAt: '2026-07-27',
     }];
+    source.financialReportSnapshots = [{
+      id: 'financial_snapshot_2026-07-27',
+      date: '2026-07-27',
+      treasuryPositivesLyd: 1_000,
+      treasuryObligationsLyd: 300,
+      egyptianCashRemainderEgp: 5_000,
+      vodafoneBaqyRemainderEgp: 10_000,
+      vodafoneSemsemRemainderEgp: 20_000,
+      trustBalanceEgp: -2_000,
+      netEgyptianPositionEgp: 37_000,
+      egpPerLyd: 10,
+      egyptianEquivalentLyd: 3_700,
+      totalOwnedLyd: 4_700,
+      netPositionLyd: 4_400,
+      createdAt: '2026-07-27',
+      updatedAt: '2026-07-27',
+    }];
     const { mainState, chunks } = splitErpStateForStorage(source);
 
     expect(mainState.purchases).toBeUndefined();
     expect(mainState.trustDeposits).toBeUndefined();
     expect(mainState.treasuryTransactions).toBeUndefined();
     expect(mainState.financialReportRates).toBeUndefined();
+    expect(mainState.financialReportSnapshots).toBeUndefined();
     expect(mainState.users).toBeUndefined();
     expect(chunks.purchases).toEqual(source.purchases);
     expect(chunks.trustDeposits).toEqual(source.trustDeposits);
     expect(chunks.financialReportRates).toEqual(source.financialReportRates);
+    expect(chunks.financialReportSnapshots).toEqual(
+      source.financialReportSnapshots,
+    );
   });
 
   it('merges exchange rates saved for different report days', () => {
@@ -107,6 +128,41 @@ describe('ERP concurrent merge', () => {
     }];
     const merged = mergeErpStateChanges(base, local, remote);
     expect(merged.financialReportRates).toHaveLength(2);
+  });
+
+  it('merges financial snapshots saved for different report days', () => {
+    const base = state();
+    base.financialReportSnapshots = [];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    const snapshot = {
+      treasuryPositivesLyd: 1_000,
+      treasuryObligationsLyd: 300,
+      egyptianCashRemainderEgp: 5_000,
+      vodafoneBaqyRemainderEgp: 10_000,
+      vodafoneSemsemRemainderEgp: 20_000,
+      trustBalanceEgp: -2_000,
+      netEgyptianPositionEgp: 37_000,
+      egpPerLyd: 10,
+      egyptianEquivalentLyd: 3_700,
+      totalOwnedLyd: 4_700,
+      netPositionLyd: 4_400,
+      createdAt: '2026-07-27',
+      updatedAt: '2026-07-27',
+    };
+    local.financialReportSnapshots = [{
+      ...snapshot,
+      id: 'financial_snapshot_2026-07-27',
+      date: '2026-07-27',
+    }];
+    remote.financialReportSnapshots = [{
+      ...snapshot,
+      id: 'financial_snapshot_2026-07-26',
+      date: '2026-07-26',
+    }];
+
+    const merged = mergeErpStateChanges(base, local, remote);
+    expect(merged.financialReportSnapshots).toHaveLength(2);
   });
 
   it('reassembles chunked data and can still read legacy main-state arrays', () => {

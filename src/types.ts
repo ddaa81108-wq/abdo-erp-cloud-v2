@@ -283,6 +283,25 @@ export interface FinancialReportRate {
   updatedAt: string;
 }
 
+export interface FinancialReportSnapshot {
+  id: string;
+  date: string; // "YYYY-MM-DD"
+  treasuryPositivesLyd: number;
+  treasuryObligationsLyd: number;
+  egyptianCashRemainderEgp: number;
+  vodafoneBaqyRemainderEgp: number;
+  vodafoneSemsemRemainderEgp: number;
+  /** Positive means custody owed to its owner; negative means money owed to us. */
+  trustBalanceEgp: number;
+  netEgyptianPositionEgp: number;
+  egpPerLyd: number;
+  egyptianEquivalentLyd: number;
+  totalOwnedLyd: number;
+  netPositionLyd: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ERPState {
   customers: Customer[];
   cycles: CustomerCycle[];
@@ -304,6 +323,7 @@ export interface ERPState {
   users: User[];
   egyptianCashRecords: EgyptianCashRecord[];
   financialReportRates?: FinancialReportRate[];
+  financialReportSnapshots?: FinancialReportSnapshot[];
   delegates?: string[]; // Custom delegates list
   notesAndReminders: NoteReminder[];
 }
@@ -522,6 +542,7 @@ export const INITIAL_ERP_STATE: ERPState = {
   ],
   egyptianCashRecords: [],
   financialReportRates: [],
+  financialReportSnapshots: [],
   delegates: [],
   notesAndReminders: [],
 };

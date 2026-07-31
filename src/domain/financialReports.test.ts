@@ -1,27 +1,22 @@
-import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { INITIAL_ERP_STATE, type ERPState } from '../types';
+import { describe, expect, it } from 'vitest';
 import FinancialReportsModule from '../components/FinancialReportsModule';
+import { INITIAL_ERP_STATE, type ERPState } from '../types';
 import {
-  calculateDailyFinancialReport,
-  calculateFinancialPosition,
+  calculateFinancialReportSources,
+  createFinancialReportSnapshot,
   resolveFinancialReportRate,
+  upsertFinancialReportRate,
+  upsertFinancialReportSnapshot,
 } from './financialReports';
 
-const state = (): ERPState => ({
+const emptyState = (): ERPState => ({
   ...structuredClone(INITIAL_ERP_STATE),
-  customers: [{ id: 'customer', name: 'عميل', createdAt: '2026-07-01' }],
-  cycles: [{
-    id: 'cycle',
-    customerId: 'customer',
-    startDate: '2026-07-01',
-    status: 'active',
-    initialBalance: 100,
-    currentBalance: 999_999,
-  }],
+  customers: [],
+  cycles: [],
   debtTransactions: [],
-  companies: [{ id: 'business', name: 'شركة', balance: 0 }],
+  companies: [],
   companyTransactions: [],
   merchants: [],
   merchantTransactions: [],
@@ -32,328 +27,199 @@ const state = (): ERPState => ({
   trustDeposits: [],
   egyptianCashRecords: [],
   financialReportRates: [],
+  financialReportSnapshots: [],
 });
 
-describe('daily financial reports', () => {
-  it('calculates the signed closing position from the original ledgers', () => {
-    const data = state();
-    data.treasuryTransactions = [{
+const account = (
+  merchant: 'baqy' | 'semsem',
+  openingBalanceLyd: number,
+  openingBalanceEgp: number,
+) => ({
+  id: `purchase_account_${merchant}`,
+  merchant,
+  openingBalanceLyd,
+  openingBalanceEgp,
+  activeDate: '2026-07-31',
+  updatedAt: '2026-07-31T10:00:00.000Z',
+});
+
+describe('financial report snapshots', () => {
+  it('combines both Vodafone merchants and treats negative Egyptian trust as ours', () => {
+    const state = emptyState();
+    state.treasuryTransactions = [{
       id: 'cash',
       type: 'in',
       amount: 1_000,
       currency: 'د.ل',
       conversionRate: 1,
-      date: '2026-07-27T10:00:00+02:00',
+      date: '2026-07-31T09:00:00.000Z',
       referenceNo: 'cash',
       source: 'manual_deposit',
       description: '',
-      createdAt: '2026-07-27T10:00:00+02:00',
+      createdAt: '2026-07-31T09:00:00.000Z',
     }];
-    data.debtTransactions = [{
-      id: 'customer-debt',
-      customerId: 'customer',
-      cycleId: 'cycle',
-      type: 'debt',
-      amount: 400,
-      currency: 'د.ل',
-      conversionRate: 1,
-      date: '2026-07-27T10:00:00+02:00',
-      referenceNo: 'd',
-      note: '',
-      postedToTreasury: false,
-      createdAt: '2026-07-27T10:00:00+02:00',
-    }];
-    data.companyTransactions = [{
-      id: 'business-debt',
-      companyId: 'business',
-      type: 'purchase_invoice',
-      entryKind: 'debt',
-      amount: 300,
-      currency: 'د.ل',
-      date: '2026-07-27T10:00:00+02:00',
-      referenceNo: 'b',
-      note: '',
-      postedToTreasury: false,
-      createdAt: '2026-07-27T10:00:00+02:00',
-    }];
-    data.purchaseAccounts = [{
-      id: 'purchase_account_baqy',
-      merchant: 'baqy',
-      openingBalanceLyd: 200,
-      openingBalanceEgp: 10_000,
-      activeDate: '2026-07-27',
-      updatedAt: '2026-07-27',
-    }];
-    data.trustDeposits = [{
-      id: 'trust',
-      customerName: 'صاحب أمانة',
-      amount: 100,
-      amountLyd: 100,
-      amountEgp: 2_000,
-      currency: 'د.ل',
-      date: '2026-07-27',
-      referenceNo: 't',
-      status: 'held',
-      note: '',
-      createdAt: '2026-07-27',
-    }];
-    data.egyptianCashRecords = [{
-      date: '2026-07-27',
+    state.purchaseAccounts = [
+      account('baqy', 200, 10_000),
+      account('semsem', 300, 20_000),
+    ];
+    state.egyptianCashRecords = [{
+      date: '2026-07-31',
       previousValue: 0,
       receivedValue: 5_000,
       rows: [],
     }];
-
-    const position = calculateFinancialPosition(data, '2026-07-27', 1_000);
-    expect(position).toMatchObject({
-      activeCashLyd: 1_000,
-      customerBalanceLyd: 500,
-      businessBalanceLyd: 300,
-      purchaseDebtLyd: 200,
-      trustBalanceLyd: 100,
-      netEgyptianPositionEgp: 13_000,
-      egyptianPositionLyd: 13,
-      netPositionLyd: 1_513,
-    });
-  });
-
-  it('reports exact daily movements and ignores soft-deleted rows', () => {
-    const data = state();
-    data.debtTransactions = [
-      {
-        id: 'd',
-        customerId: 'customer',
-        cycleId: 'cycle',
-        type: 'debt',
-        amount: 500,
-        currency: 'د.ل',
-        conversionRate: 1,
-        date: '2026-07-27T10:00:00+02:00',
-        referenceNo: 'd',
-        note: '',
-        postedToTreasury: false,
-        createdAt: '2026-07-27T10:00:00+02:00',
-      },
-      {
-        id: 'deleted',
-        customerId: 'customer',
-        cycleId: 'cycle',
-        type: 'debt',
-        amount: 9_000,
-        currency: 'د.ل',
-        conversionRate: 1,
-        date: '2026-07-27T10:00:00+02:00',
-        referenceNo: 'x',
-        note: '',
-        postedToTreasury: false,
-        createdAt: '2026-07-27T10:00:00+02:00',
-        isDeleted: true,
-      },
-    ];
-    data.purchases = [{
-      id: 'p',
-      merchant: 'semsem',
-      date: '2026-07-27',
-      result: 700,
-      paid: 200,
-      createdAt: '2026-07-27',
-    }];
-    data.companyTransactions = [
-      {
-        id: 'business-debt',
-        companyId: 'business',
-        type: 'purchase_invoice',
-        entryKind: 'debt',
-        amount: 300,
-        currency: 'د.ل',
-        date: '2026-07-27T11:00:00+02:00',
-        referenceNo: 'bd',
-        note: '',
-        postedToTreasury: false,
-        createdAt: '2026-07-27T11:00:00+02:00',
-      },
-      {
-        id: 'business-payment',
-        companyId: 'business',
-        type: 'payment',
-        entryKind: 'payment',
-        amount: 50,
-        currency: 'د.ل',
-        date: '2026-07-27T12:00:00+02:00',
-        referenceNo: 'bp',
-        note: '',
-        postedToTreasury: false,
-        createdAt: '2026-07-27T12:00:00+02:00',
-      },
-    ];
-    data.trustDeposits = [{
-      id: 'trust',
-      customerName: 'صاحب أمانة',
+    state.trustDeposits = [{
+      id: 'trust-egp-credit',
+      customerName: 'عميل',
       amount: 0,
       amountLyd: 0,
-      amountEgp: 0,
-      currency: 'د.ل',
-      date: '2026-07-27',
+      amountEgp: -2_000,
+      currency: 'ج.م',
+      date: '2026-07-31',
       referenceNo: 'trust',
       status: 'held',
       note: '',
-      createdAt: '2026-07-27',
-      history: [
-        {
-          id: 'trust-in-lyd',
-          type: 'deposit_lyd',
-          amountLyd: 400,
-          amountEgp: 0,
-          date: '2026-07-27',
-          note: '',
-        },
-        {
-          id: 'trust-out-lyd',
-          type: 'withdraw_lyd',
-          amountLyd: 100,
-          amountEgp: 0,
-          date: '2026-07-27',
-          note: '',
-        },
-        {
-          id: 'trust-convert',
-          type: 'convert_to_egp',
-          amountLyd: 50,
-          amountEgp: 5_000,
-          date: '2026-07-27',
-          note: '',
-        },
-        {
-          id: 'trust-in-egp',
-          type: 'deposit_egp',
-          amountLyd: 0,
-          amountEgp: 2_000,
-          date: '2026-07-27',
-          note: '',
-        },
-        {
-          id: 'trust-out-egp',
-          type: 'withdraw_egp',
-          amountLyd: 0,
-          amountEgp: 1_000,
-          date: '2026-07-27',
-          note: '',
-        },
-      ],
-    }];
-    data.treasuryTransactions = [
-      {
-        id: 'cash-in',
-        type: 'in',
-        amount: 1_000,
-        currency: 'د.ل',
-        conversionRate: 1,
-        date: '2026-07-27T09:00:00+02:00',
-        referenceNo: 'cash-in',
-        source: 'manual_deposit',
-        description: '',
-        createdAt: '2026-07-27T09:00:00+02:00',
-      },
-      {
-        id: 'cash-out',
-        type: 'out',
-        amount: 100,
-        currency: 'د.ل',
-        conversionRate: 1,
-        date: '2026-07-27T10:00:00+02:00',
-        referenceNo: 'cash-out',
-        source: 'manual_withdraw',
-        description: '',
-        createdAt: '2026-07-27T10:00:00+02:00',
-      },
-      {
-        id: 'linked-payment',
-        type: 'in',
-        amount: 9_999,
-        currency: 'د.ل',
-        conversionRate: 1,
-        date: '2026-07-27T12:00:00+02:00',
-        referenceNo: 'linked',
-        source: 'customer_payment',
-        description: '',
-        createdAt: '2026-07-27T12:00:00+02:00',
-      },
-    ];
-    data.egyptianCashRecords = [{
-      date: '2026-07-27',
-      previousValue: 10,
-      receivedValue: 1_000,
-      rows: [{ value: 700, commission: 30 }],
+      createdAt: '2026-07-31T09:00:00.000Z',
     }];
 
-    const report = calculateDailyFinancialReport(data, '2026-07-27');
-    expect(report.movement.customerDebtsAddedLyd).toBe(500);
-    expect(report.movement.businessDebtsAddedLyd).toBe(300);
-    expect(report.movement.businessPaymentsLyd).toBe(50);
-    expect(report.movement.purchaseWorkLyd).toBe(700);
-    expect(report.movement.semsemWorkLyd).toBe(700);
-    expect(report.movement.purchasePaidLyd).toBe(200);
-    expect(report.movement.trustDepositsLyd).toBe(400);
-    expect(report.movement.trustWithdrawalsLyd).toBe(150);
-    expect(report.movement.trustDepositsEgp).toBe(7_000);
-    expect(report.movement.trustWithdrawalsEgp).toBe(1_000);
-    expect(report.movement.treasuryDepositsLyd).toBe(1_000);
-    expect(report.movement.treasuryWithdrawalsLyd).toBe(100);
-    expect(report.movement.egyptianReceivedEgp).toBe(1_000);
-    expect(report.movement.egyptianWorkEgp).toBe(730);
+    const sources = calculateFinancialReportSources(state, '2026-07-31');
+    expect(sources).toMatchObject({
+      treasuryPositivesLyd: 1_000,
+      treasuryObligationsLyd: 500,
+      egyptianCashRemainderEgp: 5_000,
+      vodafoneBaqyRemainderEgp: 10_000,
+      vodafoneSemsemRemainderEgp: 20_000,
+      trustBalanceEgp: -2_000,
+      netEgyptianPositionEgp: 37_000,
+    });
+
+    const snapshot = createFinancialReportSnapshot(
+      state,
+      '2026-07-31',
+      10,
+      '2026-07-31T12:00:00.000Z',
+    );
+    expect(snapshot).toMatchObject({
+      egyptianEquivalentLyd: 3_700,
+      totalOwnedLyd: 4_700,
+      netPositionLyd: 4_200,
+    });
   });
 
-  it('does not claim a final result while Egyptian money lacks a rate', () => {
-    const data = state();
-    data.egyptianCashRecords = [{
-      date: '2026-07-27',
+  it('deducts positive Egyptian trust because it is owed to its owner', () => {
+    const state = emptyState();
+    state.purchaseAccounts = [
+      account('baqy', 0, 10_000),
+      account('semsem', 0, 20_000),
+    ];
+    state.egyptianCashRecords = [{
+      date: '2026-07-31',
       previousValue: 0,
-      receivedValue: 10_000,
+      receivedValue: 5_000,
       rows: [],
     }];
-    const position = calculateFinancialPosition(data, '2026-07-27');
-    expect(position.conversionReady).toBe(false);
-    expect(position.netPositionLyd).toBeNull();
+    state.trustDeposits = [{
+      id: 'trust-egp-obligation',
+      customerName: 'عميل',
+      amount: 0,
+      amountLyd: 0,
+      amountEgp: 1_000,
+      currency: 'ج.م',
+      date: '2026-07-31',
+      referenceNo: 'trust',
+      status: 'held',
+      note: '',
+      createdAt: '2026-07-31T09:00:00.000Z',
+    }];
+
+    expect(
+      calculateFinancialReportSources(state, '2026-07-31')
+        .netEgyptianPositionEgp,
+    ).toBe(34_000);
   });
 
-  it('uses the nearest saved Masraweya closing snapshot without double counting prior days', () => {
-    const data = state();
-    data.egyptianCashRecords = [
-      {
-        date: '2026-07-20',
-        previousValue: 10,
-        receivedValue: 100,
-        rows: [{ value: 30, commission: 0 }],
-      },
-      {
-        date: '2026-07-21',
-        previousValue: 999_999,
-        receivedValue: 50,
-        rows: [{ value: 20, commission: 0 }],
-      },
-    ];
+  it('truncates conversion fractions instead of rounding them up', () => {
+    const state = emptyState();
+    state.egyptianCashRecords = [{
+      date: '2026-07-31',
+      previousValue: 0,
+      receivedValue: 52_019,
+      rows: [],
+    }];
 
-    const position = calculateFinancialPosition(data, '2026-07-22', 1_000);
-    expect(position.egyptianRemainderEgp).toBe(1_000_029);
+    const snapshot = createFinancialReportSnapshot(
+      state,
+      '2026-07-31',
+      10,
+    );
+    expect(snapshot.egyptianEquivalentLyd).toBe(5_201);
   });
 
-  it('uses the exact or nearest earlier saved exchange rate', () => {
-    expect(resolveFinancialReportRate([
-      { id: 'a', date: '2026-07-20', egpPerLyd: 9, updatedAt: '' },
-      { id: 'b', date: '2026-07-25', egpPerLyd: 10, updatedAt: '' },
-    ], '2026-07-27')).toBe(10);
+  it('updates the same day without creating a duplicate or changing its identity', () => {
+    const state = emptyState();
+    const first = createFinancialReportSnapshot(
+      state,
+      '2026-07-31',
+      10,
+      '2026-07-31T10:00:00.000Z',
+    );
+    state.financialReportSnapshots = [first];
+
+    const updated = createFinancialReportSnapshot(
+      state,
+      '2026-07-31',
+      11,
+      '2026-07-31T11:00:00.000Z',
+    );
+    const snapshots = upsertFinancialReportSnapshot(
+      state.financialReportSnapshots,
+      updated,
+    );
+
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]).toMatchObject({
+      id: first.id,
+      createdAt: first.createdAt,
+      updatedAt: '2026-07-31T11:00:00.000Z',
+      egpPerLyd: 11,
+    });
   });
 
-  it('renders the compact report without a runtime exception', () => {
+  it('requires a rate saved for the exact day and upserts it once', () => {
+    const rates = [{
+      id: 'old',
+      date: '2026-07-30',
+      egpPerLyd: 10,
+      updatedAt: '2026-07-30T10:00:00.000Z',
+    }];
+    expect(resolveFinancialReportRate(rates, '2026-07-31')).toBe(0);
+
+    const once = upsertFinancialReportRate(
+      rates,
+      '2026-07-31',
+      11,
+      '2026-07-31T10:00:00.000Z',
+    );
+    const twice = upsertFinancialReportRate(
+      once,
+      '2026-07-31',
+      12,
+      '2026-07-31T11:00:00.000Z',
+    );
+    expect(twice.filter((rate) => rate.date === '2026-07-31')).toHaveLength(1);
+    expect(resolveFinancialReportRate(twice, '2026-07-31')).toBe(12);
+  });
+
+  it('renders the visible daily ledger without the removed movement report', () => {
     const html = renderToStaticMarkup(
       React.createElement(FinancialReportsModule, {
-        state: state(),
+        state: emptyState(),
         onUpdateState: () => undefined,
       }),
     );
-    expect(html).toContain('التقرير المالي اليومي');
-    expect(html).toContain('حركة اليوم');
-    expect(html).toContain('المركز المالي في نهاية اليوم');
-    expect(html).toContain('النتيجة النهائية');
+    expect(html).toContain('سجل المركز المالي اليومي');
+    expect(html).toContain('سجل النتائج اليومية');
+    expect(html).toContain('تسجيل نتيجة اليوم');
+    expect(html).not.toContain('حركة اليوم');
   });
 });
