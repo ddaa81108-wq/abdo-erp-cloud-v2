@@ -10,6 +10,25 @@ import {
 const state = (): ERPState => structuredClone(INITIAL_ERP_STATE);
 
 describe('ERP concurrent merge', () => {
+  it('ships with no demonstration records or default credentials', () => {
+    expect(INITIAL_ERP_STATE).toMatchObject({
+      customers: [],
+      cycles: [],
+      debtTransactions: [],
+      companies: [],
+      companyTransactions: [],
+      merchants: [],
+      merchantTransactions: [],
+      treasuryTransactions: [],
+      purchases: [],
+      trustDeposits: [],
+      safeAudits: [],
+      backupPoints: [],
+      users: [],
+      managerPasswordHash: '',
+    });
+  });
+
   it('preserves records added by two different users', () => {
     const base = state();
     const local = state();
@@ -23,8 +42,12 @@ describe('ERP concurrent merge', () => {
 
   it('does not restore a remotely deleted record when local users changed another record', () => {
     const base = state();
-    const local = state();
-    const remote = state();
+    base.customers = [
+      { id: 'kept', name: 'Kept', createdAt: '2026-01-01' },
+      { id: 'deleted', name: 'Deleted', createdAt: '2026-01-01' },
+    ];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
     local.customers[0] = { ...local.customers[0], phone: '091' };
     remote.customers = remote.customers.filter((customer) => customer.id !== base.customers[1].id);
     const merged = mergeErpStateChanges(base, local, remote);

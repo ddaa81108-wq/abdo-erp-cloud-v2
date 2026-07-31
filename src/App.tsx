@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Database, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu, Calculator } from "lucide-react";
+import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu, Calculator } from "lucide-react";
 import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
@@ -187,8 +187,6 @@ export default function App() {
   const [exportFooterMetrics, setExportFooterMetrics] = useState<any[] | undefined>(undefined);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showSeedConfirm, setShowSeedConfirm] = useState(false);
-  const [showSeedBannerConfirm, setShowSeedBannerConfirm] = useState(false);
   const [showCustomToast, setShowCustomToast] = useState("");
 
   type PendingDeletion = {
@@ -459,7 +457,7 @@ export default function App() {
   // ============================================================
   // 🆕 Firebase Synchronization Core - Multi-document merge
   // 🔒 FIX #4: Only sync AFTER login — prevents permission errors
-  // 🔒 FIX #1: NEVER auto-write INITIAL_ERP_STATE to Firebase
+  // Never auto-write an empty initial state to Firebase.
   // ============================================================
   useEffect(() => {
     let unmounted = false;
@@ -524,8 +522,8 @@ export default function App() {
           }
         } else {
           // 🔒 FIX #1: Document doesn't exist in Firebase.
-          // NEVER write INITIAL_ERP_STATE (test data) to Firebase automatically.
-          // Only load from localStorage if available. Otherwise show empty state.
+          // Never write an empty initial state to Firebase automatically.
+          // Load a local backup when available; otherwise remain empty.
           const tryLocal = localStorage.getItem("ABDO_ERP_V2_DATA");
           let localData: ERPState | null = null;
           if (tryLocal) {
@@ -740,29 +738,6 @@ export default function App() {
     setTimeout(() => setShowCustomToast(""), 4500);
   };
 
-  // 🔒 FIX #2: Block seeding if real data already exists — prevents accidental wipe
-  const executeDataSeed = () => {
-    if (state.customers.length > 0 || state.companies.length > 0 || state.merchants.length > 0) {
-      setShowSeedConfirm(false);
-      triggerCustomToast("⚠️ ممنوع: توجد بيانات حقيقية بالفعل. لا يمكن تهيئة بيانات تجريبية فوقها.");
-      return;
-    }
-    updateStateAndSync(INITIAL_ERP_STATE);
-    setShowSeedConfirm(false);
-    triggerCustomToast("👑 تم تعبئة البيانات النموذجية للزبائن والشركات بنجاح!");
-  };
-
-  const executeSeedBanner = () => {
-    if (state.customers.length > 0 || state.companies.length > 0 || state.merchants.length > 0) {
-      setShowSeedBannerConfirm(false);
-      triggerCustomToast("⚠️ ممنوع: توجد بيانات حقيقية بالفعل. لا يمكن تهيئة بيانات تجريبية فوقها.");
-      return;
-    }
-    updateStateAndSync(INITIAL_ERP_STATE);
-    setShowSeedBannerConfirm(false);
-    triggerCustomToast("👑 تم تهيئة قاعدة المعطيات وتنزيل عينة محرك الدفاتر بنجاح!");
-  };
-
   const handleUpdateCurrentSession = (updatedUser: User) => {
     const securedUser = {
       ...updatedUser,
@@ -890,23 +865,6 @@ export default function App() {
         onPostPurchaseToTreasury={postUnpostedPurchaseFromAlert}
       />
       <DebtBird totalDebt={calculateTreasurySummary(state).purchaseObligations} />
-
-      {state.customers.length === 0 && (
-        <div className={`w-full px-4 mt-4 transition-all duration-300 ${isSidebarOpen ? "lg:pr-[210px]" : ""}`}>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-right flex flex-col md:flex-row items-center justify-between gap-3 text-amber-900 shadow-sm" dir="rtl">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl animate-bounce shrink-0">💡</span>
-              <div>
-                <h4 className="font-extrabold text-xs text-amber-950">تنبيه: قاعدة البيانات المحاسبية فارغة حالياً!</h4>
-                <p className="text-[11px] mt-0.5 text-amber-800 leading-normal">بدأ التطبيق بملف تخزين فارغ نظراً لذاكرة متصفحك. يرجى تهيئة وشحن البيانات المحاسبية النموذجية...</p>
-              </div>
-            </div>
-            <button onClick={() => setShowSeedBannerConfirm(true)} className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg shrink-0 shadow-xs transition-all cursor-pointer">
-              🔄 تهيئة وتنزيل البيانات الافتراضية
-            </button>
-          </div>
-        </div>
-      )}
 
       <AnimatePresence>
         {isSidebarOpen && (
@@ -1075,44 +1033,6 @@ export default function App() {
             <div className="flex items-center gap-3 justify-end">
               <button type="button" onClick={executeLogout} className="flex-1 bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-black py-2.5 rounded-xl text-xs transition cursor-pointer text-center active:scale-95">تأكيد الخروج الآمن</button>
               <button type="button" onClick={() => setShowLogoutConfirm(false)} className="flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer text-center active:scale-95">إلغاء التراجع</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSeedConfirm && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 shadow-2xl" dir="rtl">
-          <div className="bg-[#0b0f19] border border-slate-800 rounded-3xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] p-6 text-right">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0"><Database className="w-5 h-5" /></div>
-              <div>
-                <h3 className="font-extrabold text-[#f1f5f9] text-sm">شحن قاعدة البيانات المحاسبية</h3>
-                <p className="text-[10px] text-indigo-400 font-semibold">تحميل المعطيات النموذجية التجريبية</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-semibold mb-5">هل تود شحن المنظومة وتحميل كافة البيانات النموذجية الآن؟ <br /><strong className="text-rose-500 font-sans block mt-2 text-[10px]">⚠️ تحذير شديد: سيتم استبدال ALL البيانات الحالية. هذا الإجراء لا يمكن التراجع عنه!</strong></p>
-            <div className="flex items-center gap-3 justify-end">
-              <button type="button" onClick={executeDataSeed} className="flex-1 bg-gradient-to-l from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-black py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">موافق، شحن الدفاتر</button>
-              <button type="button" onClick={() => setShowSeedConfirm(false)} className="flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">تراجع وإلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSeedBannerConfirm && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 shadow-2xl" dir="rtl">
-          <div className="bg-[#0b0f19] border border-slate-800 rounded-3xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.05)] p-6 text-right">
-            <div className="flex items-center gap-3 border-b border-slate-800 pb-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0"><Database className="w-5 h-5" /></div>
-              <div>
-                <h3 className="font-extrabold text-[#f1f5f9] text-sm">تهيئة الحسابات وتفعيل محاكي الدفاتر</h3>
-                <p className="text-[10px] text-amber-500 font-semibold">نظام التشغيل التلقائي بالأرصدة</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-300 leading-relaxed font-semibold mb-5">هل تود شحن المنظومة ببيانات العينة وتجربة كافة الميزات الآن؟ <br /><strong className="text-rose-500 font-sans block mt-2 text-[10px]">⚠️ تحذير شديد: سيتم استبدال ALL البيانات الحالية. هذا الإجراء لا يمكن التراجع عنه!</strong></p>
-            <div className="flex items-center gap-3 justify-end">
-              <button type="button" onClick={executeSeedBanner} className="flex-1 bg-gradient-to-l from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-slate-950 font-black py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">تحديث وتجربة الفوري</button>
-              <button type="button" onClick={() => setShowSeedBannerConfirm(false)} className="flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95">إلغاء التنزيل</button>
             </div>
           </div>
         </div>
