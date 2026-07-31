@@ -1,1 +1,6 @@
-{"projects": {"default": "abdocash121"}}
+{
+  "projects": {
+    "hosting": "abdocash121",
+    "data": "abdonew-3dd25"
+  }
+}

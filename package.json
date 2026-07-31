@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify:firebase-projects": "node scripts/verify-firebase-projects.mjs",
+    "deploy:hosting": "npm run verify:firebase-projects && npm run build && firebase deploy --only hosting --project abdocash121",
+    "deploy:rules": "npm run verify:firebase-projects && firebase deploy --only firestore:rules --project abdonew-3dd25",
+    "deploy:production": "npm run verify:firebase-projects && npm run build && firebase deploy --only hosting --project abdocash121 && firebase deploy --only firestore:rules --project abdonew-3dd25"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -139,6 +139,8 @@ export function splitErpStateForStorage(state: ERPState) {
   // Never put them back into main_state or upload them with normal saves.
   delete mainState.systemAuditLog;
   delete mainState.systemAuditMigrationVersion;
+  // Retired local manager secrets must never be uploaded to shared storage.
+  delete mainState.managerPasswordHash;
 
   return { mainState, chunks };
 }
@@ -164,6 +166,7 @@ export function assembleErpStateFromStorage(
   CHUNK_ARRAY_KEYS.forEach((key) => delete scalarMainData[key]);
   delete scalarMainData.systemAuditLog;
   delete scalarMainData.systemAuditMigrationVersion;
+  delete scalarMainData.managerPasswordHash;
   const assembled: any = currentState
     ? { ...structuredClone(currentState), ...scalarMainData }
     : { ...scalarMainData };
@@ -242,12 +245,20 @@ export async function writeMergedErpState(
     const split = splitErpStateForStorage(merged);
     const revision = (mainData._syncRevision || 0) + 1;
 
-    transaction.set(mainRef, {
-      ...split.mainState,
+    const syncMetadata = {
       _syncRevision: revision,
       _updatedAt: new Date().toISOString(),
       _changedChunks: changedChunks.map(String),
-    });
+    };
+    if (mainSnapshot.exists() && changedMainKeys.length === 0) {
+      // Section-only edits touch metadata, never unrelated shared scalars.
+      transaction.update(mainRef, syncMetadata);
+    } else {
+      transaction.set(mainRef, {
+        ...split.mainState,
+        ...syncMetadata,
+      });
+    }
     for (const { key, ref } of chunkRefs) {
       transaction.set(ref, {
         [key]: split.chunks[key] || [],

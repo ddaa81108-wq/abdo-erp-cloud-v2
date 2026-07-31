@@ -320,7 +320,7 @@ export interface ERPState {
   trustDeposits: TrustDeposit[];
   safeAudits: SafeAudit[];
   backupPoints: BackupPoint[];
-  managerPasswordHash: string;
+  managerPasswordHash?: string;
   users: User[];
   egyptianCashRecords: EgyptianCashRecord[];
   financialReportRates?: FinancialReportRate[];
@@ -347,7 +347,6 @@ export const INITIAL_ERP_STATE: ERPState = {
   trustDeposits: [],
   safeAudits: [],
   backupPoints: [],
-  managerPasswordHash: '',
   users: [],
   egyptianCashRecords: [],
   financialReportRates: [],

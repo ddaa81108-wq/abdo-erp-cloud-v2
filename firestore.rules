@@ -5,26 +5,129 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userProfile() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
+    }
+
     function isActiveUser() {
       return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        )
         && (
-          !('isActive' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
-          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isActive == true
-        );
+          !('isActive' in userProfile())
+          || userProfile().isActive == true
+        )
+        && userProfile().role != 'pending';
     }
 
     function isAdmin() {
-      return isActiveUser()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isActiveUser() && userProfile().role == 'admin';
+    }
+
+    function hasPermission(permission) {
+      return isAdmin()
+        || (
+          isActiveUser()
+          && 'permissions' in userProfile()
+          && permission in userProfile().permissions
+          && userProfile().permissions[permission] == true
+        );
+    }
+
+    function changesOnlySyncMetadata() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        '_syncRevision',
+        '_updatedAt',
+        '_changedChunks'
+      ]);
     }
 
     match /users/{userId} {
-      allow read: if isActiveUser() && (request.auth.uid == userId || isAdmin());
+      allow read: if isActiveUser()
+        && (request.auth.uid == userId || isAdmin());
       allow create, update, delete: if isAdmin();
     }
 
-    match /erp_system/{document=**} {
+    // The shared metadata document is readable by active users. Employees
+    // may update synchronization metadata only; business scalars remain
+    // administrator-controlled.
+    match /erp_system/main_state {
+      allow read: if isActiveUser();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isActiveUser() && changesOnlySyncMetadata());
+    }
+
+    // Customer debts.
+    match /erp_system/{documentId} {
+      allow read, write: if documentId in [
+        'chunk_customers',
+        'chunk_cycles',
+        'chunk_debt_transactions',
+        'chunk_delegates'
+      ] && hasPermission('canViewDebts');
+    }
+
+    // Companies and traders.
+    match /erp_system/{documentId} {
+      allow read, write: if documentId in [
+        'chunk_companies',
+        'chunk_company_transactions',
+        'chunk_merchants',
+        'chunk_merchant_transactions'
+      ] && hasPermission('canViewCompanies');
+    }
+
+    match /erp_system/chunk_trust_deposits {
+      allow read, write: if hasPermission('canViewDeposits');
+    }
+
+    match /erp_system/chunk_egyptian_cash_records {
+      allow read, write: if hasPermission('canViewMailManual');
+    }
+
+    match /erp_system/{documentId} {
+      allow read, write: if documentId in [
+        'chunk_purchases',
+        'chunk_purchase_accounts',
+        'chunk_purchase_audit_log'
+      ] && hasPermission('canViewPurchases');
+    }
+
+    match /erp_system/{documentId} {
+      allow read, write: if documentId in [
+        'chunk_treasury_transactions',
+        'chunk_safe_audits'
+      ] && hasPermission('canViewTreasury');
+    }
+
+    match /erp_system/{documentId} {
+      allow read, write: if documentId in [
+        'chunk_financial_report_rates',
+        'chunk_financial_report_snapshots'
+      ] && hasPermission('canViewFinancialReports');
+    }
+
+    match /erp_system/chunk_backup_points {
+      allow read, write: if hasPermission('canViewBackup');
+    }
+
+    match /erp_system/{backupDocument} {
+      allow read, write: if backupDocument.matches('backup_.*')
+        && hasPermission('canViewBackup');
+    }
+
+    // User mirrors are administrative data. Login authority remains in the
+    // top-level /users collection above.
+    match /erp_system/chunk_users {
+      allow read, write: if isAdmin();
+    }
+
+    // Shared reminders have no separate UI permission at present.
+    match /erp_system/chunk_notes_and_reminders {
       allow read, write: if isActiveUser();
     }
   }

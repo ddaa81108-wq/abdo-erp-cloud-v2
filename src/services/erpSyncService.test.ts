@@ -25,8 +25,8 @@ describe('ERP concurrent merge', () => {
       safeAudits: [],
       backupPoints: [],
       users: [],
-      managerPasswordHash: '',
     });
+    expect('managerPasswordHash' in INITIAL_ERP_STATE).toBe(false);
   });
 
   it('preserves records added by two different users', () => {
@@ -216,7 +216,7 @@ describe('ERP concurrent merge', () => {
       { id: 'incremental', name: 'Incremental', createdAt: '2026-07-27' },
     ];
     const assembled = assembleErpStateFromStorage(
-      { managerPasswordHash: current.managerPasswordHash },
+      {},
       { customers: { customers: changedCustomers } },
       current,
     );
@@ -231,13 +231,14 @@ describe('ERP concurrent merge', () => {
       {
         customers: [{ id: 'stale', name: 'Stale', createdAt: '2020-01-01' }],
         users: [],
-        managerPasswordHash: current.managerPasswordHash,
+        managerPasswordHash: 'legacy-secret-that-must-not-load',
       },
       {},
       current,
     );
     expect(assembled.customers).toEqual(current.customers);
     expect(assembled.users).toEqual(current.users);
+    expect(assembled.managerPasswordHash).toBeUndefined();
   });
 
 });
