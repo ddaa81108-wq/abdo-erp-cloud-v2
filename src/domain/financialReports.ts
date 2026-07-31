@@ -59,36 +59,32 @@ function egyptianClosingBalance(state: ERPState, day: string) {
 function purchaseAccount(
   state: ERPState,
   merchant: PurchaseMerchant,
-  day: string,
 ): PurchaseAccountState {
   const existing = (state.purchaseAccounts || [])
     .find((account) => account.merchant === merchant);
   if (existing) return existing;
 
   const latestRowDate = (state.purchases || [])
-    .filter((row) => row.merchant === merchant && !row.isDeleted && row.date <= day)
+    .filter((row) => row.merchant === merchant && !row.isDeleted)
     .sort((left, right) => right.date.localeCompare(left.date))[0]?.date;
   return {
     id: `purchase_account_${merchant}`,
     merchant,
     openingBalanceLyd: 0,
     openingBalanceEgp: 0,
-    activeDate: latestRowDate || day,
-    updatedAt: day,
+    activeDate: latestRowDate || reportDayKey(new Date()),
+    updatedAt: latestRowDate || new Date().toISOString(),
   };
 }
 
 function vodafoneRemainder(
   state: ERPState,
   merchant: PurchaseMerchant,
-  day: string,
 ) {
-  const rows = (state.purchases || []).filter((row) =>
-    !row.isDeleted && row.date <= day);
   return integer(
     calculatePurchaseTotals(
-      rows,
-      purchaseAccount(state, merchant, day),
+      state.purchases || [],
+      purchaseAccount(state, merchant),
     ).remainingEgp,
   );
 }
@@ -115,6 +111,7 @@ export interface FinancialReportSources {
   egyptianCashRemainderEgp: number;
   vodafoneBaqyRemainderEgp: number;
   vodafoneSemsemRemainderEgp: number;
+  vodafoneTotalRemainderEgp: number;
   trustBalanceEgp: number;
   netEgyptianPositionEgp: number;
 }
@@ -125,16 +122,20 @@ export function calculateFinancialReportSources(
 ): FinancialReportSources {
   const treasury = calculateTreasurySummary(state);
   const egyptianCashRemainderEgp = egyptianClosingBalance(state, day);
-  const vodafoneBaqyRemainderEgp = vodafoneRemainder(state, 'baqy', day);
-  const vodafoneSemsemRemainderEgp = vodafoneRemainder(state, 'semsem', day);
+  // Use the exact same full-ledger calculation shown by each merchant card in
+  // Purchases. A separate text-date filter could omit timestamped rows.
+  const vodafoneBaqyRemainderEgp = vodafoneRemainder(state, 'baqy');
+  const vodafoneSemsemRemainderEgp = vodafoneRemainder(state, 'semsem');
+  const vodafoneTotalRemainderEgp = integer(
+    vodafoneBaqyRemainderEgp + vodafoneSemsemRemainderEgp,
+  );
   const trustBalanceEgp = trustEgyptianBalance(state, day);
 
   // Positive trust is money owed to custody owners and must be deducted.
   // Negative trust is money owed to us, so subtracting it correctly adds it.
   const netEgyptianPositionEgp = integer(
     egyptianCashRemainderEgp
-    + vodafoneBaqyRemainderEgp
-    + vodafoneSemsemRemainderEgp
+    + vodafoneTotalRemainderEgp
     - trustBalanceEgp,
   );
 
@@ -144,6 +145,7 @@ export function calculateFinancialReportSources(
     egyptianCashRemainderEgp,
     vodafoneBaqyRemainderEgp,
     vodafoneSemsemRemainderEgp,
+    vodafoneTotalRemainderEgp,
     trustBalanceEgp,
     netEgyptianPositionEgp,
   };

@@ -89,6 +89,7 @@ describe('financial report snapshots', () => {
       egyptianCashRemainderEgp: 5_000,
       vodafoneBaqyRemainderEgp: 10_000,
       vodafoneSemsemRemainderEgp: 20_000,
+      vodafoneTotalRemainderEgp: 30_000,
       trustBalanceEgp: -2_000,
       netEgyptianPositionEgp: 37_000,
     });
@@ -104,6 +105,29 @@ describe('financial report snapshots', () => {
       totalOwnedLyd: 4_700,
       netPositionLyd: 4_200,
     });
+  });
+
+  it('matches the purchase cards and includes timestamped Semsem rows in one total', () => {
+    const state = emptyState();
+    state.purchaseAccounts = [
+      account('baqy', 0, 1_000),
+      account('semsem', 0, 0),
+    ];
+    state.purchases = [{
+      id: 'semsem-vodafone',
+      merchant: 'semsem',
+      date: '2026-07-31T12:30:00.000Z',
+      type: 'فودافون كاش',
+      value: 7_000,
+      consumer: 2_000,
+      createdAt: '2026-07-31T12:30:00.000Z',
+    }];
+
+    const sources = calculateFinancialReportSources(state, '2026-07-31');
+    expect(sources.vodafoneBaqyRemainderEgp).toBe(1_000);
+    expect(sources.vodafoneSemsemRemainderEgp).toBe(5_000);
+    expect(sources.vodafoneTotalRemainderEgp).toBe(6_000);
+    expect(sources.netEgyptianPositionEgp).toBe(6_000);
   });
 
   it('deducts positive Egyptian trust because it is owed to its owner', () => {

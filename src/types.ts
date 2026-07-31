@@ -291,6 +291,7 @@ export interface FinancialReportSnapshot {
   egyptianCashRemainderEgp: number;
   vodafoneBaqyRemainderEgp: number;
   vodafoneSemsemRemainderEgp: number;
+  vodafoneTotalRemainderEgp?: number;
   /** Positive means custody owed to its owner; negative means money owed to us. */
   trustBalanceEgp: number;
   netEgyptianPositionEgp: number;

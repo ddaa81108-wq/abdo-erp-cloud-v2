@@ -138,10 +138,13 @@ export default function FinancialReportsModule({
           <Banknote className="h-4 w-4 text-emerald-700" />
           تفاصيل الأموال المصرية الحالية
         </div>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <SmallMetric label="باقي المصراوية" value={money(sources.egyptianCashRemainderEgp, 'egp')} />
-          <SmallMetric label="فودافون — البيان" value={money(sources.vodafoneBaqyRemainderEgp, 'egp')} />
-          <SmallMetric label="فودافون — سمسم" value={money(sources.vodafoneSemsemRemainderEgp, 'egp')} />
+          <SmallMetric
+            label="إجمالي باقي فودافون — البيان + سمسم"
+            value={money(sources.vodafoneTotalRemainderEgp, 'egp')}
+            highlight
+          />
           <SmallMetric
             label="صافي أمانات المصري"
             value={money(sources.trustBalanceEgp, 'egp')}
