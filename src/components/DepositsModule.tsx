@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import {
   Calculator,
   CheckCircle2,
@@ -40,6 +38,8 @@ import {
   openSmartCardStudio,
 } from '../utils/imageExporterUtils';
 import { VoiceInputButton } from './VoiceInputButton';
+import LedgerPdfModal from './LedgerPdfModal';
+import { useAutoScrollToLatest } from '../utils/useAutoScrollToLatest';
 
 interface DepositsModuleProps {
   state: ERPState;
@@ -103,14 +103,6 @@ const transactionLabel: Record<TrustDepositTx['type'], string> = {
   withdraw_egp: 'سحب مصري',
 };
 
-const transactionRowTone: Record<TrustDepositTx['type'], string> = {
-  deposit_lyd: 'border-r-indigo-400 bg-indigo-50/35',
-  withdraw_lyd: 'border-r-rose-400 bg-rose-50/35',
-  convert_to_egp: 'border-r-violet-400 bg-violet-50/35',
-  deposit_egp: 'border-r-emerald-400 bg-emerald-50/35',
-  withdraw_egp: 'border-r-amber-400 bg-amber-50/35',
-};
-
 const transactionLedgerTone: Record<TrustDepositTx['type'], string> = {
   deposit_lyd: 'erp-ledger-positive',
   withdraw_lyd: 'erp-ledger-negative',
@@ -163,8 +155,6 @@ export default function DepositsModule({
   const [editNote, setEditNote] = useState('');
   const [deleting, setDeleting] = useState<TrustDepositTx | null>(null);
   const [showPrint, setShowPrint] = useState(false);
-  const [generatingPdf, setGeneratingPdf] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const accounts = useMemo<AccountView[]>(() =>
     (state.trustDeposits || [])
@@ -518,67 +508,6 @@ export default function DepositsModule({
       });
   };
 
-  const exportLedgerPdf = async () => {
-    if (!printRef.current || !selected) return;
-    setGeneratingPdf(true);
-    try {
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        useCORS: true,
-      });
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
-      const imageWidth = pageWidth - margin * 2;
-      const pageContentHeight = pageHeight - margin * 2;
-      const sliceHeightPixels = Math.floor(
-        pageContentHeight * canvas.width / imageWidth,
-      );
-      let offset = 0;
-      let pageIndex = 0;
-      while (offset < canvas.height) {
-        const currentSliceHeight = Math.min(
-          sliceHeightPixels,
-          canvas.height - offset,
-        );
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = currentSliceHeight;
-        const context = pageCanvas.getContext('2d');
-        context?.drawImage(
-          canvas,
-          0,
-          offset,
-          canvas.width,
-          currentSliceHeight,
-          0,
-          0,
-          canvas.width,
-          currentSliceHeight,
-        );
-        if (pageIndex > 0) pdf.addPage();
-        pdf.addImage(
-          pageCanvas.toDataURL('image/png'),
-          'PNG',
-          margin,
-          margin,
-          imageWidth,
-          currentSliceHeight * imageWidth / canvas.width,
-        );
-        offset += currentSliceHeight;
-        pageIndex += 1;
-      }
-      pdf.save(`trust-ledger-${selected.deposit.customerName}-${new Date().toISOString().slice(0, 10)}.pdf`);
-      toast('تم تصدير سجل الأمانة PDF.');
-    } catch {
-      toast('تعذر إنشاء ملف PDF. حاول مرة أخرى.');
-    } finally {
-      setGeneratingPdf(false);
-    }
-  };
-
   return (
     <div dir="rtl" className="space-y-4 text-right">
       {message && (
@@ -748,23 +677,38 @@ export default function DepositsModule({
       )}
 
       {showPrint && selected && (
-        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-md" dir="rtl">
-          <div className="flex max-h-[96vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <strong className="text-sm text-slate-900">سجل أمانة: {selected.deposit.customerName}</strong>
-              <button onClick={() => setShowPrint(false)} className="rounded-lg bg-slate-100 p-2 text-slate-600"><X className="h-4 w-4" /></button>
-            </div>
-            <div className="overflow-auto p-3">
-              <PrintableLedger ref={printRef} account={selected} rows={ledgerRows(selected)} />
-            </div>
-            <div className="border-t border-slate-200 p-3">
-              <button disabled={generatingPdf} onClick={exportLedgerPdf} className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-3 text-sm font-black text-white disabled:opacity-50">
-                <FileText className="h-4 w-4" />
-                {generatingPdf ? 'جاري تجهيز PDF...' : 'تصدير السجل PDF'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <LedgerPdfModal
+          title={`سجل أمانة: ${selected.deposit.customerName}`}
+          headers={['التسلسل', 'التاريخ', 'الحركة', 'البيان', 'الحركة الليبية', 'الحركة المصرية', 'إجمالي الليبي', 'إجمالي المصري']}
+          rows={ledgerRows(selected).map(({ transaction, amountLyd, amountEgp, index }) => {
+            const lydEffect = transaction.type === 'deposit_lyd'
+              ? `+ ${money(transaction.amountLyd, 'lyd')}`
+              : transaction.type === 'withdraw_lyd' || transaction.type === 'convert_to_egp'
+                ? `- ${money(transaction.amountLyd, 'lyd')}`
+                : '—';
+            const egpEffect = transaction.type === 'deposit_egp' || transaction.type === 'convert_to_egp'
+              ? `+ ${money(transaction.amountEgp, 'egp')}`
+              : transaction.type === 'withdraw_egp'
+                ? `- ${money(transaction.amountEgp, 'egp')}`
+                : '—';
+            return [
+              index + 1,
+              new Date(transaction.date).toLocaleString('ar-LY'),
+              transactionLabel[transaction.type],
+              transaction.note || '—',
+              lydEffect,
+              egpEffect,
+              netMoney(amountLyd, 'lyd'),
+              netMoney(amountEgp, 'egp'),
+            ];
+          })}
+          totals={[
+            { label: 'عدد المعاملات', value: ledgerRows(selected).length },
+            { label: 'الإجمالي الليبي', value: netMoney(selected.amountLyd, 'lyd') },
+            { label: 'الإجمالي المصري', value: netMoney(selected.amountEgp, 'egp') },
+          ]}
+          onClose={() => setShowPrint(false)}
+        />
       )}
 
       {editing && (
@@ -804,8 +748,12 @@ function TrustLedger({
   onEdit: (transaction: TrustDepositTx) => void;
   onDelete: (transaction: TrustDepositTx) => void;
 }) {
+  const scrollRef = useAutoScrollToLatest<HTMLDivElement>(
+    rows[0]?.transaction.id || 'empty-trust-ledger',
+    rows.at(-1)?.transaction.id,
+  );
   return (
-    <div className="max-h-[55vh] overflow-auto">
+    <div ref={scrollRef} className="max-h-[55vh] overflow-auto">
       <table className="erp-ledger-table w-full min-w-[1250px] border-collapse text-xs">
         <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
           <tr>
@@ -849,68 +797,6 @@ function TrustLedger({
     </div>
   );
 }
-
-const PrintableLedger = React.forwardRef<
-  HTMLDivElement,
-  {
-    account: AccountView;
-    rows: Array<{ transaction: TrustDepositTx; amountLyd: number; amountEgp: number; index: number }>;
-  }
->(({ account, rows }, ref) => (
-  <div ref={ref} className="min-w-[900px] bg-white p-6 text-slate-950" dir="rtl">
-    <div className="mb-5 flex items-end justify-between border-b-2 border-slate-900 pb-3">
-      <div>
-        <h2 className="text-xl font-black">سجل معاملات الأمانة</h2>
-        <p className="mt-1 text-sm font-bold">{account.deposit.customerName}</p>
-      </div>
-      <span className="text-[10px] text-slate-500">تاريخ الطباعة: {new Date().toLocaleString('ar-LY')}</span>
-    </div>
-    <table className="w-full border-collapse text-[11px]">
-      <thead className="bg-slate-900 text-white">
-        <tr>
-          <th className="border p-2">#</th><th className="border p-2">التاريخ</th>
-          <th className="border p-2">الحركة</th><th className="border p-2">البيان</th>
-          <th className="border p-2">الحركة الليبية</th><th className="border p-2">الحركة المصرية</th>
-          <th className="border p-2">رصيد الليبي</th><th className="border p-2">رصيد المصري</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(({ transaction, amountLyd, amountEgp, index }) => {
-          const lydEffect = transaction.type === 'deposit_lyd'
-            ? `+ ${money(transaction.amountLyd, 'lyd')}`
-            : transaction.type === 'withdraw_lyd' || transaction.type === 'convert_to_egp'
-              ? `- ${money(transaction.amountLyd, 'lyd')}`
-              : '—';
-          const egpEffect = transaction.type === 'deposit_egp' || transaction.type === 'convert_to_egp'
-            ? `+ ${money(transaction.amountEgp, 'egp')}`
-            : transaction.type === 'withdraw_egp'
-              ? `- ${money(transaction.amountEgp, 'egp')}`
-              : '—';
-          return (
-            <tr key={transaction.id} className={`${transactionRowTone[transaction.type]} border-r-4 even:bg-slate-50`}>
-              <td className="border p-2 text-center">{index + 1}</td>
-              <td className="whitespace-nowrap border p-2">{new Date(transaction.date).toLocaleString('ar-LY')}</td>
-              <td className="border p-2 font-bold">{transactionLabel[transaction.type]}</td>
-              <td className="border p-2">{transaction.note}</td>
-              <td className="border p-2 text-center font-bold">{lydEffect}</td>
-              <td className="border p-2 text-center font-bold">{egpEffect}</td>
-              <td className="border p-2 text-center font-black">{netMoney(amountLyd, 'lyd')}</td>
-              <td className="border p-2 text-center font-black">{netMoney(amountEgp, 'egp')}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-      <tfoot>
-        <tr className="border-t-2 border-slate-900 font-black">
-          <td colSpan={6} className="border p-3 text-left">الإجمالي النهائي</td>
-          <td className={`border p-3 text-center ${account.amountLyd < 0 ? 'bg-rose-100 text-rose-800' : 'bg-indigo-100 text-indigo-900'}`}>{netMoney(account.amountLyd, 'lyd')}</td>
-          <td className={`border p-3 text-center ${account.amountEgp < 0 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-900'}`}>{netMoney(account.amountEgp, 'egp')}</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-));
-PrintableLedger.displayName = 'PrintableLedger';
 
 function TopCard({ icon, title, value, onClick }: { icon: React.ReactElement<{ className?: string }>; title: string; value: string; onClick?: () => void }) {
   const Component = onClick ? 'button' : 'div';

@@ -33,6 +33,11 @@ import {
 import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
 import { copySettledImage, openSmartCardStudio } from '../utils/imageExporterUtils';
 import { VoiceInputButton } from './VoiceInputButton';
+import LedgerPdfModal, {
+  type LedgerPdfCell,
+  type LedgerPdfTotal,
+} from './LedgerPdfModal';
+import { useAutoScrollToLatest } from '../utils/useAutoScrollToLatest';
 
 interface CustomerDebtsModuleProps {
   state: ERPState;
@@ -127,6 +132,12 @@ export default function CustomerDebtsModule({
   const [showEditCustomer, setShowEditCustomer] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
+  const [ledgerPrint, setLedgerPrint] = useState<{
+    title: string;
+    headers: string[];
+    rows: LedgerPdfCell[][];
+    totals: LedgerPdfTotal[];
+  } | null>(null);
 
   const allAccounts = useMemo<AccountView[]>(() => {
     return (state.customers || [])
@@ -583,7 +594,9 @@ export default function CustomerDebtsModule({
 
   const exportCustomerLedger = () => {
     if (!selectedAccount) return;
-    const rows: any[][] = [];
+    const rows: LedgerPdfCell[][] = [];
+    let totalDebt = 0;
+    let totalPaid = 0;
     const customerCycles = state.cycles
       .filter((cycle) => cycle.customerId === selectedAccount.customer.id)
       .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
@@ -593,6 +606,8 @@ export default function CustomerDebtsModule({
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .forEach((transaction) => {
           running += transaction.type === 'debt' ? transaction.amount : -transaction.amount;
+          if (transaction.type === 'debt') totalDebt += transaction.amount;
+          else totalPaid += transaction.amount;
           rows.push([
             cycle.status === 'active' ? 'الدورة الحالية' : 'دورة سابقة',
             new Date(transaction.date).toLocaleString('ar-LY'),
@@ -603,19 +618,19 @@ export default function CustomerDebtsModule({
           ]);
         });
     });
-    onOpenExporter(
-      `السجل التاريخي: ${selectedAccount.customer.name}`,
-      {
-        label1: 'العميل',
-        value1: selectedAccount.customer.name,
-        label2: 'عدد الدورات',
-        value2: customerCycles.length,
-        label3: selectedAccount.balance < 0 ? 'أمانة العميل' : 'الدين الحالي',
-        value3: balanceLabel(selectedAccount.balance),
-      },
-      ['الدورة', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
+    setLedgerPrint({
+      title: `السجل التاريخي: ${selectedAccount.customer.name}`,
+      headers: ['الدورة', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
       rows,
-    );
+      totals: [
+        { label: 'إجمالي الديون المضافة', value: money(totalDebt) },
+        { label: 'إجمالي المدفوع', value: money(totalPaid) },
+        {
+          label: selectedAccount.balance < 0 ? 'أمانة العميل الحالية' : 'الدين الحالي',
+          value: balanceLabel(selectedAccount.balance),
+        },
+      ],
+    });
   };
 
   const currentTicker = overdueAccounts[tickerIndex];
@@ -900,6 +915,16 @@ export default function CustomerDebtsModule({
           </form>
         </Modal>
       )}
+
+      {ledgerPrint && (
+        <LedgerPdfModal
+          title={ledgerPrint.title}
+          headers={ledgerPrint.headers}
+          rows={ledgerPrint.rows}
+          totals={ledgerPrint.totals}
+          onClose={() => setLedgerPrint(null)}
+        />
+      )}
     </div>
   );
 }
@@ -943,8 +968,12 @@ function LedgerTable({
   onDelete?: (transaction: DebtTransaction) => void;
 }) {
   let running = initialBalance;
+  const scrollRef = useAutoScrollToLatest<HTMLDivElement>(
+    transactions[0]?.cycleId || 'empty-ledger',
+    transactions.at(-1)?.id || initialBalance,
+  );
   return (
-    <div className="max-h-[40vh] overflow-auto">
+    <div ref={scrollRef} className="max-h-[40vh] overflow-auto">
       <table className="erp-ledger-table w-full min-w-[850px] border-collapse text-xs">
         <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
           <tr>

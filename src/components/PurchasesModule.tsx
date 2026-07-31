@@ -32,6 +32,7 @@ import {
   type PurchaseMerchant,
 } from '../domain/purchaseLedger';
 import { openSmartCardStudio } from '../utils/imageExporterUtils';
+import { useAutoScrollToLatest } from '../utils/useAutoScrollToLatest';
 
 interface PurchasesModuleProps {
   state: ERPState;
@@ -267,6 +268,10 @@ export default function PurchasesModule({
     if (!grouped.has(account.activeDate)) grouped.set(account.activeDate, []);
     return [...grouped.entries()].sort(([left], [right]) => left.localeCompare(right));
   }, [ledgerRows, account.activeDate]);
+  const ledgerScrollRef = useAutoScrollToLatest<HTMLDivElement>(
+    activeMerchant,
+    ledgerRows.at(-1)?.id || account.activeDate,
+  );
 
   const updateStateRows = (
     purchases: PurchaseRecord[] | ((current: PurchaseRecord[]) => PurchaseRecord[]),
@@ -548,7 +553,7 @@ export default function PurchasesModule({
           </span>
         </div>
 
-        <div className="max-h-[72vh] overflow-auto">
+        <div ref={ledgerScrollRef} className="max-h-[72vh] overflow-auto">
           <table className="erp-entry-table min-w-[1250px] w-full table-fixed border-collapse text-[11px]">
             <thead className="sticky top-0 z-20 bg-emerald-800 font-black text-white shadow-sm">
               <tr>

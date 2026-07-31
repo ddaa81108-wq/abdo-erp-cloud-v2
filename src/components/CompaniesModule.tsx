@@ -25,6 +25,11 @@ import {
 import { VoiceInputButton } from './VoiceInputButton';
 import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
 import { openSmartCardStudio } from '../utils/imageExporterUtils';
+import LedgerPdfModal, {
+  type LedgerPdfCell,
+  type LedgerPdfTotal,
+} from './LedgerPdfModal';
+import { useAutoScrollToLatest } from '../utils/useAutoScrollToLatest';
 
 interface CompaniesModuleProps {
   state: ERPState;
@@ -86,6 +91,12 @@ export default function CompaniesModule({
   const [showQuickExport, setShowQuickExport] = useState(false);
   const [allowSimilarName, setAllowSimilarName] = useState(false);
   const [message, setMessage] = useState('');
+  const [ledgerPrint, setLedgerPrint] = useState<{
+    title: string;
+    headers: string[];
+    rows: LedgerPdfCell[][];
+    totals: LedgerPdfTotal[];
+  } | null>(null);
 
   const transactions = state.companyTransactions || [];
   const activeAccounts = useMemo(() => {
@@ -113,6 +124,10 @@ export default function CompaniesModule({
       .filter((transaction) => transaction.companyId === selectedId && !transaction.isDeleted)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [transactions, selectedId],
+  );
+  const ledgerScrollRef = useAutoScrollToLatest<HTMLDivElement>(
+    selectedId,
+    selectedTransactions.at(-1)?.id,
   );
   const selectedSummary = selected
     ? calculateBusinessSummary(transactions, selected.id)
@@ -409,9 +424,17 @@ export default function CompaniesModule({
   const exportLedger = () => {
     if (!selected || !selectedSummary) return;
     let running = 0;
+    let totalDebt = 0;
+    let totalPaid = 0;
     const rows = selectedTransactions.map((transaction, index) => {
       const kind = transactionKind(transaction);
-      running += kind === 'payment' ? -transaction.amount : transaction.amount;
+      if (kind === 'payment') {
+        running -= transaction.amount;
+        totalPaid += transaction.amount;
+      } else {
+        running += transaction.amount;
+        totalDebt += transaction.amount;
+      }
       return [
         index + 1,
         localDateTime(transaction.date),
@@ -421,20 +444,16 @@ export default function CompaniesModule({
         money(running),
       ];
     });
-    onOpenExporter(
-      `السجل العام: ${selected.name}`,
-      {
-        label1: 'نوع الحساب',
-        value1: selected.accountType === 'merchant' ? 'تاجر' : 'شركة',
-        label2: 'عدد المعاملات',
-        value2: selectedTransactions.length,
-        label3: 'الدين الفعلي',
-        value3: money(selectedSummary.finalBalance),
-      },
-      ['التسلسل', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
+    setLedgerPrint({
+      title: `السجل العام: ${selected.name}`,
+      headers: ['التسلسل', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
       rows,
-      'table',
-    );
+      totals: [
+        { label: 'إجمالي الدين المضاف', value: money(totalDebt) },
+        { label: 'إجمالي المدفوع', value: money(totalPaid) },
+        { label: 'الرصيد النهائي', value: money(selectedSummary.finalBalance) },
+      ],
+    });
   };
 
   const exportAccountsSummary = (type: 'company' | 'merchant') => {
@@ -627,7 +646,7 @@ export default function CompaniesModule({
                     {selectedTransactions.length} معاملة
                   </span>
                 </div>
-                <div className="max-h-[48vh] overflow-auto">
+                <div ref={ledgerScrollRef} className="max-h-[48vh] overflow-auto">
                   <table className="erp-ledger-table w-full min-w-[760px] border-collapse text-[11px]">
                     <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
                       <tr>
@@ -795,6 +814,16 @@ export default function CompaniesModule({
             </button>
           </div>
         </Modal>
+      )}
+
+      {ledgerPrint && (
+        <LedgerPdfModal
+          title={ledgerPrint.title}
+          headers={ledgerPrint.headers}
+          rows={ledgerPrint.rows}
+          totals={ledgerPrint.totals}
+          onClose={() => setLedgerPrint(null)}
+        />
       )}
 
       {entryAction && selectedSummary && (

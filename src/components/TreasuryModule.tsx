@@ -15,6 +15,7 @@ import {
   calculateTreasurySummary,
   manualTreasuryTransactions,
 } from '../domain/treasurySummary';
+import { useAutoScrollToLatest } from '../utils/useAutoScrollToLatest';
 
 interface TreasuryModuleProps {
   state: ERPState;
@@ -97,6 +98,10 @@ export default function TreasuryModule({
       return { transaction, sequence: index + 1, runningBalance };
     });
   }, [transactions]);
+  const ledgerScrollRef = useAutoScrollToLatest<HTMLDivElement>(
+    'treasury-ledger',
+    rowsWithBalance.at(-1)?.transaction.id,
+  );
 
   const toast = (text: string) => {
     setMessage(text);
@@ -274,7 +279,7 @@ export default function TreasuryModule({
           </span>
         </header>
 
-        <div className="max-h-[68vh] overflow-auto">
+        <div ref={ledgerScrollRef} className="max-h-[68vh] overflow-auto">
           <table className="treasury-ledger-table min-w-[1050px] w-full border-collapse text-[11px]">
             <thead className="sticky top-0 z-20 shadow-sm">
               <tr>
