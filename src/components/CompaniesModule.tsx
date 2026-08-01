@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   Check,
@@ -74,6 +74,8 @@ export default function CompaniesModule({
   searchQuery = '',
   onScheduleDeletion,
 }: CompaniesModuleProps) {
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -361,24 +363,31 @@ export default function CompaniesModule({
     if (!deleteTransaction) return;
     const target = deleteTransaction;
     const execute = () => {
+      const current = stateRef.current;
       const now = new Date().toISOString();
-      const nextTransactions = state.companyTransactions.map((transaction) =>
+      const nextTransactions = current.companyTransactions.map((transaction) =>
         transaction.id === target.id
           ? { ...transaction, isDeleted: true, updatedAt: now }
           : transaction,
       );
       const deletedPayment = nextTransactions.find((transaction) => transaction.id === target.id)!;
+      const currentAccount = current.companies.find((account) => account.id === target.companyId);
       const nextTreasuryTransactions = upsertBusinessPaymentInTreasury(
-        state.treasuryTransactions || [],
+        current.treasuryTransactions || [],
         deletedPayment,
-        selected?.name || 'حساب شركة أو تاجر',
+        currentAccount?.name || 'حساب شركة أو تاجر',
       );
-      commitLedger(
-        nextTransactions,
-        state.companies.map((account) =>
-          account.id === target.companyId ? { ...account, updatedAt: now } : account),
-        nextTreasuryTransactions,
+      const nextCompanies = current.companies.map((account) =>
+        account.id === target.companyId ? { ...account, updatedAt: now } : account,
       );
+      onUpdateState({
+        ...current,
+        companies: synchronizeBusinessBalances(nextCompanies, nextTransactions),
+        companyTransactions: nextTransactions,
+        treasuryTransactions: nextTreasuryTransactions,
+        merchants: [],
+        merchantTransactions: [],
+      });
       setDeleteTransaction(null);
       showToast('تم حذف الحركة وإعادة حساب الناتج النهائي.');
     };
@@ -392,10 +401,20 @@ export default function CompaniesModule({
 
   const archiveAccount = (account: Company) => {
     const execute = () => {
-      const nextCompanies = state.companies.map((item) =>
-        item.id === account.id ? { ...item, isDeleted: true } : item,
+      const current = stateRef.current;
+      const now = new Date().toISOString();
+      const nextCompanies = current.companies.map((item) =>
+        item.id === account.id ? { ...item, isDeleted: true, updatedAt: now } : item,
       );
-      commitLedger(transactions, nextCompanies);
+      onUpdateState({
+        ...current,
+        companies: synchronizeBusinessBalances(
+          nextCompanies,
+          current.companyTransactions || [],
+        ),
+        merchants: [],
+        merchantTransactions: [],
+      });
       setSelectedId(null);
     };
     if (onScheduleDeletion) {

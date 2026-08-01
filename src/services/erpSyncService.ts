@@ -130,6 +130,36 @@ function mergeEntityArray<T extends { id?: string }>(
 
   for (const id of changedIds) {
     if (same(baseById.get(id), nextById.get(id))) continue;
+    const nextItem = nextById.get(id);
+    const remoteItem = remoteById.get(id);
+    const nextIsDeleted = Boolean((nextItem as any)?.isDeleted);
+    const remoteIsDeleted = Boolean((remoteItem as any)?.isDeleted);
+
+    // A deliberate soft-delete is an explicit business action. Apply it to
+    // the newest remote copy instead of rejecting it merely because another
+    // device updated a harmless field moments earlier. Conversely, never let
+    // a stale edit resurrect a record that another device already deleted.
+    if (nextIsDeleted) {
+      if (remoteItem) {
+        mergedById.set(id, {
+          ...remoteItem,
+          isDeleted: true,
+          ...((nextItem as any)?.deletedAt
+            ? { deletedAt: (nextItem as any).deletedAt }
+            : {}),
+          ...((nextItem as any)?.updatedAt
+            ? { updatedAt: (nextItem as any).updatedAt }
+            : {}),
+        } as T);
+      } else {
+        mergedById.delete(id);
+      }
+      continue;
+    }
+    if (remoteIsDeleted) {
+      mergedById.set(id, remoteItem as T);
+      continue;
+    }
     if (
       detectConflicts
       && section
@@ -138,7 +168,6 @@ function mergeEntityArray<T extends { id?: string }>(
     ) {
       throw new ErpSyncConflictError([{ section, recordId: id }]);
     }
-    const nextItem = nextById.get(id);
     if (nextItem) mergedById.set(id, nextItem);
     else mergedById.delete(id);
   }

@@ -69,6 +69,33 @@ describe('ERP concurrent merge', () => {
     })).not.toThrow();
   });
 
+  it('applies an explicit deletion to the newest remote record without resurrecting it', () => {
+    const base = state();
+    base.customers = [{ id: 'same', name: 'Original', createdAt: '2026-01-01' }];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.customers[0] = {
+      ...local.customers[0],
+      isDeleted: true,
+      updatedAt: '2026-08-01T10:00:00.000Z',
+    };
+    remote.customers[0] = {
+      ...remote.customers[0],
+      name: 'Latest remote name',
+      phone: '0910000000',
+      updatedAt: '2026-08-01T09:59:00.000Z',
+    };
+
+    const merged = mergeErpStateChanges(base, local, remote, {
+      detectConflicts: true,
+    });
+    expect(merged.customers[0]).toMatchObject({
+      name: 'Latest remote name',
+      phone: '0910000000',
+      isDeleted: true,
+    });
+  });
+
   it('rejects concurrent edits to the same Masraweya day', () => {
     const base = state();
     base.egyptianCashRecords = [{
