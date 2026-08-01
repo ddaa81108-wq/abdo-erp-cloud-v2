@@ -61,6 +61,13 @@ const DAY_COLORS = [
   'bg-cyan-100 text-cyan-950 border-cyan-300',
 ];
 const INPUT_FIELDS: EditableField[] = ['type', 'value', 'rate', 'paid', 'consumer'];
+const PURCHASE_TYPE_SUGGESTIONS = [
+  'فودافون',
+  'كفر الشيخ',
+  'القاهرة',
+  'فوري',
+  'المنصورة',
+] as const;
 
 const localDate = () => {
   const now = new Date();
@@ -500,6 +507,12 @@ export default function PurchasesModule({
 
   return (
     <div className="space-y-3 text-right" dir="rtl">
+      <datalist id="purchase-type-suggestions">
+        {PURCHASE_TYPE_SUGGESTIONS.map((suggestion) => (
+          <option key={suggestion} value={suggestion} />
+        ))}
+      </datalist>
+
       {toast && (
         <div className="fixed right-5 top-20 z-[90] flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-sm font-black text-emerald-950 shadow-2xl">
           <Check className="h-5 w-5 text-emerald-600" />
@@ -682,6 +695,11 @@ function PurchaseTableRow({
       id={`purchase-${name}-${row.id}`}
       type="text"
       inputMode={name === 'type' ? 'text' : 'decimal'}
+      list={name === 'type' ? 'purchase-type-suggestions' : undefined}
+      autoComplete="off"
+      autoCorrect="off"
+      autoCapitalize="off"
+      spellCheck={false}
       value={(row[name] as string | number | undefined) || ''}
       placeholder={placeholder}
       disabled={!editable}

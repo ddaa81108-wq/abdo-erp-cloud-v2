@@ -331,6 +331,10 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                             id={`masr-value-${index}`}
                             type="text"
                             inputMode="decimal"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             placeholder="0"
                             data-egyptian-entry="true"
                             value={entryDrafts[`${index}:value`] ?? (row.value || '')}
@@ -349,6 +353,10 @@ export default function MailManualModule({ state, onUpdateState }: MailManualMod
                             id={`masr-commission-${index}`}
                             type="text"
                             inputMode="decimal"
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck={false}
                             placeholder="0"
                             data-egyptian-entry="true"
                             value={entryDrafts[`${index}:commission`] ?? (row.commission || '')}
