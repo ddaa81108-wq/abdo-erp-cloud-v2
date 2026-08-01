@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { FileDown, X } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 export type LedgerPdfCell = string | number;
 
@@ -46,32 +47,39 @@ export default function LedgerPdfModal({
     if (!pagesRef.current || generating) return;
     setGenerating(true);
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import('html2canvas'),
-        import('jspdf'),
-      ]);
+      const { jsPDF } = await import('jspdf');
+      await document.fonts.ready;
       const pageElements = Array.from(
         pagesRef.current.querySelectorAll<HTMLElement>('[data-ledger-pdf-page]'),
       );
+      if (pageElements.length === 0) throw new Error('No ledger pages found');
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 4;
 
       for (const [index, page] of pageElements.entries()) {
-        const canvas = await html2canvas(page, {
-          scale: 2,
+        const dataUrl = await toPng(page, {
+          pixelRatio: 2,
+          quality: 1,
           backgroundColor: '#ffffff',
-          useCORS: true,
-          logging: false,
+          cacheBust: true,
         });
         if (index > 0) pdf.addPage('a4', 'landscape');
+        const properties = pdf.getImageProperties(dataUrl);
+        const scale = Math.min(
+          (pdfWidth - margin * 2) / properties.width,
+          (pdfHeight - margin * 2) / properties.height,
+        );
+        const width = properties.width * scale;
+        const height = properties.height * scale;
         pdf.addImage(
-          canvas.toDataURL('image/png'),
+          dataUrl,
           'PNG',
-          4,
-          4,
-          pdfWidth - 8,
-          pdfHeight - 8,
+          (pdfWidth - width) / 2,
+          (pdfHeight - height) / 2,
+          width,
+          height,
           undefined,
           'FAST',
         );

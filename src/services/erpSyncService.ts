@@ -5,7 +5,7 @@ import {
   setDoc,
   type Firestore,
 } from 'firebase/firestore';
-import type { BackupPoint, ERPState } from '../types';
+import type { BackupPoint, ERPState, User } from '../types';
 
 const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'customers',
@@ -33,6 +33,48 @@ export const CHUNK_ARRAY_KEYS: Array<keyof ERPState> = [
   ...ENTITY_ARRAY_KEYS,
   'delegates',
 ];
+
+const PERMISSION_CHUNKS: Array<{
+  permission: keyof User['permissions'];
+  keys: Array<keyof ERPState>;
+}> = [
+  {
+    permission: 'canViewDebts',
+    keys: ['customers', 'cycles', 'debtTransactions', 'delegates'],
+  },
+  {
+    permission: 'canViewCompanies',
+    keys: ['companies', 'companyTransactions', 'merchants', 'merchantTransactions'],
+  },
+  { permission: 'canViewDeposits', keys: ['trustDeposits'] },
+  { permission: 'canViewMailManual', keys: ['egyptianCashRecords'] },
+  {
+    permission: 'canViewPurchases',
+    keys: ['purchases', 'purchaseAccounts', 'purchaseAuditLog'],
+  },
+  {
+    permission: 'canViewTreasury',
+    keys: ['treasuryTransactions', 'safeAudits'],
+  },
+  {
+    permission: 'canViewFinancialReports',
+    keys: ['financialReportRates', 'financialReportSnapshots'],
+  },
+  { permission: 'canViewBackup', keys: ['backupPoints'] },
+];
+
+export function chunkKeysForUser(
+  user: Pick<User, 'role' | 'permissions'>,
+): Array<keyof ERPState> {
+  if (user.role === 'admin') return [...CHUNK_ARRAY_KEYS];
+  const allowed = new Set<keyof ERPState>(['notesAndReminders']);
+  for (const { permission, keys } of PERMISSION_CHUNKS) {
+    if (user.permissions?.[permission] === true) {
+      keys.forEach((key) => allowed.add(key));
+    }
+  }
+  return CHUNK_ARRAY_KEYS.filter((key) => allowed.has(key));
+}
 
 export const chunkDocumentId = (key: keyof ERPState) => {
   if (key === 'debtTransactions') return 'chunk_debt_transactions';

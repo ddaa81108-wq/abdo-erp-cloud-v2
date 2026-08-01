@@ -24,6 +24,8 @@ import LoginScreen from "./components/LoginScreen";
 import { canAccessTab, firstAllowedTab, resolvePermissions } from "./utils/permissions";
 import {
   CHUNK_ARRAY_KEYS,
+  chunkDocumentId,
+  chunkKeysForUser,
   ErpSyncConflictError,
   loadCompleteErpState,
   mergeErpStateChanges,
@@ -73,6 +75,9 @@ type SyncBatch = {
   base: ERPState;
   next: ERPState;
 };
+
+const sameState = (left: unknown, right: unknown) =>
+  JSON.stringify(left) === JSON.stringify(right);
 
 const normalizeBusinessState = (value: ERPState): ERPState => {
   const trustDeposits = (value.trustDeposits || []).map(synchronizeTrustDeposit);
@@ -498,6 +503,7 @@ export default function App() {
     if (!db) return;
     if (!currentUser) return; // 🔒 FIX #4: wait for login before any read/write
 
+    const readableChunkKeys = chunkKeysForUser(currentUser);
     const mainRef = doc(db, "erp_system", "main_state");
     const unsubscribe = onSnapshot(
       mainRef,
@@ -510,7 +516,8 @@ export default function App() {
             ? data._changedChunks.filter(
                 (key: unknown): key is keyof ERPState =>
                   typeof key === 'string'
-                  && CHUNK_ARRAY_KEYS.includes(key as keyof ERPState),
+                  && CHUNK_ARRAY_KEYS.includes(key as keyof ERPState)
+                  && readableChunkKeys.includes(key as keyof ERPState),
               )
             : [];
           const canLoadIncrementally =
@@ -529,7 +536,7 @@ export default function App() {
                   currentState: stateRef.current,
                   chunkKeys: changedKeys,
                 }
-              : undefined,
+              : { chunkKeys: readableChunkKeys },
           ));
           lastLoadedRevisionRef.current = incomingRevision;
 
@@ -556,6 +563,7 @@ export default function App() {
                 safe,
               );
             }
+            stateRef.current = safe;
             setState((current) => JSON.stringify(current) === JSON.stringify(safe) ? current : safe);
             try { localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(safe)); } catch (e) {}
           }
@@ -578,9 +586,11 @@ export default function App() {
             setIsOnlineMode(true);
             if (localData) {
               // Restore from local backup — do NOT push to Firebase automatically
+              stateRef.current = localData;
               setState(localData);
             } else {
               // No data anywhere — show empty state, user must import/restore manually
+              stateRef.current = INITIAL_ERP_STATE;
               setState(INITIAL_ERP_STATE);
             }
           }
@@ -597,6 +607,116 @@ export default function App() {
       unsubscribe();
     };
   }, [currentUser]);
+
+  // Keep every permitted section under a direct real-time listener. The
+  // metadata listener above remains useful for shared scalar state, while
+  // these listeners make section synchronization resilient to a missed or
+  // delayed metadata event on another device.
+  useEffect(() => {
+    if (!db || !currentUser) return;
+    let unmounted = false;
+    const readableChunkKeys = chunkKeysForUser(currentUser);
+
+    const unsubscribers = readableChunkKeys.map((key) => onSnapshot(
+      doc(db, "erp_system", chunkDocumentId(key)),
+      (snapshot) => {
+        if (unmounted || !snapshot.exists() || syncConflictRef.current) return;
+        const data = snapshot.data() as Partial<Record<keyof ERPState, unknown>>;
+        const incoming = Array.isArray(data[key]) ? data[key] : [];
+        const current = stateRef.current;
+        let nextValues = structuredClone(incoming) as any[];
+
+        // Backup payloads live in separate documents. Preserve already
+        // hydrated local payloads when only their shared index changes.
+        if (key === 'backupPoints') {
+          const localById = new Map((current.backupPoints || []).map((backup) => [backup.id, backup]));
+          nextValues = nextValues.map((backup) => ({
+            ...backup,
+            dataJson: backup.dataJson || localById.get(backup.id)?.dataJson,
+          }));
+        }
+
+        let safe = normalizeBusinessState({
+          ...structuredClone(current),
+          [key]: nextValues,
+        } as ERPState);
+        if (inFlightSyncRef.current) {
+          safe = mergeErpStateChanges(
+            inFlightSyncRef.current.base,
+            inFlightSyncRef.current.next,
+            safe,
+          );
+        }
+        if (pendingSyncRef.current) {
+          safe = mergeErpStateChanges(
+            pendingSyncRef.current.base,
+            pendingSyncRef.current.next,
+            safe,
+          );
+        }
+
+        stateRef.current = safe;
+        setState((existing) => sameState(existing, safe) ? existing : safe);
+        try {
+          localStorage.setItem("ABDO_ERP_V2_DATA", JSON.stringify(safe));
+        } catch (error) {
+          console.error("Local storage save failed after remote sync", error);
+        }
+      },
+      (error) => {
+        console.error(`Firebase section sync error (${String(key)}):`, error);
+      },
+    ));
+
+    return () => {
+      unmounted = true;
+      unsubscribers.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [currentUser]);
+
+  // Permissions and account activation also synchronize live. A user no
+  // longer needs to sign out and back in after the administrator changes a
+  // section permission from another device.
+  useEffect(() => {
+    if (!db || !currentUser?.id) return;
+    const userId = currentUser.id;
+    return onSnapshot(
+      doc(db, "users", userId),
+      (snapshot) => {
+        if (!snapshot.exists()) return;
+        const profile = snapshot.data() as Omit<Partial<User>, 'role'> & {
+          role?: User['role'] | 'pending';
+        };
+        const rawRole = profile.role;
+        const isPending = rawRole === 'pending';
+        const activeRole = isPending
+          ? undefined
+          : rawRole as User['role'] | undefined;
+        if (profile.isActive === false || isPending) {
+          sessionStorage.removeItem("ABDO_ERP_V2_ACTIVE_USER");
+          void signOut(auth);
+          setCurrentUser(null);
+          return;
+        }
+        setCurrentUser((existing) => {
+          if (!existing || existing.id !== userId) return existing;
+          const role: User['role'] = activeRole || existing.role;
+          const updated: User = {
+            ...existing,
+            ...profile,
+            id: userId,
+            role,
+            password: '',
+            permissions: resolvePermissions(role, profile.permissions || existing.permissions),
+          };
+          if (sameState(existing, updated)) return existing;
+          sessionStorage.setItem("ABDO_ERP_V2_ACTIVE_USER", JSON.stringify(updated));
+          return updated;
+        });
+      },
+      (error) => console.error("Firebase user-profile sync error:", error),
+    );
+  }, [currentUser?.id]);
 
   // ============================================================
   // Atomic optimistic synchronization with record-level conflict merging

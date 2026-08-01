@@ -45,9 +45,33 @@ service cloud.firestore {
       ]);
     }
 
+    function changesOnlyPurchaseSyncState() {
+      return hasPermission('canViewPurchases')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          '_syncRevision',
+          '_updatedAt',
+          '_changedChunks',
+          'purchaseLedgerMigrationVersion'
+        ]);
+    }
+
+    function changesOnlyTreasurySyncState() {
+      return hasPermission('canViewTreasury')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          '_syncRevision',
+          '_updatedAt',
+          '_changedChunks',
+          'treasuryLedgerVersion'
+        ]);
+    }
+
     match /users/{userId} {
-      allow read: if isActiveUser()
-        && (request.auth.uid == userId || isAdmin());
+      // A signed-in user may read only their own profile so the application
+      // can immediately detect deactivation or permission changes. Reading
+      // any other profile still requires an active administrator.
+      allow read: if (
+        isSignedIn() && request.auth.uid == userId
+      ) || isAdmin();
       allow create, update, delete: if isAdmin();
     }
 
@@ -58,7 +82,11 @@ service cloud.firestore {
       allow read: if isActiveUser();
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
-        || (isActiveUser() && changesOnlySyncMetadata());
+        || (isActiveUser() && (
+          changesOnlySyncMetadata()
+          || changesOnlyPurchaseSyncState()
+          || changesOnlyTreasurySyncState()
+        ));
     }
 
     // Customer debts.

@@ -1,7 +1,12 @@
 import rules from '../../firestore.rules?raw';
 import { describe, expect, it } from 'vitest';
 import type { ERPState } from '../types';
-import { CHUNK_ARRAY_KEYS, chunkDocumentId } from './erpSyncService';
+import {
+  CHUNK_ARRAY_KEYS,
+  chunkDocumentId,
+  chunkKeysForUser,
+} from './erpSyncService';
+import { DENIED_PERMISSIONS, FULL_PERMISSIONS } from '../utils/permissions';
 
 const permissionByChunk: Partial<Record<string, string>> = {
   customers: 'canViewDebts',
@@ -47,5 +52,28 @@ describe('Firestore section security map', () => {
     expect(rules).toContain('match /erp_system/chunk_users');
     expect(rules).toContain('allow read, write: if isAdmin();');
     expect(rules).toContain('changesOnlySyncMetadata()');
+    expect(rules).toContain('changesOnlyPurchaseSyncState()');
+    expect(rules).toContain('changesOnlyTreasurySyncState()');
+  });
+
+  it('subscribes employees only to the chunks allowed by their permissions', () => {
+    const keys = chunkKeysForUser({
+      role: 'assistant',
+      permissions: { ...DENIED_PERMISSIONS, canViewDebts: true },
+    });
+    expect(keys).toEqual([
+      'customers',
+      'cycles',
+      'debtTransactions',
+      'notesAndReminders',
+      'delegates',
+    ]);
+  });
+
+  it('subscribes administrators to every synchronized chunk', () => {
+    expect(chunkKeysForUser({
+      role: 'admin',
+      permissions: FULL_PERMISSIONS,
+    })).toEqual(CHUNK_ARRAY_KEYS);
   });
 });
