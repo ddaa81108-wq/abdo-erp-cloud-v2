@@ -377,9 +377,11 @@ export async function writeMergedErpState(
     const remote = mainSnapshot.exists()
       ? assembleErpStateFromStorage(mainData, remoteChunks, base)
       : base;
-    const merged = mergeErpStateChanges(base, next, remote, {
-      detectConflicts: true,
-    });
+    // Merge concurrent device changes record-by-record. Runtime writes must
+    // not freeze the whole application when two devices touch the same
+    // record; soft deletion is resolved explicitly by mergeEntityArray and
+    // wins over a stale update so a deleted customer cannot be resurrected.
+    const merged = mergeErpStateChanges(base, next, remote);
     const split = splitErpStateForStorage(merged);
     const revision = (mainData._syncRevision || 0) + 1;
 
