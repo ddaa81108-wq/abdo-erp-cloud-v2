@@ -507,12 +507,6 @@ export default function PurchasesModule({
 
   return (
     <div className="space-y-3 text-right" dir="rtl">
-      <datalist id="purchase-type-suggestions">
-        {PURCHASE_TYPE_SUGGESTIONS.map((suggestion) => (
-          <option key={suggestion} value={suggestion} />
-        ))}
-      </datalist>
-
       {toast && (
         <div className="fixed right-5 top-20 z-[90] flex max-w-sm items-center gap-3 rounded-2xl border border-emerald-300 bg-white px-4 py-3 text-sm font-black text-emerald-950 shadow-2xl">
           <Check className="h-5 w-5 text-emerald-600" />
@@ -689,13 +683,13 @@ function PurchaseTableRow({
 }) {
   const editable = active || editing;
   const archived = !active;
+  const [showTypeSuggestions, setShowTypeSuggestions] = useState(false);
   const inputClass = 'h-10 w-full border-0 bg-transparent px-2 text-center font-mono font-bold outline-none focus:bg-white/70 disabled:cursor-default disabled:text-slate-700';
   const field = (name: EditableField, placeholder: string) => (
     <input
       id={`purchase-${name}-${row.id}`}
       type="text"
       inputMode={name === 'type' ? 'text' : 'decimal'}
-      list={name === 'type' ? 'purchase-type-suggestions' : undefined}
       autoComplete="off"
       autoCorrect="off"
       autoCapitalize="off"
@@ -710,11 +704,61 @@ function PurchaseTableRow({
     />
   );
 
+  const typeField = (
+    <div className="relative">
+      <input
+        id={`purchase-type-${row.id}`}
+        type="text"
+        inputMode="text"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        spellCheck={false}
+        value={row.type || ''}
+        placeholder="نوع العملية"
+        disabled={!editable}
+        onFocus={() => setShowTypeSuggestions(true)}
+        onChange={(event) => onChange(row.id, 'type', event.target.value, archived)}
+        onKeyDown={(event) => onKeyDown(event, row, 'type', archived)}
+        onBlur={() => {
+          window.setTimeout(() => setShowTypeSuggestions(false), 120);
+          onBlur(row, 'type', archived);
+        }}
+        className={inputClass}
+        aria-haspopup="listbox"
+        aria-expanded={editable && showTypeSuggestions}
+      />
+      {editable && showTypeSuggestions && (
+        <div
+          role="listbox"
+          className="absolute inset-x-1 top-full z-50 mt-1 grid overflow-hidden rounded-xl border border-emerald-300 bg-white p-1 shadow-2xl"
+        >
+          {PURCHASE_TYPE_SUGGESTIONS.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              role="option"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(row.id, 'type', suggestion, archived);
+                onBlur(row, 'type', archived);
+                setShowTypeSuggestions(false);
+              }}
+              className="rounded-lg px-3 py-2 text-right font-sans text-xs font-black text-slate-800 transition hover:bg-emerald-100 active:bg-emerald-200"
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <tr className={`border-b border-r-4 border-slate-200 transition-colors ${active ? 'border-r-emerald-500 bg-emerald-50/60 hover:bg-emerald-50' : 'border-r-slate-300 bg-slate-50/45 hover:bg-slate-100'} ${isVodafonePurchase(row.type) ? 'font-bold' : ''}`}>
       <td className="p-2 text-center font-black">{row.seq || '-'}</td>
       <td className="p-2 text-center font-mono">{row.date}</td>
-      <td className="border-x border-slate-200 p-0">{field('type', 'نوع العملية')}</td>
+      <td className="border-x border-slate-200 p-0">{typeField}</td>
       <td className="border-l border-slate-200 p-0">{field('value', '0')}</td>
       <td className="border-l border-slate-200 p-1">
         <div className="flex overflow-hidden rounded-lg border bg-white">
