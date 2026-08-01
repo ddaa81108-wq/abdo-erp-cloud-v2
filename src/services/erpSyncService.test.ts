@@ -3,6 +3,7 @@ import { INITIAL_ERP_STATE, type ERPState } from '../types';
 import {
   assembleErpStateFromStorage,
   changedChunkKeys,
+  ErpSyncConflictError,
   mergeErpStateChanges,
   splitErpStateForStorage,
 } from './erpSyncService';
@@ -35,9 +36,55 @@ describe('ERP concurrent merge', () => {
     const remote = state();
     local.customers.push({ id: 'local', name: 'Local', createdAt: '2026-01-01' });
     remote.customers.push({ id: 'remote', name: 'Remote', createdAt: '2026-01-01' });
-    const merged = mergeErpStateChanges(base, local, remote);
+    const merged = mergeErpStateChanges(base, local, remote, {
+      detectConflicts: true,
+    });
     expect(merged.customers.map((customer) => customer.id)).toContain('local');
     expect(merged.customers.map((customer) => customer.id)).toContain('remote');
+  });
+
+  it('rejects concurrent changes to the same record instead of silently losing one', () => {
+    const base = state();
+    base.customers = [{ id: 'same', name: 'Original', createdAt: '2026-01-01' }];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.customers[0] = { ...local.customers[0], name: 'Local edit' };
+    remote.customers[0] = { ...remote.customers[0], name: 'Remote edit' };
+
+    expect(() => mergeErpStateChanges(base, local, remote, {
+      detectConflicts: true,
+    })).toThrow(ErpSyncConflictError);
+  });
+
+  it('accepts the same concurrent result when both devices saved identical data', () => {
+    const base = state();
+    base.customers = [{ id: 'same', name: 'Original', createdAt: '2026-01-01' }];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.customers[0] = { ...local.customers[0], name: 'Identical edit' };
+    remote.customers[0] = { ...remote.customers[0], name: 'Identical edit' };
+
+    expect(() => mergeErpStateChanges(base, local, remote, {
+      detectConflicts: true,
+    })).not.toThrow();
+  });
+
+  it('rejects concurrent edits to the same Masraweya day', () => {
+    const base = state();
+    base.egyptianCashRecords = [{
+      date: '2026-07-27',
+      rows: [{ value: 100, commission: 0 }],
+      previousValue: 0,
+      receivedValue: 200,
+    }];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.egyptianCashRecords[0].receivedValue = 300;
+    remote.egyptianCashRecords[0].receivedValue = 400;
+
+    expect(() => mergeErpStateChanges(base, local, remote, {
+      detectConflicts: true,
+    })).toThrow(ErpSyncConflictError);
   });
 
   it('does not restore a remotely deleted record when local users changed another record', () => {

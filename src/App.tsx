@@ -24,6 +24,7 @@ import LoginScreen from "./components/LoginScreen";
 import { canAccessTab, firstAllowedTab, resolvePermissions } from "./utils/permissions";
 import {
   CHUNK_ARRAY_KEYS,
+  ErpSyncConflictError,
   loadCompleteErpState,
   mergeErpStateChanges,
   writeMergedErpState,
@@ -101,6 +102,32 @@ const normalizeBusinessState = (value: ERPState): ERPState => {
   delete (normalized as any).systemAuditLog;
   delete (normalized as any).systemAuditMigrationVersion;
   return normalized;
+};
+
+const preserveConflictBackup = (conflictedState: ERPState, download = false) => {
+  const serialized = JSON.stringify(conflictedState);
+  try {
+    localStorage.setItem("ABDO_ERP_V2_CONFLICT_BACKUP", JSON.stringify({
+      createdAt: new Date().toISOString(),
+      dataJson: serialized,
+    }));
+  } catch (error) {
+    console.error("Failed to preserve the local conflict backup", error);
+  }
+  if (!download) return;
+  try {
+    const blob = new Blob([serialized], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `abdo-erp-conflict-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  } catch (error) {
+    console.error("Failed to download the local conflict backup", error);
+  }
 };
 
 export default function App() {
@@ -368,7 +395,14 @@ export default function App() {
   const syncRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSyncRef = useRef<SyncBatch | null>(null);
   const inFlightSyncRef = useRef<SyncBatch | null>(null);
+  const syncConflictRef = useRef(false);
   const lastLoadedRevisionRef = useRef(0);
+
+  useEffect(() => {
+    // A conflict blocks only the current signed-in session. A reload or a
+    // different login starts from the latest server snapshot normally.
+    syncConflictRef.current = false;
+  }, [currentUser?.id]);
 
   // 🔄 Auto Backup Logic
   const stateRef = useRef(state);
@@ -499,9 +533,14 @@ export default function App() {
           ));
           lastLoadedRevisionRef.current = incomingRevision;
 
-                   if (!unmounted) {
+          if (!unmounted) {
             setIsLoading(false);
             setIsOnlineMode(true);
+            // Keep the unsaved local version visible after a detected
+            // conflict. Reloading the page deliberately returns to the
+            // latest server version; a separate local/downloaded backup
+            // preserves the user's conflicting work.
+            if (syncConflictRef.current) return;
             let safe = fullState;
             if (inFlightSyncRef.current) {
               safe = mergeErpStateChanges(
@@ -575,6 +614,12 @@ export default function App() {
       console.error("Local storage save failed", e);
     }
 
+    if (syncConflictRef.current) {
+      preserveConflictBackup(cleanedState);
+      triggerCustomToast("المزامنة متوقفة لحماية تعديل متعارض. أعد تحميل الصفحة بعد مراجعة نسخة الأمان المحفوظة.");
+      return;
+    }
+
     if (db) {
       pendingSyncRef.current = pendingSyncRef.current
         ? { ...pendingSyncRef.current, next: cleanedState }
@@ -618,6 +663,18 @@ export default function App() {
           }
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
+          if (err instanceof ErpSyncConflictError) {
+            pendingSyncRef.current = null;
+            inFlightSyncRef.current = null;
+            syncConflictRef.current = true;
+            if (syncRetryTimeoutRef.current) {
+              clearTimeout(syncRetryTimeoutRef.current);
+              syncRetryTimeoutRef.current = null;
+            }
+            preserveConflictBackup(stateRef.current, true);
+            triggerCustomToast("تم منع تعارض بين جهازين ولم تُفقد بياناتك. حُفظت نسخة أمان محلية ونُزّلت نسخة، ثم أعد تحميل الصفحة لمراجعة أحدث بيانات الخادم.");
+            return;
+          }
           const queuedAfterFailure = pendingSyncRef.current as SyncBatch | null;
           pendingSyncRef.current = queuedAfterFailure
             ? { base: pending.base, next: queuedAfterFailure.next }

@@ -42,21 +42,60 @@ export const chunkDocumentId = (key: keyof ERPState) => {
 
 const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 
+export type ErpSyncConflict = {
+  section: keyof ERPState;
+  recordId: string;
+};
+
+export class ErpSyncConflictError extends Error {
+  readonly conflicts: ErpSyncConflict[];
+
+  constructor(conflicts: ErpSyncConflict[]) {
+    super('The same ERP record was changed concurrently on another device.');
+    this.name = 'ErpSyncConflictError';
+    this.conflicts = conflicts;
+  }
+}
+
 function mergeEntityArray<T extends { id?: string }>(
   base: T[] = [],
   next: T[] = [],
   remote: T[] = [],
+  section?: keyof ERPState,
+  detectConflicts = false,
 ): T[] {
   const canMergeById = [...base, ...next, ...remote].every((item) => item && typeof item.id === 'string');
-  if (!canMergeById) return next;
+  if (!canMergeById) {
+    if (
+      detectConflicts
+      && section
+      && !same(base, remote)
+      && !same(next, remote)
+    ) {
+      throw new ErpSyncConflictError([{
+        section,
+        recordId: String(section),
+      }]);
+    }
+    return next;
+  }
 
   const baseById = new Map(base.map((item) => [item.id as string, item]));
   const nextById = new Map(next.map((item) => [item.id as string, item]));
+  const remoteById = new Map(remote.map((item) => [item.id as string, item]));
   const mergedById = new Map(remote.map((item) => [item.id as string, item]));
   const changedIds = new Set([...baseById.keys(), ...nextById.keys()]);
 
   for (const id of changedIds) {
     if (same(baseById.get(id), nextById.get(id))) continue;
+    if (
+      detectConflicts
+      && section
+      && !same(baseById.get(id), remoteById.get(id))
+      && !same(nextById.get(id), remoteById.get(id))
+    ) {
+      throw new ErpSyncConflictError([{ section, recordId: id }]);
+    }
     const nextItem = nextById.get(id);
     if (nextItem) mergedById.set(id, nextItem);
     else mergedById.delete(id);
@@ -75,14 +114,26 @@ function mergeEgyptianCashRecords(
   base: ERPState['egyptianCashRecords'] = [],
   next: ERPState['egyptianCashRecords'] = [],
   remote: ERPState['egyptianCashRecords'] = [],
+  detectConflicts = false,
 ) {
   const baseByDate = new Map(base.map((record) => [record.date, record]));
   const nextByDate = new Map(next.map((record) => [record.date, record]));
+  const remoteByDate = new Map(remote.map((record) => [record.date, record]));
   const mergedByDate = new Map(remote.map((record) => [record.date, record]));
   const changedDates = new Set([...baseByDate.keys(), ...nextByDate.keys()]);
 
   for (const date of changedDates) {
     if (same(baseByDate.get(date), nextByDate.get(date))) continue;
+    if (
+      detectConflicts
+      && !same(baseByDate.get(date), remoteByDate.get(date))
+      && !same(nextByDate.get(date), remoteByDate.get(date))
+    ) {
+      throw new ErpSyncConflictError([{
+        section: 'egyptianCashRecords',
+        recordId: date,
+      }]);
+    }
     const nextRecord = nextByDate.get(date);
     if (nextRecord) mergedByDate.set(date, nextRecord);
     else mergedByDate.delete(date);
@@ -101,6 +152,7 @@ export function mergeErpStateChanges(
   base: ERPState,
   next: ERPState,
   remote: ERPState,
+  options: { detectConflicts?: boolean } = {},
 ): ERPState {
   const merged = structuredClone(remote) as ERPState;
   for (const key of Object.keys(next) as Array<keyof ERPState>) {
@@ -110,14 +162,27 @@ export function mergeErpStateChanges(
         base.egyptianCashRecords,
         next.egyptianCashRecords,
         remote.egyptianCashRecords,
+        options.detectConflicts,
       );
     } else if (ENTITY_ARRAY_KEYS.has(key) && Array.isArray(next[key])) {
       (merged as any)[key] = mergeEntityArray(
         (base[key] as any[]) || [],
         (next[key] as any[]) || [],
         (remote[key] as any[]) || [],
+        key,
+        options.detectConflicts,
       );
     } else {
+      if (
+        options.detectConflicts
+        && !same(base[key], remote[key])
+        && !same(next[key], remote[key])
+      ) {
+        throw new ErpSyncConflictError([{
+          section: key,
+          recordId: String(key),
+        }]);
+      }
       (merged as any)[key] = structuredClone(next[key]);
     }
   }
@@ -241,7 +306,9 @@ export async function writeMergedErpState(
     const remote = mainSnapshot.exists()
       ? assembleErpStateFromStorage(mainData, remoteChunks, base)
       : base;
-    const merged = mergeErpStateChanges(base, next, remote);
+    const merged = mergeErpStateChanges(base, next, remote, {
+      detectConflicts: true,
+    });
     const split = splitErpStateForStorage(merged);
     const revision = (mainData._syncRevision || 0) + 1;
 
