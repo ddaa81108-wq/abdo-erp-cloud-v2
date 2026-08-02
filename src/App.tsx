@@ -34,6 +34,7 @@ import { migrateLegacyBusinessAccounts } from "./domain/businessAccounts";
 import { repairLegacyCustomerCycles } from "./domain/customerAccounts";
 import {
   AUTO_BACKUP_INTERVAL_MS,
+  canCreateAutomaticBackup,
   isAutoBackupDue,
   latestAutoBackupAt,
   retainLatestAutomaticBackups,
@@ -390,7 +391,7 @@ export default function App() {
     // Wait until the shared Firestore state has loaded. This prevents a new
     // device with empty local storage from creating a duplicate backup before
     // it sees the latest cloud backup.
-    if (!currentUser || isLoading) return;
+    if (!currentUser || !canCreateAutomaticBackup(currentUser) || isLoading) return;
     let cancelled = false;
     let nextBackupTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -457,7 +458,7 @@ export default function App() {
       cancelled = true;
       if (nextBackupTimer) clearTimeout(nextBackupTimer);
     };
-  }, [currentUser, isLoading]);
+  }, [currentUser?.id, currentUser?.role, isLoading]);
 
   // ============================================================
   // 🆕 Firebase Synchronization Core - Multi-document merge
@@ -738,6 +739,16 @@ export default function App() {
           }
         } catch (err) {
           console.error("Failed to sync to Firebase", err);
+          if ((err as { code?: string })?.code === 'permission-denied') {
+            pendingSyncRef.current = null;
+            inFlightSyncRef.current = null;
+            if (syncRetryTimeoutRef.current) {
+              clearTimeout(syncRetryTimeoutRef.current);
+              syncRetryTimeoutRef.current = null;
+            }
+            triggerCustomToast("رفض Firebase حفظ التعديل بسبب الصلاحيات. لم يتم تسجيل العملية على الخادم؛ تواصل مع المدير.");
+            return;
+          }
           const queuedAfterFailure = pendingSyncRef.current as SyncBatch | null;
           pendingSyncRef.current = queuedAfterFailure
             ? { base: pending.base, next: queuedAfterFailure.next }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { INITIAL_ERP_STATE, type BackupPoint } from '../types';
 import {
   AUTO_BACKUP_INTERVAL_MS,
+  canCreateAutomaticBackup,
   isAutoBackupDue,
   latestAutoBackupAt,
   retainLatestAutomaticBackups,
@@ -17,6 +18,13 @@ const backup = (id: string, date: string): BackupPoint => ({
 });
 
 describe('automatic backups', () => {
+  it('runs full-system automatic backups only for administrators', () => {
+    expect(canCreateAutomaticBackup({ role: 'admin' })).toBe(true);
+    expect(canCreateAutomaticBackup({ role: 'assistant' })).toBe(false);
+    expect(canCreateAutomaticBackup({ role: 'accountant' })).toBe(false);
+    expect(canCreateAutomaticBackup(null)).toBe(false);
+  });
+
   it('becomes due exactly after twelve hours', () => {
     const now = Date.parse('2026-07-26T12:00:00.000Z');
     const backups = [backup('auto_backup_1', new Date(now).toISOString())];

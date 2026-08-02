@@ -1,7 +1,15 @@
-import type { BackupPoint, ERPState } from '../types';
+import type { BackupPoint, ERPState, User } from '../types';
 
 export const AUTO_BACKUP_INTERVAL_MS = 12 * 60 * 60 * 1000;
 export const AUTO_BACKUP_RETENTION = 3;
+
+// A shared full-system backup must be created only from an administrator
+// session. Limited employees intentionally load only their permitted chunks;
+// allowing them to create a backup would both produce an incomplete snapshot
+// and make their otherwise valid section write fail Firestore permissions.
+export const canCreateAutomaticBackup = (
+  user: Pick<User, 'role'> | null | undefined,
+) => user?.role === 'admin';
 
 export const isAutoBackup = (backup: BackupPoint) =>
   backup.id.startsWith('auto_backup_');
