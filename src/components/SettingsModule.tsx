@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   CheckCircle2,
+  Database,
+  HardDrive,
   Mail,
   Shield,
   Trash2,
@@ -17,6 +20,11 @@ import {
   FULL_PERMISSIONS,
   resolvePermissions,
 } from '../utils/permissions';
+import {
+  estimateStorageHealth,
+  formatStorageBytes,
+  type StorageHealthLevel,
+} from '../services/storageHealth';
 
 interface SettingsModuleProps {
   state: ERPState;
@@ -83,6 +91,51 @@ const isRole = (value: unknown): value is User['role'] =>
     String(value),
   );
 
+const storageLabels: Partial<Record<keyof ERPState, string>> = {
+  customers: 'حسابات العملاء',
+  cycles: 'دورات ديون العملاء',
+  debtTransactions: 'معاملات ديون العملاء',
+  companies: 'الشركات والتجار',
+  companyTransactions: 'معاملات الشركات والتجار',
+  merchants: 'التجار القدامى',
+  merchantTransactions: 'معاملات التجار القديمة',
+  treasuryTransactions: 'معاملات الخزينة',
+  purchases: 'سجل المشتريات',
+  purchaseAccounts: 'حسابات المشتريات',
+  purchaseAuditLog: 'تدقيق المشتريات',
+  trustDeposits: 'حسابات الأمانات',
+  safeAudits: 'تدقيق الخزينة',
+  backupPoints: 'فهرس النسخ الاحتياطية',
+  users: 'المستخدمون',
+  egyptianCashRecords: 'سجل المصراوية',
+  financialReportRates: 'أسعار تقارير المالية',
+  financialReportSnapshots: 'التقارير المالية اليومية',
+  notesAndReminders: 'الملاحظات والتنبيهات',
+  delegates: 'المندوبون',
+};
+
+const storageLevelUi: Record<StorageHealthLevel, {
+  label: string;
+  badge: string;
+  bar: string;
+}> = {
+  safe: {
+    label: 'آمن',
+    badge: 'bg-emerald-50 text-emerald-800',
+    bar: 'bg-emerald-500',
+  },
+  warning: {
+    label: 'يحتاج متابعة',
+    badge: 'bg-amber-50 text-amber-800',
+    bar: 'bg-amber-500',
+  },
+  critical: {
+    label: 'قريب من الحد',
+    badge: 'bg-rose-50 text-rose-800',
+    bar: 'bg-rose-600',
+  },
+};
+
 export default function SettingsModule({
   state,
   currentUser,
@@ -110,6 +163,10 @@ export default function SettingsModule({
           return left.name.localeCompare(right.name, 'ar');
         }),
     [state.users],
+  );
+  const storageHealth = useMemo(
+    () => estimateStorageHealth(state),
+    [state],
   );
 
   const toast = (text: string) => {
@@ -334,6 +391,83 @@ export default function SettingsModule({
           </div>
         </div>
       </header>
+
+      {isAdmin && (
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="flex items-center gap-2 text-sm font-black text-slate-900">
+                <Database className="h-5 w-5 text-indigo-700" />
+                مراقبة أحجام بيانات Firebase
+              </h3>
+              <p className="mt-1 text-[10px] font-bold text-slate-500">
+                فحص تقديري للقراءة فقط؛ لا يغير البيانات أو المزامنة أو الصلاحيات.
+              </p>
+            </div>
+            <span className={`inline-flex items-center gap-2 self-start rounded-xl px-3 py-2 text-xs font-black ${storageLevelUi[storageHealth.overallLevel].badge}`}>
+              {storageHealth.overallLevel === 'safe'
+                ? <CheckCircle2 className="h-4 w-4" />
+                : <AlertTriangle className="h-4 w-4" />}
+              الحالة العامة: {storageLevelUi[storageHealth.overallLevel].label}
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[260px_1fr]">
+            <article className={`rounded-2xl border p-4 ${storageHealth.backupLevel === 'safe' ? 'border-emerald-200 bg-emerald-50/60' : storageHealth.backupLevel === 'warning' ? 'border-amber-200 bg-amber-50/60' : 'border-rose-200 bg-rose-50/60'}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2 text-xs font-black text-slate-800">
+                  <HardDrive className="h-4 w-4" />
+                  النسخة الاحتياطية الكاملة
+                </span>
+                <span className={`rounded-lg px-2 py-1 text-[9px] font-black ${storageLevelUi[storageHealth.backupLevel].badge}`}>
+                  {storageLevelUi[storageHealth.backupLevel].label}
+                </span>
+              </div>
+              <strong className="mt-4 block font-mono text-2xl text-slate-950">
+                {formatStorageBytes(storageHealth.backupEstimatedBytes)}
+              </strong>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                <div
+                  className={`h-full rounded-full ${storageLevelUi[storageHealth.backupLevel].bar}`}
+                  style={{ width: `${storageHealth.backupUsagePercent}%` }}
+                />
+              </div>
+              <span className="mt-2 block text-[9px] font-bold text-slate-500">
+                {storageHealth.backupUsagePercent.toFixed(1)}% من الحد الأقصى التقريبي للمستند
+              </span>
+            </article>
+
+            <div className="overflow-hidden rounded-2xl border border-slate-200">
+              <div className="grid grid-cols-[1fr_80px_110px_75px] bg-slate-900 px-3 py-2 text-[9px] font-black text-white">
+                <span>أكبر الشرائح</span>
+                <span className="text-center">السجلات</span>
+                <span className="text-center">الحجم</span>
+                <span className="text-center">الحالة</span>
+              </div>
+              {storageHealth.chunks.slice(0, 8).map((chunk) => (
+                <div key={chunk.documentId} className="grid grid-cols-[1fr_80px_110px_75px] items-center border-t border-slate-100 px-3 py-2 text-[10px]">
+                  <div className="min-w-0">
+                    <strong className="block truncate text-slate-800">
+                      {storageLabels[chunk.key] || String(chunk.key)}
+                    </strong>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className={`h-full rounded-full ${storageLevelUi[chunk.level].bar}`}
+                        style={{ width: `${chunk.usagePercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-center font-mono font-black text-slate-600">{chunk.itemCount.toLocaleString('en-US')}</span>
+                  <span className="text-center font-mono font-black text-slate-700">{formatStorageBytes(chunk.estimatedBytes)}</span>
+                  <span className={`mx-auto rounded-lg px-2 py-1 text-[8px] font-black ${storageLevelUi[chunk.level].badge}`}>
+                    {storageLevelUi[chunk.level].label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 px-4 py-3">
