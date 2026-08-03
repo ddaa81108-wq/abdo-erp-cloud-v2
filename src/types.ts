@@ -233,6 +233,12 @@ export interface BackupPoint {
   date: string;
   description: string;
   dataJson: string; // Serialized complete state
+  storageVersion?: 2;
+  storageEncoding?: 'gzip-base64';
+  partCount?: number;
+  sourceBytes?: number;
+  compressedBytes?: number;
+  checksum?: string;
 }
 
 export interface UserPermissions {

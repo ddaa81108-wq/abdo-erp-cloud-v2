@@ -3,6 +3,7 @@ import {
   CHUNK_ARRAY_KEYS,
   chunkDocumentId,
 } from './erpSyncService';
+import { encodeBackupPayload } from '../domain/backupPayload';
 
 export const FIRESTORE_DOCUMENT_LIMIT_BYTES = 1_048_576;
 export const STORAGE_WARNING_BYTES = 600 * 1024;
@@ -22,6 +23,9 @@ export interface StorageChunkHealth {
 export interface StorageHealthReport {
   chunks: StorageChunkHealth[];
   backupEstimatedBytes: number;
+  backupCompressedBytes: number;
+  backupPartCount: number;
+  backupLargestPartBytes: number;
   backupUsagePercent: number;
   backupLevel: StorageHealthLevel;
   overallLevel: StorageHealthLevel;
@@ -74,16 +78,31 @@ export function estimateStorageHealth(state: ERPState): StorageHealthReport {
 
   // Backups exclude older backup bodies. Add a conservative allowance for
   // the BackupPoint metadata stored beside the serialized state.
-  const backupEstimatedBytes =
-    utf8JsonBytes({ ...state, backupPoints: [] }) + 4 * 1024;
-  const backupLevel = levelForBytes(backupEstimatedBytes);
+  const backupJson = JSON.stringify({ ...state, backupPoints: [] });
+  const encodedBackup = encodeBackupPayload(backupJson);
+  const backupEstimatedBytes = encodedBackup.metadata.sourceBytes;
+  const backupLargestPartBytes = Math.max(
+    0,
+    ...encodedBackup.parts.map((payload, index) => utf8JsonBytes({
+      backupId: 'health-check',
+      partIndex: index,
+      partCount: encodedBackup.metadata.partCount,
+      storageVersion: encodedBackup.metadata.storageVersion,
+      storageEncoding: encodedBackup.metadata.storageEncoding,
+      payload,
+    })),
+  );
+  const backupLevel = levelForBytes(backupLargestPartBytes);
 
   return {
     chunks: chunkHealth,
     backupEstimatedBytes,
+    backupCompressedBytes: encodedBackup.metadata.compressedBytes,
+    backupPartCount: encodedBackup.metadata.partCount,
+    backupLargestPartBytes,
     backupUsagePercent: Math.min(
       100,
-      (backupEstimatedBytes / FIRESTORE_DOCUMENT_LIMIT_BYTES) * 100,
+      (backupLargestPartBytes / FIRESTORE_DOCUMENT_LIMIT_BYTES) * 100,
     ),
     backupLevel,
     overallLevel: worstLevel([

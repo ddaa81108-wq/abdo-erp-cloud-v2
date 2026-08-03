@@ -140,12 +140,12 @@ service cloud.firestore {
     }
 
     match /erp_system/chunk_backup_points {
-      allow read, write: if hasPermission('canViewBackup');
+      allow read, write: if isAdmin();
     }
 
     match /erp_system/{backupDocument} {
       allow read, write: if backupDocument.matches('backup_.*')
-        && hasPermission('canViewBackup');
+        && isAdmin();
     }
 
     // User mirrors are administrative data. Login authority remains in the

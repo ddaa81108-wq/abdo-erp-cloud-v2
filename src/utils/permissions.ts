@@ -46,7 +46,7 @@ const TAB_PERMISSION: Record<string, keyof UserPermissions> = {
 
 export function canAccessTab(user: User | null, tabId: string): boolean {
   if (!user) return false;
-  if (tabId === 'settings') return user.role === 'admin';
+  if (tabId === 'settings' || tabId === 'backup') return user.role === 'admin';
 
   const permission = TAB_PERMISSION[tabId];
   return permission ? user.permissions[permission] === true : false;

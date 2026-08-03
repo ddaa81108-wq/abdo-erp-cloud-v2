@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Landmark, UserCheck, Inbox, FolderArchive, ShoppingBag, ShieldCheck, Search, FileDown, CircleAlert as AlertCircle, FileSpreadsheet, Bell, Info, LogOut, Settings, Shield, X, Menu, Calculator } from "lucide-react";
-import { doc, onSnapshot, deleteDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
 import {
@@ -44,6 +44,7 @@ import {
   synchronizeTrustDeposit,
 } from "./domain/trustAccounts";
 import { calculateTreasurySummary } from "./domain/treasurySummary";
+import { deleteBackupPayload } from "./services/backupStorage";
 
 import GlobalCalculator from "./components/GlobalCalculator";
 
@@ -429,7 +430,7 @@ export default function App() {
           window.setTimeout(() => {
             if (pendingSyncRef.current || inFlightSyncRef.current) return;
             removed.forEach((old) => {
-              deleteDoc(doc(db, "erp_system", `backup_${old.id}`))
+              deleteBackupPayload(db, old)
                 .catch(() => undefined);
             });
           }, 5_000);
@@ -788,7 +789,8 @@ export default function App() {
 
   const handleRestoreState = (newState: ERPState) => updateStateAndSync(newState);
 
-  // 🆕 Modified: backup dataJson stored in separate Firebase doc
+  // The backup body is compressed and split by erpSyncService before its
+  // metadata is committed to the shared backup index.
   const handleSaveBackupPoint = (name: string, description: string) => {
     const newPoint = {
       id: `point_${Date.now()}`,
@@ -800,12 +802,18 @@ export default function App() {
     updateStateAndSync({ ...state, backupPoints: [...state.backupPoints, newPoint] });
   };
 
-  // 🆕 Modified: also deletes the separate backup document
+  // Remove the shared index first. Payload deletion is delayed until the
+  // index update has synchronized; if synchronization is still pending, the
+  // orphaned payload remains as a safe recoverable copy.
   const handleDeleteBackupPoint = (id: string) => {
-    if (db) {
-      deleteDoc(doc(db, "erp_system", `backup_${id}`)).catch(() => {});
-    }
+    const backup = state.backupPoints.find((point) => point.id === id);
     updateStateAndSync({ ...state, backupPoints: state.backupPoints.filter((p) => p.id !== id) });
+    if (db && backup) {
+      window.setTimeout(() => {
+        if (pendingSyncRef.current || inFlightSyncRef.current) return;
+        deleteBackupPayload(db, backup).catch(() => undefined);
+      }, 5_000);
+    }
   };
 
   const postUnpostedPurchaseFromAlert = (purchaseId: string) => {
@@ -1028,7 +1036,7 @@ export default function App() {
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: currentUser?.permissions?.canViewFinancialReports ?? false },
                   { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: currentUser?.permissions?.canViewTrash ?? false },
                   { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
-                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.permissions?.canViewBackup ?? false },
+                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.role === "admin" },
                 ].filter((t) => t.enabled).map((tab) => (
                   <button 
                     key={tab.id} 

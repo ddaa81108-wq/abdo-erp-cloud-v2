@@ -46,7 +46,6 @@ const permissionColumns: Array<{
   { key: 'canViewFinancialReports', label: 'التقارير المالية' },
   { key: 'canViewTrash', label: 'سلة المهملات' },
   { key: 'canUseSmartCards', label: 'استخدام الكروت الذكية' },
-  { key: 'canViewBackup', label: 'النسخ الاحتياطي' },
   { key: 'canImportExcel', label: 'استيراد Excel' },
   { key: 'canExportExcel', label: 'تصدير Excel' },
 ];
@@ -426,6 +425,9 @@ export default function SettingsModule({
               <strong className="mt-4 block font-mono text-2xl text-slate-950">
                 {formatStorageBytes(storageHealth.backupEstimatedBytes)}
               </strong>
+              <span className="mt-1 block text-[9px] font-bold text-slate-500">
+                الحجم الأصلي — بعد الضغط: {formatStorageBytes(storageHealth.backupCompressedBytes)}
+              </span>
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
                 <div
                   className={`h-full rounded-full ${storageLevelUi[storageHealth.backupLevel].bar}`}
@@ -433,7 +435,7 @@ export default function SettingsModule({
                 />
               </div>
               <span className="mt-2 block text-[9px] font-bold text-slate-500">
-                {storageHealth.backupUsagePercent.toFixed(1)}% من الحد الأقصى التقريبي للمستند
+                {storageHealth.backupPartCount} جزء — أكبر جزء {formatStorageBytes(storageHealth.backupLargestPartBytes)} ({storageHealth.backupUsagePercent.toFixed(1)}% من الحد)
               </span>
             </article>
 

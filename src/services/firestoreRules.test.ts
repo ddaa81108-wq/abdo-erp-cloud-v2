@@ -26,7 +26,6 @@ const permissionByChunk: Partial<Record<string, string>> = {
   safeAudits: 'canViewTreasury',
   financialReportRates: 'canViewFinancialReports',
   financialReportSnapshots: 'canViewFinancialReports',
-  backupPoints: 'canViewBackup',
 };
 
 describe('Firestore section security map', () => {
@@ -56,6 +55,17 @@ describe('Firestore section security map', () => {
     expect(rules).toContain('changesOnlyTreasurySyncState()');
   });
 
+  it('keeps backup indexes, manifests, and parts admin-only', () => {
+    expect(rules).toContain('match /erp_system/chunk_backup_points');
+    expect(rules).toContain("backupDocument.matches('backup_.*')");
+    const backupRules = rules.slice(
+      rules.indexOf('match /erp_system/chunk_backup_points'),
+      rules.indexOf('// User mirrors are administrative data'),
+    );
+    expect(backupRules).toContain('allow read, write: if isAdmin();');
+    expect(backupRules).not.toContain("hasPermission('canViewBackup')");
+  });
+
   it('subscribes employees only to the chunks allowed by their permissions', () => {
     const keys = chunkKeysForUser({
       role: 'assistant',
@@ -75,5 +85,13 @@ describe('Firestore section security map', () => {
       role: 'admin',
       permissions: FULL_PERMISSIONS,
     })).toEqual(CHUNK_ARRAY_KEYS);
+  });
+
+  it('never subscribes a limited employee to backup payloads', () => {
+    const keys = chunkKeysForUser({
+      role: 'assistant',
+      permissions: { ...DENIED_PERMISSIONS, canViewBackup: true },
+    });
+    expect(keys).not.toContain('backupPoints');
   });
 });

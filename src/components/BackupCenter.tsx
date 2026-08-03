@@ -23,6 +23,8 @@ import {
   snapshotForBackup,
 } from '../domain/backups';
 import type { BackupPoint, ERPState } from '../types';
+import { db } from '../firebase';
+import { loadBackupPayload } from '../services/backupStorage';
 
 interface BackupCenterProps {
   state: ERPState;
@@ -67,6 +69,7 @@ export default function BackupCenter({
   } | null>(null);
   const [confirmRestorePoint, setConfirmRestorePoint] =
     useState<BackupPoint | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -147,16 +150,20 @@ export default function BackupCenter({
     showStatus('success', 'أُضيفت نقطة الاستعادة إلى المزامنة.');
   };
 
-  const restoreSelectedPoint = () => {
+  const restoreSelectedPoint = async () => {
     if (!confirmRestorePoint) return;
+    setRestoring(true);
     try {
-      const parsed = JSON.parse(confirmRestorePoint.dataJson);
+      const hydrated = await loadBackupPayload(db, confirmRestorePoint);
+      const parsed = JSON.parse(hydrated.dataJson);
       if (!validBackupState(parsed)) throw new Error('invalid backup');
       onRestoreState(parsed);
       setConfirmRestorePoint(null);
       showStatus('success', `تمت استعادة: ${confirmRestorePoint.name}`);
     } catch {
       showStatus('error', 'هذه النسخة ناقصة أو تالفة ولا يمكن استعادتها.');
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -318,6 +325,11 @@ export default function BackupCenter({
                   }`}>
                     {isAutoBackup(point) ? 'تلقائية' : 'يدوية'}
                   </span>
+                  {point.storageVersion === 2 && (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-black text-sky-700">
+                      مضغوطة وآمنة
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 text-[11px] font-bold text-slate-500">
                   {formatDateTime(point.date)}
@@ -369,10 +381,10 @@ export default function BackupCenter({
               يفضّل تصدير نسخة حالية أولاً.
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button onClick={restoreSelectedPoint} className="rounded-xl bg-amber-500 py-3 text-sm font-black text-slate-950 hover:bg-amber-400">
-                تأكيد الاستعادة
+              <button disabled={restoring} onClick={() => void restoreSelectedPoint()} className="rounded-xl bg-amber-500 py-3 text-sm font-black text-slate-950 hover:bg-amber-400 disabled:cursor-wait disabled:opacity-60">
+                {restoring ? 'جاري فحص وتجميع النسخة...' : 'تأكيد الاستعادة'}
               </button>
-              <button onClick={() => setConfirmRestorePoint(null)} className="rounded-xl border border-slate-700 bg-slate-900 py-3 text-sm font-black text-slate-300 hover:bg-slate-800">
+              <button disabled={restoring} onClick={() => setConfirmRestorePoint(null)} className="rounded-xl border border-slate-700 bg-slate-900 py-3 text-sm font-black text-slate-300 hover:bg-slate-800 disabled:opacity-50">
                 إلغاء
               </button>
             </div>

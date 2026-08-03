@@ -2,10 +2,13 @@ import {
   doc,
   getDoc,
   runTransaction,
-  setDoc,
   type Firestore,
 } from 'firebase/firestore';
 import type { BackupPoint, ERPState, User } from '../types';
+import {
+  prepareBackupPointsForStorage,
+  withoutBackupBody,
+} from './backupStorage';
 
 const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'customers',
@@ -60,7 +63,6 @@ const PERMISSION_CHUNKS: Array<{
     permission: 'canViewFinancialReports',
     keys: ['financialReportRates', 'financialReportSnapshots'],
   },
-  { permission: 'canViewBackup', keys: ['backupPoints'] },
 ];
 
 export function chunkKeysForUser(
@@ -338,39 +340,36 @@ export function changedChunkKeys(
   return CHUNK_ARRAY_KEYS.filter((key) => !same(base[key], next[key]));
 }
 
-async function saveChangedBackupDocuments(
-  db: Firestore,
-  baseBackups: BackupPoint[],
-  nextBackups: BackupPoint[],
-) {
-  const beforeById = new Map(baseBackups.map((backup) => [backup.id, backup]));
-  const changed = nextBackups.filter((backup) => {
-    if (!backup.dataJson) return false;
-    const previous = beforeById.get(backup.id);
-    return !previous || previous.dataJson !== backup.dataJson;
-  });
-  await Promise.all(changed.map((backup) =>
-    setDoc(doc(db, 'erp_system', `backup_${backup.id}`), backup),
-  ));
-}
-
 export async function writeMergedErpState(
   db: Firestore,
   base: ERPState,
   next: ERPState,
 ): Promise<ERPState> {
-  const changedChunks = changedChunkKeys(base, next);
-  const changedMainKeys = (Object.keys(next) as Array<keyof ERPState>)
-    .filter((key) => !CHUNK_ARRAY_KEYS.includes(key) && !same(base[key], next[key]));
-  if (changedChunks.length === 0 && changedMainKeys.length === 0) return next;
-
-  if (changedChunks.includes('backupPoints')) {
-    await saveChangedBackupDocuments(
-      db,
-      base.backupPoints || [],
-      next.backupPoints || [],
+  const baseForStorage: ERPState = {
+    ...base,
+    backupPoints: (base.backupPoints || []).map(withoutBackupBody),
+  };
+  const backupPointsChanged = !same(base.backupPoints, next.backupPoints);
+  const nextForStorage: ERPState = backupPointsChanged
+    ? {
+        ...next,
+        backupPoints: await prepareBackupPointsForStorage(
+          db,
+          base.backupPoints || [],
+          next.backupPoints || [],
+        ),
+      }
+    : {
+        ...next,
+        backupPoints: (next.backupPoints || []).map(withoutBackupBody),
+      };
+  const changedChunks = changedChunkKeys(baseForStorage, nextForStorage);
+  const changedMainKeys = (Object.keys(nextForStorage) as Array<keyof ERPState>)
+    .filter((key) =>
+      !CHUNK_ARRAY_KEYS.includes(key)
+      && !same(baseForStorage[key], nextForStorage[key]),
     );
-  }
+  if (changedChunks.length === 0 && changedMainKeys.length === 0) return next;
   const mainRef = doc(db, 'erp_system', 'main_state');
   const chunkRefs = changedChunks.map((key) => ({
     key,
@@ -390,13 +389,17 @@ export async function writeMergedErpState(
       ]),
     ) as Partial<Record<keyof ERPState, any>>;
     const remote = mainSnapshot.exists()
-      ? assembleErpStateFromStorage(mainData, remoteChunks, base)
-      : base;
+      ? assembleErpStateFromStorage(mainData, remoteChunks, baseForStorage)
+      : baseForStorage;
     // Merge concurrent device changes record-by-record. Runtime writes must
     // not freeze the whole application when two devices touch the same
     // record; soft deletion is resolved explicitly by mergeEntityArray and
     // wins over a stale update so a deleted customer cannot be resurrected.
-    const merged = mergeErpStateChanges(base, next, remote);
+    const merged = mergeErpStateChanges(
+      baseForStorage,
+      nextForStorage,
+      remote,
+    );
     const split = splitErpStateForStorage(merged);
     const revision = (mainData._syncRevision || 0) + 1;
 
@@ -448,15 +451,9 @@ export async function loadCompleteErpState(
     chunks,
     options.currentState,
   );
-  const shouldHydrateBackups = !options.currentState || keys.includes('backupPoints');
-  if (shouldHydrateBackups) assembled.backupPoints = await Promise.all((assembled.backupPoints || []).map(async (backup) => {
-    if (backup.dataJson) return backup;
-    try {
-      const snapshot = await getDoc(doc(db, 'erp_system', `backup_${backup.id}`));
-      return snapshot.exists() ? { ...backup, dataJson: snapshot.data().dataJson } : backup;
-    } catch {
-      return backup;
-    }
-  }));
+  // Backup bodies are loaded only when the administrator requests a restore.
+  // Keeping them out of initial synchronization prevents large historical
+  // snapshots from consuming memory and bandwidth on every login.
+  assembled.backupPoints = (assembled.backupPoints || []).map(withoutBackupBody);
   return assembled;
 }
