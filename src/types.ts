@@ -75,6 +75,10 @@ export interface CompanyTransaction {
   /** Classifies the row without creating a second ledger. */
   entryKind?: 'opening_balance' | 'debt' | 'payment';
   paymentMode?: 'partial' | 'full';
+  /** Optional calculation details. Legacy rows are treated as direct values. */
+  calculationMode?: 'direct' | 'multiply' | 'divide';
+  inputValue?: number;
+  calculationFactor?: number;
   updatedAt?: string;
 }
 

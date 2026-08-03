@@ -5,7 +5,6 @@ import {
   Copy,
   CircleDollarSign,
   FileText,
-  HandCoins,
   Pencil,
   Plus,
   Search,
@@ -16,11 +15,14 @@ import {
 } from 'lucide-react';
 import type { Company, CompanyTransaction, ERPState } from '../types';
 import {
+  businessCalculationDetails,
   businessLastActivityAt,
   calculateBusinessSummary,
+  calculateBusinessTransactionAmount,
   synchronizeBusinessBalances,
   transactionKind,
   upsertBusinessPaymentInTreasury,
+  type BusinessCalculationMode,
 } from '../domain/businessAccounts';
 import { VoiceInputButton } from './VoiceInputButton';
 import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
@@ -75,6 +77,7 @@ export default function CompaniesModule({
   onScheduleDeletion,
 }: CompaniesModuleProps) {
   const stateRef = useRef(state);
+  const draftValueRef = useRef<HTMLInputElement>(null);
   useEffect(() => { stateRef.current = state; }, [state]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -82,11 +85,15 @@ export default function CompaniesModule({
   const [contact, setContact] = useState('');
   const [accountType, setAccountType] = useState<'company' | 'merchant'>('company');
   const [openingBalance, setOpeningBalance] = useState('');
-  const [entryAction, setEntryAction] = useState<EntryAction | null>(null);
-  const [entryAmount, setEntryAmount] = useState('');
-  const [entryNote, setEntryNote] = useState('');
+  const [draftKind, setDraftKind] = useState<EntryAction>('debt');
+  const [draftInputValue, setDraftInputValue] = useState('');
+  const [draftMode, setDraftMode] = useState<BusinessCalculationMode>('direct');
+  const [draftFactor, setDraftFactor] = useState('');
+  const [draftNote, setDraftNote] = useState('');
   const [editing, setEditing] = useState<CompanyTransaction | null>(null);
-  const [editAmount, setEditAmount] = useState('');
+  const [editInputValue, setEditInputValue] = useState('');
+  const [editMode, setEditMode] = useState<BusinessCalculationMode>('direct');
+  const [editFactor, setEditFactor] = useState('');
   const [editNote, setEditNote] = useState('');
   const [editDate, setEditDate] = useState('');
   const [deleteTransaction, setDeleteTransaction] = useState<CompanyTransaction | null>(null);
@@ -134,6 +141,23 @@ export default function CompaniesModule({
   const selectedSummary = selected
     ? calculateBusinessSummary(transactions, selected.id)
     : null;
+  const draftAmount = useMemo(() => {
+    if (!selectedSummary) return null;
+    if (draftKind === 'full') {
+      return selectedSummary.finalBalance > 0
+        ? selectedSummary.finalBalance
+        : null;
+    }
+    try {
+      return calculateBusinessTransactionAmount(
+        Number(draftInputValue),
+        draftMode,
+        draftMode === 'direct' ? undefined : Number(draftFactor),
+      );
+    } catch {
+      return null;
+    }
+  }, [draftFactor, draftInputValue, draftKind, draftMode, selectedSummary]);
   const similarParties = useMemo(
     () => findSimilarParties(state, name),
     [state, name],
@@ -270,28 +294,40 @@ export default function CompaniesModule({
     showToast('تم استرجاع الحساب وربطه بسجله السابق.');
   };
 
-  const addEntry = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected || !entryAction || !selectedSummary) return;
-    const isFull = entryAction === 'full';
-    const value = isFull ? selectedSummary.finalBalance : Number(entryAmount);
-    if (!Number.isFinite(value) || value <= 0) return;
+  const addLedgerRow = () => {
+    if (!selected || !selectedSummary || draftAmount === null) {
+      showToast('أكمل بيانات الحركة وتأكد من القيمة والمعامل.');
+      return;
+    }
+    const isFull = draftKind === 'full';
+    const value = draftAmount;
     const now = new Date().toISOString();
-    const isPayment = entryAction !== 'debt';
+    const isPayment = draftKind !== 'debt';
+    const inputValue = isFull
+      ? selectedSummary.finalBalance
+      : Number(draftInputValue);
+    const calculationMode: BusinessCalculationMode = isFull
+      ? 'direct'
+      : draftMode;
     const nextTransaction: CompanyTransaction = {
-      id: `tx_business_${Date.now()}`,
+      id: `tx_business_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`}`,
       companyId: selected.id,
       type: isPayment ? 'payment' : 'purchase_invoice',
       entryKind: isPayment ? 'payment' : 'debt',
       paymentMode: isFull ? 'full' : isPayment ? 'partial' : undefined,
       amount: value,
+      inputValue,
+      calculationMode,
+      calculationFactor: calculationMode === 'direct'
+        ? undefined
+        : Number(draftFactor),
       currency: 'د.ل',
       date: now,
       referenceNo: nextReference(),
-      note: entryNote.trim() || (
-        entryAction === 'debt'
+      note: draftNote.trim() || (
+        draftKind === 'debt'
           ? 'إضافة دين'
-          : entryAction === 'full'
+          : draftKind === 'full'
             ? 'تسديد كلي'
             : 'دفع جزئي'
       ),
@@ -311,15 +347,45 @@ export default function CompaniesModule({
         account.id === selected.id ? { ...account, updatedAt: now } : account),
       nextTreasuryTransactions,
     );
-    setEntryAction(null);
-    setEntryAmount('');
-    setEntryNote('');
+    setDraftInputValue('');
+    setDraftNote('');
+    if (isFull) {
+      setDraftKind('debt');
+      setDraftMode('direct');
+      setDraftFactor('');
+    }
+    window.setTimeout(() => draftValueRef.current?.focus(), 0);
     showToast(isFull ? 'تم تسجيل التسديد الكلي.' : 'تم تسجيل الحركة وإعادة حساب الدين.');
   };
 
+  const handleDraftKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addLedgerRow();
+      return;
+    }
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const row = event.currentTarget.closest('tr');
+    const controls = Array.from(
+      row?.querySelectorAll<HTMLElement>('[data-ledger-draft-control]') || [],
+    ).filter((control) => !('disabled' in control) || !(control as HTMLInputElement).disabled);
+    const currentIndex = controls.indexOf(event.currentTarget);
+    if (currentIndex < 0) return;
+    const moveForward = event.key === 'ArrowLeft' || event.key === 'ArrowDown';
+    const nextIndex = Math.min(
+      controls.length - 1,
+      Math.max(0, currentIndex + (moveForward ? 1 : -1)),
+    );
+    controls[nextIndex]?.focus();
+  };
+
   const beginEdit = (transaction: CompanyTransaction) => {
+    const calculation = businessCalculationDetails(transaction);
     setEditing(transaction);
-    setEditAmount(String(transaction.amount));
+    setEditInputValue(String(calculation.inputValue));
+    setEditMode(calculation.mode);
+    setEditFactor(calculation.factor ? String(calculation.factor) : '');
     setEditNote(transaction.note || '');
     const parsed = new Date(transaction.date);
     setEditDate(new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000)
@@ -329,14 +395,29 @@ export default function CompaniesModule({
   const saveEdit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!editing) return;
-    const value = Number(editAmount);
-    if (!Number.isFinite(value) || value <= 0 || !editDate) return;
+    let value: number;
+    try {
+      value = calculateBusinessTransactionAmount(
+        Number(editInputValue),
+        editMode,
+        editMode === 'direct' ? undefined : Number(editFactor),
+      );
+    } catch {
+      showToast('قيمة التعديل أو معامل الحساب غير صحيح.');
+      return;
+    }
+    if (!editDate) return;
     const now = new Date().toISOString();
     const nextTransactions = transactions.map((transaction) =>
       transaction.id === editing.id
         ? {
             ...transaction,
             amount: value,
+            inputValue: Number(editInputValue),
+            calculationMode: editMode,
+            calculationFactor: editMode === 'direct'
+              ? undefined
+              : Number(editFactor),
             note: editNote.trim(),
             date: new Date(editDate).toISOString(),
             updatedAt: now,
@@ -443,21 +524,32 @@ export default function CompaniesModule({
   const exportLedger = () => {
     if (!selected || !selectedSummary) return;
     let running = 0;
-    let totalDebt = 0;
+    let openingDebt = 0;
+    let totalDebtAdded = 0;
     let totalPaid = 0;
     const rows = selectedTransactions.map((transaction, index) => {
       const kind = transactionKind(transaction);
+      const calculation = businessCalculationDetails(transaction);
       if (kind === 'payment') {
         running -= transaction.amount;
         totalPaid += transaction.amount;
       } else {
         running += transaction.amount;
-        totalDebt += transaction.amount;
+        if (kind === 'opening_balance') openingDebt += transaction.amount;
+        else totalDebtAdded += transaction.amount;
       }
       return [
         index + 1,
         localDateTime(transaction.date),
+        kind === 'payment'
+          ? transaction.paymentMode === 'full' ? 'تسديد كلي' : 'دفع جزئي'
+          : kind === 'opening_balance' ? 'رصيد افتتاحي' : 'إضافة دين',
         transaction.note,
+        money(calculation.inputValue),
+        calculation.mode === 'multiply'
+          ? 'ضرب ×'
+          : calculation.mode === 'divide' ? 'قسمة ÷' : 'مباشر',
+        calculation.factor || '—',
         kind === 'payment' ? '-' : money(transaction.amount),
         kind === 'payment' ? money(transaction.amount) : '-',
         money(running),
@@ -465,11 +557,24 @@ export default function CompaniesModule({
     });
     setLedgerPrint({
       title: `السجل العام: ${selected.name}`,
-      headers: ['التسلسل', 'التاريخ', 'البيان', 'دين مضاف', 'مدفوع', 'الإجمالي'],
+      headers: [
+        'التسلسل',
+        'التاريخ',
+        'نوع الحركة',
+        'البيان',
+        'القيمة',
+        'العملية',
+        'المعامل',
+        'دين مضاف',
+        'مدفوع',
+        'الرصيد',
+      ],
       rows,
       totals: [
-        { label: 'إجمالي الدين المضاف', value: money(totalDebt) },
+        { label: 'الرصيد الافتتاحي', value: money(openingDebt) },
+        { label: 'إجمالي الديون المضافة', value: money(totalDebtAdded) },
         { label: 'إجمالي المدفوع', value: money(totalPaid) },
+        { label: 'عدد المعاملات', value: selectedTransactions.length },
         { label: 'الرصيد النهائي', value: money(selectedSummary.finalBalance) },
       ],
     });
@@ -497,6 +602,9 @@ export default function CompaniesModule({
   };
 
   const totalActiveDebt = activeAccounts.reduce((total, account) => total + account.balance, 0);
+  const draftBalanceAfter = selectedSummary && draftAmount !== null
+    ? selectedSummary.finalBalance + (draftKind === 'debt' ? draftAmount : -draftAmount)
+    : selectedSummary?.finalBalance || 0;
 
   return (
     <div dir="rtl" className="space-y-5 text-right">
@@ -507,11 +615,18 @@ export default function CompaniesModule({
       )}
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="min-h-24 rounded-2xl bg-gradient-to-l from-indigo-800 to-indigo-950 p-4 text-white shadow-lg">
+        <div className={`min-h-24 rounded-2xl bg-gradient-to-l p-4 text-white shadow-lg ${
+          totalActiveDebt < 0
+            ? 'from-amber-600 to-orange-950'
+            : 'from-indigo-800 to-indigo-950'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <span className="block text-[10px] font-bold text-indigo-200">إجمالي مستحقات الشركات والتجار</span>
+              <span className="block text-[10px] font-bold text-white/75">صافي حسابات الشركات والتجار</span>
               <strong className="mt-2 block text-2xl text-white">{money(totalActiveDebt)}</strong>
+              {totalActiveDebt < 0 && (
+                <small className="mt-1 block text-[9px] font-black text-amber-100">الرصيد الصافي لصالح الشركات والتجار</small>
+              )}
             </div>
             <WalletCards className="h-8 w-8 text-indigo-300" />
           </div>
@@ -555,10 +670,19 @@ export default function CompaniesModule({
       {activeAccounts.length ? (
         <div className="max-h-[58vh] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9">
-          {activeAccounts.map((account) => (
+          {activeAccounts.map((account) => {
+            const isCredit = account.balance < 0;
+            const isSettled = account.balance === 0;
+            return (
             <article
               key={account.id}
-              className="group relative min-h-24 rounded-xl border border-indigo-500 bg-gradient-to-br from-indigo-700 to-indigo-950 text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+              className={`group relative min-h-24 rounded-xl border bg-gradient-to-br text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${
+                isCredit
+                  ? 'border-amber-400 from-amber-600 to-orange-950'
+                  : isSettled
+                    ? 'border-slate-500 from-slate-600 to-slate-900'
+                    : 'border-indigo-500 from-indigo-700 to-indigo-950'
+              }`}
             >
               <div className="absolute left-1.5 top-1.5 z-10 flex gap-1">
                 <button
@@ -591,11 +715,16 @@ export default function CompaniesModule({
                     {account.accountType === 'merchant' ? 'تاجر' : 'شركة'}
                   </span>
                 </div>
-                <span className="block text-[10px] text-white/65">الدين الفعلي</span>
+                <span className="block text-[10px] text-white/75">
+                  {isCredit
+                    ? `رصيد لصالح ${account.accountType === 'merchant' ? 'التاجر' : 'الشركة'}`
+                    : isSettled ? 'الحساب مصفّى' : 'الدين الفعلي'}
+                </span>
                 <span className="text-sm font-black">{money(account.balance)}</span>
               </button>
             </article>
-          ))}
+            );
+          })}
         </div>
         </div>
       ) : (
@@ -608,7 +737,7 @@ export default function CompaniesModule({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 backdrop-blur-sm sm:p-5">
           <div className="flex max-h-[96vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl bg-[#f8fafc] shadow-2xl">
             <header className="border-b border-slate-200 bg-white p-3">
-              <div className="grid grid-cols-2 items-stretch gap-2 sm:grid-cols-3 xl:grid-cols-[minmax(190px,1.35fr)_repeat(5,minmax(120px,1fr))]">
+              <div className="grid grid-cols-1 items-stretch gap-2 sm:grid-cols-3 xl:grid-cols-[minmax(240px,1.5fr)_repeat(2,minmax(150px,1fr))]">
                 <div className="flex min-h-10 items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                   <div className="flex items-center gap-2">
                     {selected.accountType === 'merchant'
@@ -620,25 +749,6 @@ export default function CompaniesModule({
                     </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setEntryAction('debt')}
-                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-3 py-2 text-xs font-black text-white hover:bg-rose-700"
-                >
-                  <Plus className="h-4 w-4" /> إضافة دين
-                </button>
-                <button
-                  onClick={() => setEntryAction('partial')}
-                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700"
-                >
-                  <HandCoins className="h-4 w-4" /> دفع جزئي
-                </button>
-                <button
-                  onClick={() => setEntryAction('full')}
-                  disabled={selectedSummary.finalBalance <= 0}
-                  className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-slate-900 px-3 py-2 text-xs font-black text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Check className="h-4 w-4" /> تسديد كلي
-                </button>
                 <button
                   onClick={exportLedger}
                   className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-100"
@@ -666,15 +776,19 @@ export default function CompaniesModule({
                   </span>
                 </div>
                 <div ref={ledgerScrollRef} className="max-h-[48vh] overflow-auto">
-                  <table className="erp-ledger-table w-full min-w-[760px] border-collapse text-[11px]">
+                  <table className="erp-ledger-table w-full min-w-[1180px] border-collapse text-[10px]">
                     <thead className="sticky top-0 z-10 bg-slate-100 text-slate-600">
                       <tr>
                         <th className="p-2 text-right">التسلسل</th>
                         <th className="p-2 text-right">التاريخ</th>
+                        <th className="p-2 text-right">نوع الحركة</th>
                         <th className="p-2 text-right">البيان</th>
+                        <th className="p-2 text-right">القيمة</th>
+                        <th className="p-2 text-right">العملية</th>
+                        <th className="p-2 text-right">المعامل</th>
                         <th className="p-2 text-right">دين مضاف</th>
                         <th className="p-2 text-right">مدفوع</th>
-                        <th className="p-2 text-right">الإجمالي الكلي</th>
+                        <th className="p-2 text-right">الرصيد</th>
                         <th className="p-2 text-center">تعديل</th>
                         <th className="p-2 text-center">مسح</th>
                       </tr>
@@ -684,6 +798,7 @@ export default function CompaniesModule({
                         let running = 0;
                         return selectedTransactions.map((transaction, index) => {
                           const kind = transactionKind(transaction);
+                          const calculation = businessCalculationDetails(transaction);
                           running += kind === 'payment'
                             ? -transaction.amount
                             : transaction.amount;
@@ -700,20 +815,21 @@ export default function CompaniesModule({
                             >
                               <td className="p-2 font-bold text-slate-400">{index + 1}</td>
                               <td className="whitespace-nowrap p-2 text-slate-600">{localDateTime(transaction.date)}</td>
+                              <td className="whitespace-nowrap p-2 font-black">
+                                {kind === 'payment'
+                                  ? transaction.paymentMode === 'full' ? 'تسديد كلي' : 'دفع جزئي'
+                                  : kind === 'opening_balance' ? 'رصيد افتتاحي' : 'إضافة دين'}
+                              </td>
                               <td className="max-w-60 p-2">
-                                <span className={`mb-0.5 inline-block rounded-full px-2 py-0.5 text-[8px] font-bold ${
-                                  kind === 'payment'
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : kind === 'opening_balance'
-                                      ? 'bg-indigo-100 text-indigo-700'
-                                      : 'bg-rose-100 text-rose-700'
-                                }`}>
-                                  {kind === 'payment'
-                                    ? transaction.paymentMode === 'full' ? 'تسديد كلي' : 'دفع جزئي'
-                                    : kind === 'opening_balance' ? 'دين قديم' : 'إضافة دين'}
-                                </span>
                                 <span className="block truncate font-semibold text-slate-700">{transaction.note}</span>
                               </td>
+                              <td className="p-2 font-black">{money(calculation.inputValue)}</td>
+                              <td className="whitespace-nowrap p-2 font-black">
+                                {calculation.mode === 'multiply'
+                                  ? 'ضرب ×'
+                                  : calculation.mode === 'divide' ? 'قسمة ÷' : 'مباشر'}
+                              </td>
+                              <td className="p-2 font-black">{calculation.factor || '—'}</td>
                               <td className="p-2 font-black text-rose-600">
                                 {kind === 'payment' ? '—' : money(transaction.amount)}
                               </td>
@@ -743,23 +859,141 @@ export default function CompaniesModule({
                           );
                         });
                       })()}
-                      {!selectedTransactions.length && (
-                        <tr>
-                          <td colSpan={8} className="p-12 text-center text-slate-400">
-                            لا توجد معاملات في السجل حتى الآن.
-                          </td>
-                        </tr>
-                      )}
+                      <tr className="sticky bottom-0 z-[5] bg-amber-50 text-slate-900 shadow-[0_-4px_12px_rgba(15,23,42,0.15)]">
+                        <td className="border border-amber-300 p-1 text-center font-black text-amber-800">
+                          جديد
+                        </td>
+                        <td className="whitespace-nowrap border border-amber-300 p-1 text-center font-bold">
+                          الآن
+                        </td>
+                        <td className="border border-amber-300 p-1">
+                          <select
+                            data-ledger-draft-control
+                            value={draftKind}
+                            onKeyDown={handleDraftKeyDown}
+                            onChange={(event) => {
+                              const kind = event.target.value as EntryAction;
+                              setDraftKind(kind);
+                              if (kind === 'full') setDraftMode('direct');
+                            }}
+                            className="w-full rounded-md border border-amber-300 px-1 py-1.5 text-[10px] font-black outline-none"
+                          >
+                            <option value="debt">إضافة دين</option>
+                            <option value="partial">دفع جزئي</option>
+                            <option value="full" disabled={selectedSummary.finalBalance <= 0}>تسديد كلي</option>
+                          </select>
+                        </td>
+                        <td className="border border-amber-300 p-1">
+                          <input
+                            data-ledger-draft-control
+                            value={draftNote}
+                            onKeyDown={handleDraftKeyDown}
+                            onChange={(event) => setDraftNote(event.target.value)}
+                            placeholder="البيان"
+                            className="w-full rounded-md border border-amber-300 px-2 py-1.5 text-[10px] font-bold outline-none"
+                          />
+                        </td>
+                        <td className="border border-amber-300 p-1">
+                          <input
+                            ref={draftValueRef}
+                            data-ledger-draft-control
+                            type="number"
+                            min="0.01"
+                            step="any"
+                            disabled={draftKind === 'full'}
+                            value={draftKind === 'full' ? selectedSummary.finalBalance : draftInputValue}
+                            onWheel={(event) => event.currentTarget.blur()}
+                            onKeyDown={handleDraftKeyDown}
+                            onChange={(event) => setDraftInputValue(event.target.value)}
+                            placeholder="القيمة"
+                            className="w-full rounded-md border border-amber-300 px-2 py-1.5 font-mono text-[10px] font-black outline-none disabled:opacity-70"
+                          />
+                        </td>
+                        <td className="border border-amber-300 p-1">
+                          <select
+                            data-ledger-draft-control
+                            disabled={draftKind === 'full'}
+                            value={draftKind === 'full' ? 'direct' : draftMode}
+                            onKeyDown={handleDraftKeyDown}
+                            onChange={(event) => setDraftMode(event.target.value as BusinessCalculationMode)}
+                            className="w-full rounded-md border border-amber-300 px-1 py-1.5 text-[10px] font-black outline-none disabled:opacity-70"
+                          >
+                            <option value="direct">مباشر</option>
+                            <option value="multiply">ضرب ×</option>
+                            <option value="divide">قسمة ÷</option>
+                          </select>
+                        </td>
+                        <td className="border border-amber-300 p-1">
+                          <input
+                            data-ledger-draft-control
+                            type="number"
+                            min="0.000001"
+                            step="any"
+                            disabled={draftKind === 'full' || draftMode === 'direct'}
+                            value={draftKind === 'full' || draftMode === 'direct' ? '' : draftFactor}
+                            onWheel={(event) => event.currentTarget.blur()}
+                            onKeyDown={handleDraftKeyDown}
+                            onChange={(event) => setDraftFactor(event.target.value)}
+                            placeholder="المعامل"
+                            className="w-full rounded-md border border-amber-300 px-2 py-1.5 font-mono text-[10px] font-black outline-none disabled:opacity-50"
+                          />
+                        </td>
+                        <td className="border border-amber-300 p-1 font-black text-rose-700">
+                          {draftKind === 'debt' && draftAmount !== null ? money(draftAmount) : '—'}
+                        </td>
+                        <td className="border border-amber-300 p-1 font-black text-emerald-700">
+                          {draftKind !== 'debt' && draftAmount !== null ? money(draftAmount) : '—'}
+                        </td>
+                        <td className="border border-amber-300 p-1 font-black text-slate-950">
+                          {money(draftBalanceAfter)}
+                        </td>
+                        <td className="border border-amber-300 p-1 text-center">
+                          <button
+                            type="button"
+                            onClick={addLedgerRow}
+                            className="rounded-lg bg-emerald-600 p-1.5 text-white hover:bg-emerald-700"
+                            title="حفظ الحركة وفتح صف جديد"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                        <td className="border border-amber-300 p-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDraftInputValue('');
+                              setDraftFactor('');
+                              setDraftNote('');
+                              setDraftMode('direct');
+                              setDraftKind('debt');
+                            }}
+                            className="rounded-lg bg-slate-200 p-1.5 text-slate-600 hover:bg-slate-300"
+                            title="مسح الصف غير المحفوظ"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
               </section>
 
-              <section className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-                <SummaryCard label="الرصيد قبل معاملات اليوم" value={selectedSummary.balanceBeforeToday} color="indigo" />
-                <SummaryCard label="ديون مضافة اليوم" value={selectedSummary.debtAddedToday} color="rose" />
-                <SummaryCard label="مدفوعات اليوم" value={selectedSummary.paymentsToday} color="emerald" />
-                <SummaryCard label="الرصيد الحالي" value={selectedSummary.finalBalance} color="slate" strong />
+              <section className="mt-4 flex justify-end">
+                <div className={`w-full max-w-sm rounded-2xl border p-4 text-white shadow-lg ${
+                  selectedSummary.finalBalance < 0
+                    ? 'border-amber-400 bg-gradient-to-l from-amber-600 to-orange-950'
+                    : selectedSummary.finalBalance === 0
+                      ? 'border-slate-500 bg-gradient-to-l from-slate-600 to-slate-900'
+                      : 'border-indigo-500 bg-gradient-to-l from-indigo-700 to-indigo-950'
+                }`}>
+                  <span className="mb-1 block text-[10px] font-bold text-white/75">
+                    {selectedSummary.finalBalance < 0
+                      ? `رصيد نهائي لصالح ${selected.accountType === 'merchant' ? 'التاجر' : 'الشركة'}`
+                      : selectedSummary.finalBalance === 0 ? 'الحساب مصفّى' : 'الرصيد النهائي المستحق لنا'}
+                  </span>
+                  <strong className="text-2xl">{money(selectedSummary.finalBalance)}</strong>
+                </div>
               </section>
 
             </main>
@@ -845,39 +1079,27 @@ export default function CompaniesModule({
         />
       )}
 
-      {entryAction && selectedSummary && (
-        <Modal
-          title={entryAction === 'debt' ? 'إضافة دين' : entryAction === 'full' ? 'تسديد كلي' : 'دفع جزئي'}
-          onClose={() => setEntryAction(null)}
-        >
-          <form onSubmit={addEntry} className="space-y-4">
-            {entryAction === 'full' ? (
-              <div className="rounded-2xl bg-slate-900 p-5 text-center text-white">
-                <span className="block text-xs text-slate-300">قيمة التسديد الكامل</span>
-                <strong className="text-3xl">{money(selectedSummary.finalBalance)}</strong>
-              </div>
-            ) : (
-              <Field label="المبلغ">
-                <input type="number" min="0.01" step="any" value={entryAmount} onChange={(e) => setEntryAmount(e.target.value)} required autoFocus className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" />
-              </Field>
-            )}
-            <Field label="البيان">
-              <textarea value={entryNote} onChange={(e) => setEntryNote(e.target.value)} rows={3} className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" />
-            </Field>
-            <PrimaryButton>{entryAction === 'full' ? 'تأكيد التسديد الكلي' : 'حفظ الحركة'}</PrimaryButton>
-          </form>
-        </Modal>
-      )}
-
       {editing && (
         <Modal title="تعديل الحركة" onClose={() => setEditing(null)}>
           <form onSubmit={saveEdit} className="space-y-4">
             <div className="rounded-xl bg-amber-50 p-3 text-xs font-bold text-amber-800">
               تعديل هذه الحركة سيعيد حساب جميع الأرصدة والناتج النهائي تلقائيًا.
             </div>
-            <Field label="المبلغ">
-              <input type="number" min="0.01" step="any" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} required className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" />
-            </Field>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <Field label="القيمة">
+                <input type="number" min="0.01" step="any" value={editInputValue} onWheel={(event) => event.currentTarget.blur()} onChange={(e) => setEditInputValue(e.target.value)} required className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" />
+              </Field>
+              <Field label="العملية">
+                <select value={editMode} onChange={(e) => setEditMode(e.target.value as BusinessCalculationMode)} className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500">
+                  <option value="direct">مباشر</option>
+                  <option value="multiply">ضرب ×</option>
+                  <option value="divide">قسمة ÷</option>
+                </select>
+              </Field>
+              <Field label="المعامل">
+                <input type="number" min="0.000001" step="any" disabled={editMode === 'direct'} value={editMode === 'direct' ? '' : editFactor} onWheel={(event) => event.currentTarget.blur()} onChange={(e) => setEditFactor(e.target.value)} className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500 disabled:opacity-50" />
+              </Field>
+            </div>
             <Field label="التاريخ والوقت">
               <input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} required className="w-full rounded-xl border border-slate-200 p-3 outline-none focus:border-indigo-500" />
             </Field>
@@ -901,31 +1123,6 @@ export default function CompaniesModule({
           </div>
         </Modal>
       )}
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  color,
-  strong = false,
-}: {
-  label: string;
-  value: number;
-  color: 'indigo' | 'rose' | 'emerald' | 'slate';
-  strong?: boolean;
-}) {
-  const colors = {
-    indigo: 'border-indigo-200 bg-indigo-50 text-indigo-800',
-    rose: 'border-rose-200 bg-rose-50 text-rose-800',
-    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-800',
-    slate: 'border-slate-800 bg-slate-900 text-white',
-  };
-  return (
-    <div className={`rounded-2xl border p-4 ${colors[color]} ${strong ? 'shadow-lg' : ''}`}>
-      <span className="mb-2 block text-[10px] font-bold opacity-70">{label}</span>
-      <strong className="text-lg sm:text-2xl">{money(value)}</strong>
     </div>
   );
 }

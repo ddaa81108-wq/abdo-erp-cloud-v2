@@ -7,9 +7,50 @@ import type {
 } from '../types';
 
 export type BusinessAccountType = 'company' | 'merchant';
+export type BusinessCalculationMode = NonNullable<
+  CompanyTransaction['calculationMode']
+>;
 
 const finiteAmount = (value: number | undefined) =>
   Number.isFinite(value) ? Number(value) : 0;
+
+export function calculateBusinessTransactionAmount(
+  inputValue: number,
+  mode: BusinessCalculationMode = 'direct',
+  factor?: number,
+) {
+  if (!Number.isFinite(inputValue) || inputValue <= 0) {
+    throw new Error('INVALID_BUSINESS_INPUT_VALUE');
+  }
+  if (mode !== 'direct' && (!Number.isFinite(factor) || Number(factor) <= 0)) {
+    throw new Error('INVALID_BUSINESS_CALCULATION_FACTOR');
+  }
+  const result = mode === 'direct'
+    ? inputValue
+    : mode === 'multiply'
+      ? inputValue * Number(factor)
+      : inputValue / Number(factor);
+  const normalized = Math.floor(result);
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    throw new Error('INVALID_BUSINESS_CALCULATION_RESULT');
+  }
+  return normalized;
+}
+
+export function businessCalculationDetails(
+  transaction: CompanyTransaction,
+) {
+  const mode = transaction.calculationMode || 'direct';
+  return {
+    mode,
+    inputValue: Number.isFinite(transaction.inputValue)
+      ? Number(transaction.inputValue)
+      : finiteAmount(transaction.amount),
+    factor: mode === 'direct'
+      ? undefined
+      : finiteAmount(transaction.calculationFactor),
+  };
+}
 
 export function inferLegacyAccountType(name: string): BusinessAccountType {
   return /(?:شركة|شركه|شركات|company)/i.test(name) ? 'company' : 'merchant';

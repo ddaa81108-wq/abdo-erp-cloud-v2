@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { CompanyTransaction } from '../types';
 import {
   businessLastActivityAt,
+  businessCalculationDetails,
   calculateBusinessBalance,
   calculateBusinessSummary,
+  calculateBusinessTransactionAmount,
   migrateLegacyBusinessAccounts,
   upsertBusinessPaymentInTreasury,
 } from './businessAccounts';
@@ -28,6 +30,29 @@ const transaction = (
 });
 
 describe('unified business ledger', () => {
+  it('calculates direct, multiplication, and division rows using whole results', () => {
+    expect(calculateBusinessTransactionAmount(10_403)).toBe(10_403);
+    expect(calculateBusinessTransactionAmount(1_001, 'multiply', 5.2)).toBe(5_205);
+    expect(calculateBusinessTransactionAmount(10_403, 'divide', 2)).toBe(5_201);
+  });
+
+  it('rejects incomplete or unsafe ledger calculations', () => {
+    expect(() => calculateBusinessTransactionAmount(0)).toThrow();
+    expect(() => calculateBusinessTransactionAmount(0.5)).toThrow();
+    expect(() => calculateBusinessTransactionAmount(100, 'divide', 0)).toThrow();
+    expect(() => calculateBusinessTransactionAmount(100, 'multiply', Number.NaN)).toThrow();
+  });
+
+  it('keeps legacy rows backward-compatible as direct values', () => {
+    expect(businessCalculationDetails(
+      transaction('legacy', 'purchase_invoice', 750),
+    )).toEqual({
+      mode: 'direct',
+      inputValue: 750,
+      factor: undefined,
+    });
+  });
+
   it('uses the ledger as the single source of the final balance', () => {
     const rows = [
       transaction('open', 'purchase_invoice', 1000, {
