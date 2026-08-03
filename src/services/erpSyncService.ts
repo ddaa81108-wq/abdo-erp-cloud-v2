@@ -132,6 +132,7 @@ function mergeEntityArray<T extends { id?: string }>(
     if (same(baseById.get(id), nextById.get(id))) continue;
     const nextItem = nextById.get(id);
     const remoteItem = remoteById.get(id);
+    const baseIsDeleted = Boolean((baseById.get(id) as any)?.isDeleted);
     const nextIsDeleted = Boolean((nextItem as any)?.isDeleted);
     const remoteIsDeleted = Boolean((remoteItem as any)?.isDeleted);
 
@@ -154,6 +155,20 @@ function mergeEntityArray<T extends { id?: string }>(
       } else {
         mergedById.delete(id);
       }
+      continue;
+    }
+    if (remoteIsDeleted && baseIsDeleted && nextItem) {
+      // The user started from an already archived record and explicitly
+      // restored it. Keep any newer remote fields, apply the restoration,
+      // and remove the old deletion marker. This is different from a stale
+      // edit whose base was still active.
+      const restoredItem = {
+        ...remoteItem,
+        ...nextItem,
+        isDeleted: false,
+      } as T & { deletedAt?: unknown };
+      delete restoredItem.deletedAt;
+      mergedById.set(id, restoredItem);
       continue;
     }
     if (remoteIsDeleted) {

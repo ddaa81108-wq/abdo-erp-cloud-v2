@@ -129,6 +129,68 @@ describe('ERP concurrent merge', () => {
     expect(merged.customers[0].phone).toBe('091');
   });
 
+  it('keeps an explicitly restored archived customer active after synchronization', () => {
+    const base = state();
+    base.customers = [{
+      id: 'archived',
+      name: 'Archived customer',
+      createdAt: '2026-01-01',
+      updatedAt: '2026-08-01T09:00:00.000Z',
+      isDeleted: true,
+      deletedAt: '2026-08-01T09:00:00.000Z',
+    } as any];
+    const local = structuredClone(base);
+    const remote = structuredClone(base);
+    local.customers[0] = {
+      ...local.customers[0],
+      isDeleted: false,
+      updatedAt: '2026-08-03T10:00:00.000Z',
+    };
+    local.cycles = [{
+      id: 'restored-cycle',
+      customerId: 'archived',
+      startDate: '2026-08-03T10:00:00.000Z',
+      status: 'active',
+      initialBalance: 0,
+      currentBalance: 500,
+    }];
+    local.debtTransactions = [{
+      id: 'restored-debt',
+      customerId: 'archived',
+      cycleId: 'restored-cycle',
+      type: 'debt',
+      amount: 500,
+      currency: 'د.ل',
+      conversionRate: 1,
+      date: '2026-08-03T10:00:00.000Z',
+      referenceNo: 'DEBT-RESTORE',
+      note: 'Restored opening debt',
+      postedToTreasury: false,
+      createdAt: '2026-08-03T10:00:00.000Z',
+    }];
+
+    const merged = mergeErpStateChanges(base, local, remote, {
+      detectConflicts: true,
+    });
+
+    expect(merged.customers[0]).toMatchObject({
+      id: 'archived',
+      isDeleted: false,
+      updatedAt: '2026-08-03T10:00:00.000Z',
+    });
+    expect(merged.customers[0]).not.toHaveProperty('deletedAt');
+    expect(merged.cycles).toContainEqual(expect.objectContaining({
+      id: 'restored-cycle',
+      customerId: 'archived',
+      status: 'active',
+    }));
+    expect(merged.debtTransactions).toContainEqual(expect.objectContaining({
+      id: 'restored-debt',
+      customerId: 'archived',
+      amount: 500,
+    }));
+  });
+
   it('merges independent financial transactions without dropping either one', () => {
     const base = state();
     const local = state();
