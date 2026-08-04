@@ -8,6 +8,30 @@ interface TrashCanModuleProps {
   onUpdateState: (newState: ERPState) => void;
 }
 
+interface TrashRecordTimestamp {
+  deletedAt?: string;
+  updatedAt?: string;
+  createdAt?: string;
+  date?: string;
+}
+
+const getTrashRecordTime = (record: TrashRecordTimestamp) => {
+  const timestamp = record.deletedAt || record.updatedAt || record.createdAt || record.date;
+  const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatTrashRecordTime = (timestamp: number) => {
+  if (!timestamp) return 'غير مسجل';
+  return new Date(timestamp).toLocaleString('ar-LY', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<
@@ -268,10 +292,10 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
 
   // Create unified feed for simple search and tab filtering
   const allTrashItems = [
-    ...deletedCustomers.map(c => ({ id: c.id, name: c.name, details: c.phone ? `تلفونه: ${c.phone}` : 'من غير تلفون', type: 'customer' as const, label: 'زبون / عميل 👥', color: 'bg-rose-50 text-rose-700 border-rose-150', accent: 'border-r-rose-400', itemRef: c })),
-    ...deletedCompanies.map(c => ({ id: c.id, name: c.name, details: c.contact ? `المسئول عنه: ${c.contact}` : 'من غير تفاصيل اتفاق', type: 'company' as const, label: 'مورد / شركة توريد 🏭', color: 'bg-amber-50 text-amber-700 border-amber-150', accent: 'border-r-amber-400', itemRef: c })),
-    ...deletedMerchants.map(m => ({ id: m.id, name: m.name, details: m.contact ? `بيانات التواصل: ${m.contact}` : 'من غير بيانات تواصل', type: 'merchant' as const, label: 'تاجر محذوف 🧾', color: 'bg-orange-50 text-orange-700 border-orange-200', accent: 'border-r-orange-400', itemRef: m })),
-    ...deletedDeposits.map(d => ({ id: d.id, name: `أمانة العميل: ${d.customerName}`, details: `مرجع: ${d.referenceNo} | متبقي ليبي: ${d.amountLyd} د.ل | مصري: ${d.amountEgp} ج.م`, type: 'deposit' as const, label: 'سند أمانة جاري 🔒', color: 'bg-indigo-50 text-indigo-700 border-indigo-150', accent: 'border-r-indigo-400', itemRef: d })),
+    ...deletedCustomers.map(c => ({ id: c.id, name: c.name, details: c.phone ? `تلفونه: ${c.phone}` : 'من غير تلفون', type: 'customer' as const, label: 'زبون / عميل 👥', color: 'bg-rose-50 text-rose-700 border-rose-150', sortTime: getTrashRecordTime(c), itemRef: c })),
+    ...deletedCompanies.map(c => ({ id: c.id, name: c.name, details: c.contact ? `المسئول عنه: ${c.contact}` : 'من غير تفاصيل اتفاق', type: 'company' as const, label: 'مورد / شركة توريد 🏭', color: 'bg-amber-50 text-amber-700 border-amber-150', sortTime: getTrashRecordTime(c), itemRef: c })),
+    ...deletedMerchants.map(m => ({ id: m.id, name: m.name, details: m.contact ? `بيانات التواصل: ${m.contact}` : 'من غير بيانات تواصل', type: 'merchant' as const, label: 'تاجر محذوف 🧾', color: 'bg-orange-50 text-orange-700 border-orange-200', sortTime: getTrashRecordTime(m), itemRef: m })),
+    ...deletedDeposits.map(d => ({ id: d.id, name: `أمانة العميل: ${d.customerName}`, details: `مرجع: ${d.referenceNo} | متبقي ليبي: ${d.amountLyd} د.ل | مصري: ${d.amountEgp} ج.م`, type: 'deposit' as const, label: 'سند أمانة جاري 🔒', color: 'bg-indigo-50 text-indigo-700 border-indigo-150', sortTime: getTrashRecordTime(d), itemRef: d })),
     ...deletedTxs.map(t => ({
       id: t.id,
       name: t.name,
@@ -281,7 +305,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
       type: 'transaction' as const,
       label: t.source === 'purchase' ? 'معاملة مشتريات محذوفة 🛒' : 'عملية / قيد ملغي 📝',
       color: t.source === 'purchase' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-700 border-slate-200',
-      accent: t.source === 'purchase' ? 'border-r-emerald-400' : 'border-r-slate-400',
+      sortTime: getTrashRecordTime(t),
       itemRef: t,
     }))
   ].filter(item => {
@@ -293,7 +317,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
 
     // Search query Matching
     return item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.details.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  }).sort((first, second) => second.sortTime - first.sortTime);
 
   return (
     <div className="space-y-4 text-right animate-fadeIn" dir="rtl">
@@ -389,7 +413,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
         </div>
       </div>
 
-      {/* 3. Render items cards */}
+      {/* 3. Render deleted items as a newest-first ledger */}
       {allTrashItems.length === 0 ? (
         <div className="bg-white border rounded-2xl p-16 text-center text-slate-400">
           <ShieldCheck className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
@@ -399,33 +423,52 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {allTrashItems.map(item => {
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2.5">
+            <div>
+              <h3 className="text-xs font-black text-slate-800">سجل العناصر المحذوفة</h3>
+              <p className="mt-0.5 text-[10px] font-bold text-slate-500">الأحدث في الأعلى، والأقدم في الأسفل</p>
+            </div>
+            <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[10px] font-black text-rose-700">
+              {allTrashItems.length} عنصر
+            </span>
+          </div>
+
+          <div className="max-h-[62vh] overflow-auto">
+            <table className="w-full min-w-[900px] border-collapse text-right">
+              <thead className="sticky top-0 z-10 bg-slate-900 text-white shadow-sm">
+                <tr className="text-[10px] font-black">
+                  <th className="w-14 px-3 py-2.5 text-center">م</th>
+                  <th className="w-40 px-3 py-2.5">تاريخ الحذف</th>
+                  <th className="w-44 px-3 py-2.5">القسم</th>
+                  <th className="min-w-52 px-3 py-2.5">الاسم / المعاملة</th>
+                  <th className="min-w-72 px-3 py-2.5">التفاصيل</th>
+                  <th className="w-64 px-3 py-2.5 text-center">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+          {allTrashItems.map((item, index) => {
             const isConfirming = confirmingDeleteId === item.id;
             return (
-              <div 
+              <tr
                 key={item.id} 
-                className={`bg-white border-y border-l border-slate-200 border-r-4 ${item.accent} hover:border-slate-350 rounded-xl p-3 shadow-xs flex flex-col justify-between transition-all`}
+                className="bg-white text-[11px] transition-colors hover:bg-slate-50/80"
               >
-                <div>
-                  <div className="flex justify-between items-center border-b pb-1.5 mb-2">
-                    <span className="font-extrabold text-slate-800 text-xs">
-                      {item.name}
-                    </span>
-                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${item.color}`}>
-                      {item.label}
-                    </span>
-                  </div>
-                  <p className="text-[10.5px] text-slate-500 font-mono">
-                    {item.details}
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-end gap-1.5 mt-4 pt-2 border-t border-slate-100">
+                <td className="px-3 py-2.5 text-center font-black text-slate-400">{index + 1}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 font-bold text-slate-600">
+                  {formatTrashRecordTime(item.sortTime)}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={`inline-flex rounded-full border px-2 py-1 text-[9px] font-black ${item.color}`}>
+                    {item.label}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 font-extrabold text-slate-800">{item.name}</td>
+                <td className="px-3 py-2.5 font-mono text-[10.5px] text-slate-500">{item.details}</td>
+                <td className="px-3 py-2.5">
+                  <div className="flex items-center justify-center gap-1.5">
                   {isConfirming ? (
-                    <div className="flex items-center gap-1 bg-rose-50 p-1 rounded-lg border border-rose-200 w-full justify-between animate-fadeIn">
-                      <span className="text-[10px] font-black text-rose-800">متأكد من المسح خالص؟</span>
-                      <div className="flex gap-1">
+                    <div className="flex items-center gap-1 rounded-lg border border-rose-200 bg-rose-50 p-1 animate-fadeIn">
                         <button
                           onClick={() => {
                             if (item.type === 'customer') handlePermanentDeleteCustomer(item.id);
@@ -434,9 +477,9 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                             else if (item.type === 'deposit') handlePermanentDeleteDeposit(item.id);
                             else if (item.type === 'transaction') handlePermanentDeleteTransaction((item as any).itemRef);
                           }}
-                          className="px-2 py-1 text-[9px] font-black bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-all cursor-pointer"
+                          className="whitespace-nowrap rounded-md bg-rose-600 px-2 py-1 text-[9px] font-black text-white transition-all hover:bg-rose-700 cursor-pointer"
                         >
-                          آه، امسحه نهائي دفترياً 🚨
+                          تأكيد المسح النهائي 🚨
                         </button>
                         <button
                           onClick={() => setConfirmingDeleteId(null)}
@@ -444,7 +487,6 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                         >
                           تراجع ✕
                         </button>
-                      </div>
                     </div>
                   ) : (
                     <>
@@ -456,7 +498,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                           else if (item.type === 'deposit') handleRestoreDeposit(item.id);
                           else if (item.type === 'transaction') handleRestoreTransaction((item as any).itemRef);
                         }}
-                        className="px-2.5 py-1 text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-150 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                        className="flex items-center gap-1 whitespace-nowrap rounded-lg border border-indigo-150 bg-indigo-50 px-2.5 py-1 text-[10px] font-bold text-indigo-700 transition-all hover:bg-indigo-100 cursor-pointer"
                         title="استرجاع الملف للمنظومة مباشرة"
                       >
                         <RotateCcw className="w-3 h-3" />
@@ -464,7 +506,7 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                       </button>
                       <button
                         onClick={() => setConfirmingDeleteId(item.id)}
-                        className="px-2 py-1 text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-150 rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                        className="flex items-center gap-1 whitespace-nowrap rounded-lg border border-rose-150 bg-rose-50 px-2 py-1 text-[10px] font-bold text-rose-600 transition-all hover:bg-rose-100 cursor-pointer"
                         title="حذف القيد وحرقه نهائياً من المتصفح"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -472,10 +514,14 @@ export default function TrashCanModule({ state, onUpdateState }: TrashCanModuleP
                       </button>
                     </>
                   )}
-                </div>
-              </div>
+                  </div>
+                </td>
+              </tr>
             );
           })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
