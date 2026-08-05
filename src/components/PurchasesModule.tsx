@@ -125,6 +125,8 @@ export default function PurchasesModule({
   const actorName = currentUser?.name || currentUser?.username || 'مستخدم المنظومة';
   const canManageArchive =
     currentUser?.role === 'admin' || currentUser?.role === 'accountant';
+  const canEditArchivedPurchases =
+    canManageArchive || currentUser?.permissions?.canViewPurchases === true;
   const canDeleteActive = currentUser?.role === 'admin';
 
   const notify = (message: string) => {
@@ -401,7 +403,7 @@ export default function PurchasesModule({
   };
 
   const startArchivedEdit = (date: string, rows: PurchaseRecord[]) => {
-    if (!canManageArchive) return;
+    if (!canEditArchivedPurchases) return;
     setEditingArchivedDate(date);
     setArchivedDraftRows(rows.map((row) => ({ ...row })));
   };
@@ -412,7 +414,7 @@ export default function PurchasesModule({
   };
 
   const saveArchivedEdit = () => {
-    if (!editingArchivedDate || !canManageArchive) return;
+    if (!editingArchivedDate || !canEditArchivedPurchases) return;
     if (archivedDraftRows.some((row) => Number(row.rate) <= 0)) {
       notify('لا يمكن الحفظ: سعر الصرف يجب أن يكون أكبر من صفر.');
       return;
@@ -594,10 +596,14 @@ export default function PurchasesModule({
                             <span>{new Date(`${date}T12:00:00`).toLocaleDateString('ar-LY', { weekday: 'long' })}</span>
                             <span dir="ltr">{date}</span>
                             <span className="rounded-lg bg-white/70 px-2 py-0.5 text-[10px]">
-                              {active ? 'اليوم النشط' : 'مؤرشف — قراءة فقط'}
+                              {active
+                                ? 'اليوم النشط'
+                                : canEditArchivedPurchases
+                                  ? 'مؤرشف — قابل للتعديل'
+                                  : 'مؤرشف — قراءة فقط'}
                             </span>
                           </div>
-                          {!active && canManageArchive && (
+                          {!active && canEditArchivedPurchases && (
                             editing ? (
                               <div className="flex gap-1">
                                 <button type="button" onClick={saveArchivedEdit} className="flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-1 text-xs font-black text-white"><Save className="h-3.5 w-3.5" /> حفظ</button>
