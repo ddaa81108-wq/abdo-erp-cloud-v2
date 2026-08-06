@@ -38,6 +38,7 @@ const permissionColumns: Array<{
   label: string;
 }> = [
   { key: 'canViewDebts', label: 'ديون العملاء' },
+  { key: 'canViewDebtCollections', label: 'استلامات الديون من العملاء' },
   { key: 'canViewCompanies', label: 'الشركات والتجار' },
   { key: 'canViewDeposits', label: 'الأمانات' },
   { key: 'canViewMailManual', label: 'المصراوية' },
@@ -80,8 +81,7 @@ const rolePresets: Record<User['role'], UserPermissions> = {
   },
   assistant: {
     ...DENIED_PERMISSIONS,
-    canViewDebts: true,
-    canViewArchive: true,
+    canViewDebtCollections: true,
   },
 };
 
@@ -94,6 +94,11 @@ const storageLabels: Partial<Record<keyof ERPState, string>> = {
   customers: 'حسابات العملاء',
   cycles: 'دورات ديون العملاء',
   debtTransactions: 'معاملات ديون العملاء',
+  debtCollectionSessions: 'دورات استلامات الديون',
+  debtCollectionAssignments: 'كروت استلامات الديون',
+  debtCollectionReceipts: 'عمليات استلام الديون',
+  debtCollectorPayrolls: 'رواتب المحصلين',
+  debtCollectorWithdrawals: 'سحوبات المحصلين',
   companies: 'الشركات والتجار',
   companyTransactions: 'معاملات الشركات والتجار',
   merchants: 'التجار القدامى',

@@ -20,6 +20,7 @@ import type {
   CustomerCycle,
   DebtTransaction,
   ERPState,
+  User,
 } from '../types';
 import {
   calculateActiveCycleBalance,
@@ -30,6 +31,10 @@ import {
   synchronizeActiveCustomerCycles,
   upsertCustomerPaymentInTreasury,
 } from '../domain/customerAccounts';
+import {
+  dispatchCustomersToCollector,
+  synchronizeCollectionAssignments,
+} from '../domain/debtCollections';
 import { findSimilarParties, type PartyMatch } from '../domain/partyNameMatcher';
 import { copySettledImage, openSmartCardStudio } from '../utils/imageExporterUtils';
 import { VoiceInputButton } from './VoiceInputButton';
@@ -41,15 +46,8 @@ import { useAutoScrollToLatest } from '../utils/useAutoScrollToLatest';
 
 interface CustomerDebtsModuleProps {
   state: ERPState;
+  currentUser: User | null;
   onUpdateState: (newState: ERPState) => void;
-  onOpenExporter: (
-    section: string,
-    metrics: any,
-    headers: string[],
-    rows: any[][],
-    imageType?: 'full' | 'table' | 'card',
-    footerMetrics?: any[],
-  ) => void;
   searchQuery?: string;
   pendingDeletions?: string[];
   onScheduleDeletion?: (
@@ -100,8 +98,8 @@ function cardColor(age: number, balance: number) {
 
 export default function CustomerDebtsModule({
   state,
+  currentUser,
   onUpdateState,
-  onOpenExporter,
   searchQuery = '',
   onScheduleDeletion,
 }: CustomerDebtsModuleProps) {
@@ -112,6 +110,7 @@ export default function CustomerDebtsModule({
   const [showCreate, setShowCreate] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedForExport, setSelectedForExport] = useState<string[]>([]);
+  const [selectedCollectorId, setSelectedCollectorId] = useState('');
   const [message, setMessage] = useState('');
   const [tickerIndex, setTickerIndex] = useState(0);
 
@@ -221,6 +220,27 @@ export default function CustomerDebtsModule({
     0,
   );
 
+  const eligibleCollectors = useMemo(
+    () => (state.users || []).filter(
+      (user) =>
+        user.role !== 'admin'
+        && user.isActive !== false
+        && user.permissions?.canViewDebtCollections === true,
+    ),
+    [state.users],
+  );
+
+  useEffect(() => {
+    if (eligibleCollectors.length === 1) {
+      setSelectedCollectorId(eligibleCollectors[0].id);
+    } else if (
+      selectedCollectorId
+      && !eligibleCollectors.some((collector) => collector.id === selectedCollectorId)
+    ) {
+      setSelectedCollectorId('');
+    }
+  }, [eligibleCollectors, selectedCollectorId]);
+
   const toast = (text: string) => {
     setMessage(text);
     window.setTimeout(() => setMessage(''), 3200);
@@ -232,13 +252,13 @@ export default function CustomerDebtsModule({
     nextCustomers = state.customers,
     nextTreasury = state.treasuryTransactions || [],
   ) => {
-    const nextState = {
+    const nextState = synchronizeCollectionAssignments({
       ...state,
       customers: nextCustomers,
       debtTransactions: nextTransactions,
       cycles: synchronizeActiveCustomerCycles(nextCycles, nextTransactions),
       treasuryTransactions: nextTreasury,
-    };
+    });
     stateRef.current = nextState;
     onUpdateState(nextState);
   };
@@ -548,7 +568,7 @@ export default function CustomerDebtsModule({
           ? { ...customer, isDeleted: true, updatedAt: now }
           : customer,
       );
-      onUpdateState({ ...current, customers: nextCustomers });
+      onUpdateState(synchronizeCollectionAssignments({ ...current, customers: nextCustomers }));
       setSelectedCustomerId(null);
     };
     if (onScheduleDeletion) {
@@ -572,24 +592,35 @@ export default function CustomerDebtsModule({
     });
   };
 
-  const exportSelected = () => {
+  const sendSelectedToCollector = () => {
+    if (currentUser?.role !== 'admin') {
+      toast('إرسال كروت التحصيل متاح للمدير فقط.');
+      return;
+    }
+    const collector = eligibleCollectors.find((user) => user.id === selectedCollectorId);
+    if (!collector) {
+      toast('أنشئ موظفًا نشطًا بصلاحية «استلامات الديون من العملاء» أو اختره أولًا.');
+      return;
+    }
     const accounts = allAccounts.filter((account) =>
       selectedForExport.includes(account.customer.id));
-    onOpenExporter(
-      'كشف ديون العملاء المحددين',
-      {
-        label1: 'عدد العملاء',
-        value1: accounts.length,
-        label2: 'إجمالي الديون',
-        value2: money(accounts.reduce((sum, account) => sum + Math.max(account.balance, 0), 0)),
-        label3: 'تاريخ الكشف',
-        value3: new Date().toLocaleDateString('ar-LY'),
-      },
-      ['اسم العميل', 'الدين الفعلي'],
-      accounts.map((account) => [account.customer.name, balanceLabel(account.balance)]),
+    const result = dispatchCustomersToCollector(
+      state,
+      collector,
+      accounts.map((account) => ({
+        customer: account.customer,
+        balance: account.balance,
+      })),
     );
+    onUpdateState(result.state);
     setSelectionMode(false);
     setSelectedForExport([]);
+    const details = [
+      result.added ? `تم إرسال ${result.added} كارت` : '',
+      result.duplicates ? `${result.duplicates} موجود مسبقًا ولم يُكرر` : '',
+      result.invalid ? `${result.invalid} بلا دين نشط` : '',
+    ].filter(Boolean).join('، ');
+    toast(details || 'لم يتم إرسال أي كارت.');
   };
 
   const exportCustomerLedger = () => {
@@ -669,17 +700,29 @@ export default function CustomerDebtsModule({
               <span className="text-xs text-indigo-100">لا توجد ديون تجاوزت يومين</span>
             )}
           </button>
-          <TopCard icon={<Send />} title="وضع الإرسال" value="تحديد وتصدير" onClick={() => setSelectionMode(true)} />
+          <TopCard icon={<Send />} title="إرسال للمحصل" value="تحديد العملاء" onClick={() => setSelectionMode(true)} />
         </section>
       ) : (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4">
           <div>
-            <strong className="text-sm text-indigo-900">وضع الإرسال</strong>
+            <strong className="text-sm text-indigo-900">إرسال إلى قسم استلامات الديون</strong>
             <p className="text-xs text-indigo-600">تم تحديد {selectedForExport.length} عميل</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {eligibleCollectors.length > 1 && (
+              <select
+                value={selectedCollectorId}
+                onChange={(event) => setSelectedCollectorId(event.target.value)}
+                className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-slate-700"
+              >
+                <option value="">اختر الموظف</option>
+                {eligibleCollectors.map((collector) => (
+                  <option key={collector.id} value={collector.id}>{collector.name}</option>
+                ))}
+              </select>
+            )}
             <button onClick={() => { setSelectionMode(false); setSelectedForExport([]); }} className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-slate-600">إلغاء</button>
-            <button disabled={!selectedForExport.length} onClick={exportSelected} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white disabled:opacity-40">تصدير المحدد</button>
+            <button disabled={!selectedForExport.length || !selectedCollectorId} onClick={sendSelectedToCollector} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white disabled:opacity-40">إرسال المحدد</button>
           </div>
         </section>
       )}

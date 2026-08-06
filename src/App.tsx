@@ -51,6 +51,7 @@ import GlobalCalculator from "./components/GlobalCalculator";
 // Large sections are loaded only when opened. This changes delivery size only;
 // accounting state and component behavior remain untouched.
 const CustomerDebtsModule = lazy(() => import("./components/CustomerDebtsModule"));
+const DebtCollectionsModule = lazy(() => import("./components/DebtCollectionsModule"));
 const CompaniesModule = lazy(() => import("./components/CompaniesModule"));
 const TreasuryModule = lazy(() => import("./components/TreasuryModule"));
 const PurchasesModule = lazy(() => import("./components/PurchasesModule"));
@@ -1028,15 +1029,16 @@ export default function App() {
               <div className="p-2 space-y-1.5 overflow-y-auto flex-1 text-right max-h-[calc(100vh-130px)] custom-scrollbar">
                 {[
                   { id: "debts", label: "1. قسم ديون العملاء 👥", enabled: currentUser?.permissions?.canViewDebts ?? false },
-                  { id: "companies", label: "2. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? false },
-                  { id: "deposits", label: "3. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? false },
-                  { id: "mail_manual", label: "4. المصراوية 🇪🇬", enabled: currentUser?.permissions?.canViewMailManual ?? false },
+                  { id: "debt_collections", label: "2. استلامات الديون من العملاء 📲", enabled: currentUser?.permissions?.canViewDebtCollections ?? false },
+                  { id: "companies", label: "3. حسابات الشركات والتجار 🏭", enabled: currentUser?.permissions?.canViewCompanies ?? false },
+                  { id: "deposits", label: "4. قسم الأمانات 🛡️", enabled: currentUser?.permissions?.canViewDeposits ?? false },
+                  { id: "mail_manual", label: "5. المصراوية 🇪🇬", enabled: currentUser?.permissions?.canViewMailManual ?? false },
                   { id: "purchases", label: "6. قسم المشتريات 🛒", enabled: currentUser?.permissions?.canViewPurchases ?? false },
                   { id: "treasury", label: "7. قسم الخزنة 💰", enabled: currentUser?.permissions?.canViewTreasury ?? false },
                   { id: "financial_reports", label: "8. قسم التقارير المالية 📊", enabled: currentUser?.permissions?.canViewFinancialReports ?? false },
-                  { id: "trash_can", label: "10. سلة المهملات 🗑️", enabled: currentUser?.permissions?.canViewTrash ?? false },
-                  { id: "settings", label: "11. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
-                  { id: "backup", label: "12. الاعدادات الشامله 📦", enabled: currentUser?.role === "admin" },
+                  { id: "trash_can", label: "9. سلة المهملات 🗑️", enabled: currentUser?.permissions?.canViewTrash ?? false },
+                  { id: "settings", label: "10. صلاحيات الموظفين ⚙️", enabled: currentUser?.role === "admin" },
+                  { id: "backup", label: "11. الاعدادات الشامله 📦", enabled: currentUser?.role === "admin" },
                 ].filter((t) => t.enabled).map((tab) => (
                   <button 
                     key={tab.id} 
@@ -1086,7 +1088,8 @@ export default function App() {
                     </div>
                   )}
                   <Suspense fallback={<SectionLoading />}>
-                  {activeTabIsAllowed && activeTab === "debts" && <CustomerDebtsModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "debts" && <CustomerDebtsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
+                  {activeTabIsAllowed && activeTab === "debt_collections" && currentUser && <DebtCollectionsModule state={state} currentUser={currentUser} onUpdateState={updateStateAndSync} />}
                   {activeTabIsAllowed && activeTab === "companies" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "merchants" && <CompaniesModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} searchQuery={globalSearchQuery} pendingDeletions={pendingDeletions.map(p => p.id)} onScheduleDeletion={scheduleDeletion} onCancelDeletion={cancelDeletion} />}
                   {activeTabIsAllowed && activeTab === "treasury" && <TreasuryModule state={state} onUpdateState={updateStateAndSync} onOpenExporter={handleOpenExporter} />}

@@ -12,6 +12,11 @@ const permissionByChunk: Partial<Record<string, string>> = {
   customers: 'canViewDebts',
   cycles: 'canViewDebts',
   debtTransactions: 'canViewDebts',
+  debtCollectionSessions: 'canViewDebtCollections',
+  debtCollectionAssignments: 'canViewDebtCollections',
+  debtCollectionReceipts: 'canViewDebtCollections',
+  debtCollectorPayrolls: 'canViewDebtCollections',
+  debtCollectorWithdrawals: 'canViewDebtCollections',
   delegates: 'canViewDebts',
   companies: 'canViewCompanies',
   companyTransactions: 'canViewCompanies',
@@ -85,6 +90,23 @@ describe('Firestore section security map', () => {
       role: 'admin',
       permissions: FULL_PERMISSIONS,
     })).toEqual(CHUNK_ARRAY_KEYS);
+  });
+
+  it('subscribes a collector only to collection data and shared reminders', () => {
+    const keys = chunkKeysForUser({
+      role: 'assistant',
+      permissions: { ...DENIED_PERMISSIONS, canViewDebtCollections: true },
+    });
+    expect(keys).toEqual([
+      'debtCollectionSessions',
+      'debtCollectionAssignments',
+      'debtCollectionReceipts',
+      'debtCollectorPayrolls',
+      'debtCollectorWithdrawals',
+      'notesAndReminders',
+    ]);
+    expect(keys).not.toContain('customers');
+    expect(keys).not.toContain('debtTransactions');
   });
 
   it('never subscribes a limited employee to backup payloads', () => {

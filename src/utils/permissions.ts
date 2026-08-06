@@ -2,6 +2,7 @@ import type { User, UserPermissions } from '../types';
 
 export const DENIED_PERMISSIONS: UserPermissions = {
   canViewDebts: false,
+  canViewDebtCollections: false,
   canViewCompanies: false,
   canViewTreasury: false,
   canViewPurchases: false,
@@ -32,6 +33,7 @@ export function resolvePermissions(
 
 const TAB_PERMISSION: Record<string, keyof UserPermissions> = {
   debts: 'canViewDebts',
+  debt_collections: 'canViewDebtCollections',
   archive: 'canViewArchive',
   companies: 'canViewCompanies',
   merchants: 'canViewCompanies',
@@ -54,6 +56,7 @@ export function canAccessTab(user: User | null, tabId: string): boolean {
 
 export const NAVIGATION_ORDER = [
   'debts',
+  'debt_collections',
   'companies',
   'deposits',
   'mail_manual',

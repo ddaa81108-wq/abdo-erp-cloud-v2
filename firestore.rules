@@ -99,6 +99,29 @@ service cloud.firestore {
       ] && hasPermission('canViewDebts');
     }
 
+    // Debt collection cards and receipt requests. A collector can update only
+    // the operational card/request chunks. Opening/clearing a work cycle and
+    // changing salary data remain administrator-only operations.
+    match /erp_system/{documentId} {
+      allow read, write: if documentId in [
+        'chunk_debt_collection_assignments',
+        'chunk_debt_collection_receipts'
+      ] && hasPermission('canViewDebtCollections');
+    }
+
+    match /erp_system/{documentId} {
+      allow read: if documentId in [
+        'chunk_debt_collection_sessions',
+        'chunk_debt_collector_payrolls',
+        'chunk_debt_collector_withdrawals'
+      ] && hasPermission('canViewDebtCollections');
+      allow write: if documentId in [
+        'chunk_debt_collection_sessions',
+        'chunk_debt_collector_payrolls',
+        'chunk_debt_collector_withdrawals'
+      ] && isAdmin();
+    }
+
     // Companies and traders.
     match /erp_system/{documentId} {
       allow read, write: if documentId in [

@@ -14,6 +14,11 @@ const ENTITY_ARRAY_KEYS = new Set<keyof ERPState>([
   'customers',
   'cycles',
   'debtTransactions',
+  'debtCollectionSessions',
+  'debtCollectionAssignments',
+  'debtCollectionReceipts',
+  'debtCollectorPayrolls',
+  'debtCollectorWithdrawals',
   'companies',
   'companyTransactions',
   'merchants',
@@ -44,6 +49,16 @@ const PERMISSION_CHUNKS: Array<{
   {
     permission: 'canViewDebts',
     keys: ['customers', 'cycles', 'debtTransactions', 'delegates'],
+  },
+  {
+    permission: 'canViewDebtCollections',
+    keys: [
+      'debtCollectionSessions',
+      'debtCollectionAssignments',
+      'debtCollectionReceipts',
+      'debtCollectorPayrolls',
+      'debtCollectorWithdrawals',
+    ],
   },
   {
     permission: 'canViewCompanies',

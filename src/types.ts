@@ -43,6 +43,72 @@ export interface DebtTransaction {
   updatedAt?: string;
 }
 
+export interface DebtCollectionSession {
+  /** One stable settings record per collector. The batch id changes on Clear All. */
+  id: string;
+  collectorUserId: string;
+  collectorName: string;
+  activeBatchId: string;
+  generation: number;
+  openedAt: string;
+  updatedAt: string;
+}
+
+export interface DebtCollectionAssignment {
+  id: string;
+  batchId: string;
+  collectorUserId: string;
+  collectorName: string;
+  customerId: string;
+  customerName: string;
+  phone?: string;
+  /** Live balance copied from the active customer cycle for the collector UI. */
+  currentDebt: number;
+  dispatchedAt: string;
+  updatedAt: string;
+  isDeleted?: boolean;
+}
+
+export interface DebtCollectionReceipt {
+  id: string;
+  assignmentId: string;
+  batchId: string;
+  collectorUserId: string;
+  customerId: string;
+  customerName: string;
+  mode: 'partial' | 'full';
+  amount: number;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  updatedAt: string;
+  approvedAt?: string;
+  approvedById?: string;
+  approvedByName?: string;
+  sourceTransactionId?: string;
+  isDeleted?: boolean;
+}
+
+export interface DebtCollectorPayroll {
+  id: string;
+  collectorUserId: string;
+  collectorName: string;
+  month: string; // YYYY-MM
+  salary: number;
+  updatedAt: string;
+}
+
+export interface DebtCollectorWithdrawal {
+  id: string;
+  collectorUserId: string;
+  month: string; // YYYY-MM
+  amount: number;
+  note?: string;
+  date: string;
+  createdAt: string;
+  updatedAt: string;
+  isDeleted?: boolean;
+}
+
 export interface Company {
   id: string;
   name: string;
@@ -247,6 +313,7 @@ export interface BackupPoint {
 
 export interface UserPermissions {
   canViewDebts: boolean;
+  canViewDebtCollections?: boolean;
   canViewCompanies: boolean;
   canViewTreasury: boolean;
   canViewPurchases: boolean;
@@ -317,6 +384,11 @@ export interface ERPState {
   customers: Customer[];
   cycles: CustomerCycle[];
   debtTransactions: DebtTransaction[];
+  debtCollectionSessions?: DebtCollectionSession[];
+  debtCollectionAssignments?: DebtCollectionAssignment[];
+  debtCollectionReceipts?: DebtCollectionReceipt[];
+  debtCollectorPayrolls?: DebtCollectorPayroll[];
+  debtCollectorWithdrawals?: DebtCollectorWithdrawal[];
   companies: Company[];
   companyTransactions: CompanyTransaction[];
   merchants: Merchant[];
@@ -344,6 +416,11 @@ export const INITIAL_ERP_STATE: ERPState = {
   customers: [],
   cycles: [],
   debtTransactions: [],
+  debtCollectionSessions: [],
+  debtCollectionAssignments: [],
+  debtCollectionReceipts: [],
+  debtCollectorPayrolls: [],
+  debtCollectorWithdrawals: [],
   companies: [],
   companyTransactions: [],
   merchants: [],
