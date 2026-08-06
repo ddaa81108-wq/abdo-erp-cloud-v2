@@ -7,8 +7,9 @@ let currentType = 'debt';
             cairo: "'Card Cairo', Arial, sans-serif",
             tajawal: "'Card Tajawal', Arial, sans-serif",
             almarai: "'Card Almarai', Arial, sans-serif",
-            'noto-kufi': "'Card Noto Kufi Arabic', Arial, sans-serif",
-            'ibm-plex': "'Card IBM Plex Sans Arabic', Arial, sans-serif",
+            'noto-sans-arabic': "'Card Noto Sans Arabic', Arial, sans-serif",
+            amiri: "'Card Amiri', Georgia, serif",
+            'reem-kufi': "'Card Reem Kufi', Arial, sans-serif",
         });
         const cardWidths = {
             masraweya: 1050,
@@ -70,20 +71,38 @@ let currentType = 'debt';
             if (exchangeCard) exchangeCard.style.setProperty('--card-font', fontFamily);
         }
 
+        async function waitForSelectedFont() {
+            applySelectedFont();
+            if (!document.fonts) return;
+            const select = document.getElementById('fontFamilySelect');
+            const fontKey = select && cardFontFamilies[select.value] ? select.value : readSavedFontFamily();
+            const fontFamily = cardFontFamilies[fontKey] || cardFontFamilies.cairo;
+            try {
+                await Promise.all([
+                    document.fonts.load(`400 32px ${fontFamily}`, 'اختبار الخط العربي 123'),
+                    document.fonts.load(`700 48px ${fontFamily}`, 'شركة الأهرام 123'),
+                    document.fonts.load(`900 64px ${fontFamily}`, 'إجمالي الحساب 123'),
+                ]);
+                await document.fonts.ready;
+            } catch (error) {
+                console.warn('تعذر تحميل الخط المختار بالكامل، وسيتم استخدام الخط الاحتياطي.', error);
+            }
+        }
+
         function loadSavedFontFamily() {
             const select = document.getElementById('fontFamilySelect');
             if (select) select.value = readSavedFontFamily();
             applySelectedFont();
         }
 
-        function handleFontFamilyChange() {
+        async function handleFontFamilyChange() {
             const select = document.getElementById('fontFamilySelect');
             if (!select || !cardFontFamilies[select.value]) return;
             try {
                 localStorage.setItem(fontStorageKey, select.value);
             } catch {}
-            applySelectedFont();
-            setTimeout(resizePreview, 50);
+            await waitForSelectedFont();
+            resizePreview();
         }
 
         function initDashboard() {
@@ -778,7 +797,7 @@ let currentType = 'debt';
                 await new Promise((resolve) => {
                     requestAnimationFrame(() => requestAnimationFrame(resolve));
                 });
-                if (document.fonts?.ready) await document.fonts.ready;
+                await waitForSelectedFont();
 
                 const exportWidth = card.offsetWidth;
                 const exportHeight = card.offsetHeight;
